@@ -1,0 +1,909 @@
+#+TITLE: Raspberry Pi Baremetal Language Bootstrapping
+#+AUTHOR: Robert Kovacsics (rmk35)
+
+#+HTML_HEAD: <link rel="stylesheet" type="text/css" href="https://www.pirilampo.org/styles/readtheorg/css/htmlize.css"/>
+#+HTML_HEAD: <link rel="stylesheet" type="text/css" href="https://www.pirilampo.org/styles/readtheorg/css/readtheorg.css"/>
+
+#+HTML_HEAD: <script src="https://ajax.googleapis.com/ajax/libs/jquery/2.1.3/jquery.min.js"></script>
+#+HTML_HEAD: <script src="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.4/js/bootstrap.min.js"></script>
+#+HTML_HEAD: <script type="text/javascript" src="https://www.pirilampo.org/styles/lib/js/jquery.stickytableheaders.min.js"></script>
+#+HTML_HEAD: <script type="text/javascript" src="https://www.pirilampo.org/styles/readtheorg/js/readtheorg.js"></script>
+
+#+HTML_HEAD: <style type="text/css">table.cols td { min-width: 40em; }</style>
+#+MACRO: cstart #+HTML:<table class="cols"><tr><td>
+#+MACRO: cmid #+HTML: </td><td>
+#+MACRO: cend #+HTML: </td></tr></table>
+
+#+PROPERTY: header-args:forth :eval no
+#+OPTIONS: H:4
+
+* COMMENT Prelude
+#+BEGIN_SRC elisp
+  (setq asm-comment-char ?\@)
+#+END_SRC
+
+* Forth
+** A Jump-Threaded Interpreter
+A piece of Forth code will look like the following, in memory:
+#+BEGIN_SRC dot :file forth-jump-threaded-interpreter.png :cache yes
+  digraph {
+    rankdir=LR;
+    node [shape="record"];
+
+    prog [label="<0> Forth interpreter | <1> Forth method | <2> Native method | ... | <n> Exit"];
+
+    interp [label="<0> Push next_inst onto return stack | <1> Set next_inst from r0 | <n> Branch to `Next`"];
+
+    subrA [label="<0> Forth interpreter | ... | <n> Exit"];
+    subrB [label="<0> Native interpreter | <1> Instruction | ... | <n> Branch to `Next`"];
+    subrExit [label="<0> Native interpreter | <1> Pop next_inst from return stack | <2> Branch to `Next`"];
+
+    next [label="<0> Load next_inst to r0 | Increment next_inst | Load interpreter at r0 | Interpret r0+4"];
+
+    prog:0 -> interp:0;
+    subrA:0 -> interp:0;
+
+    interp:n -> next:0;
+
+    prog:1 -> subrA:0;
+    prog:2 -> subrB:0;
+    prog:n -> subrExit:0;
+
+    subrA:n -> subrExit:0;
+
+    subrB:0:e -> subrB:1:w;
+    subrExit:0:e -> subrExit:1:w;
+    subrB:n -> next:0;
+    subrExit:2 -> next:0;
+  }
+#+END_SRC
+
+#+RESULTS[3a92227f044b51c3c226ed658cbd98f3f405fea2]:
+[[file:forth-jump-threaded-interpreter.png]]
+
+Of note here is the interpreter, which is how we differentiate between
+Forth and native methods. For Forth methods, it pushes the
+~next_instr~ onto the return stack; for native methods it is just a
+pointer to the beginning of the assembled native code.
+
+The Forth interpreter keeps executing the interpreters of each call
+in the current method, including the exit call which goes up to the
+previously called method.
+
+{{{cstart}}}
+#+BEGIN_SRC asm :tangle stage0-machine-arm.s
+    next_inst .req r11
+    rsp .req r12
+
+  forth_interpreter:
+    str next_inst, [rsp], #-4
+    mov next_inst, r0
+    /* b next */
+
+  next:
+    ldrH r0, [next_inst], #2 /* FWSIZE */
+    ldr r1, [r0], #4
+    bx r1
+#+END_SRC
+{{{cmid}}}
+#+BEGIN_SRC forth
+  : FORTH-INTERPRETER
+    { next_inst } return_stack PUSH
+    r0 INTO next_inst MOV
+    ( or next_inst FROM r0 MOV )
+  LABEL: NEXT
+    next_inst INTO r0 2 LDRH+
+    r0 INTO r1 4 LDR+ ( vs +LDR and +LDR! )
+    r1 BX
+#+END_SRC
+{{{cend}}}
+
+Exit pops the next instruction off the stack, and jumps to next, it is
+defined once we cover the dictionary.
+
+** Dictionary-list
+We also need to have a look at how methods are looked up, for which
+Forth uses a simple, linear list of methods.
+#+BEGIN_SRC dot :file forth-dictionary.png :cache yes
+  digraph {
+    rankdir=LR;
+    node [shape="record"];
+
+    DROP [label="<0> Next entry | Flags |Counted string\n\"DROP\" | <1> Back-pointer | Interpreter | Code | ..."];
+    DUP [label="<0> Next entry | Flags | Counted string\n\"DUP\" | Padding | <1> Back-pointer | Interpreter | Code | ..."];
+
+    LAST_ENTRY [label="End"];
+
+    LATEST -> DROP:0
+    DROP:1:e -> DROP:0:w
+    DROP:0 -> DUP:0
+    DUP:1:e -> DUP:0:w
+    DUP:0 -> LAST_ENTRY
+  }
+#+END_SRC
+
+#+RESULTS[04b88b808c4ec8e0a911d96b93852d666973d977]:
+[[file:forth-dictionary.png]]
+
+Here a counted string means that the first element of the string is a
+word (four bytes) containing the length of the string (in bytes),
+which is followed by the bytes of the string.
+
+To help with making dictionary entries, we will need the following
+macros. The right-hand column is the same assembly code, but in Forth,
+so that we can have a reflective Forth interpreter.
+
+{{{cstart}}}
+#+BEGIN_SRC asm :tangle stage0-machine-arm.s
+  .set previous_entry, 0
+  .macro entry_header name:req, label:req, immediate=0, hidden=0
+  .balign 4 /* Align to power of 2 */
+  1:fw previous_entry
+  .set previous_entry, 1b
+  .byte \hidden
+  .byte \immediate
+  .balign 4
+  fw 2f-3f
+  3: .ascii "\name"; 2: .byte 0
+  .balign 4 /* Align to power of 2 */
+  fw 1b
+  .globl \label
+  \label :
+  .endm
+#+END_SRC
+{{{cmid}}}
+#+BEGIN_SRC forth
+  : ENTRY-HEADER TODO FOO BAR BAZ ; IMMEDIATE
+#+END_SRC
+{{{cend}}}
+
+*** Machine dependent words
+We are now ready to define the basic Forth words in assembly, on top
+of which we will build the rest of the Forth system.
+
+- TODO :: Explain "c-addr u" and fwsize
+
+{{{cstart}}}
+#+BEGIN_SRC asm :tangle stage0-machine-arm.s
+  .macro fw word:req, rest:vararg
+    .4byte \word
+    .ifnb \rest
+    fw \rest
+      .endif
+  .endm
+#+END_SRC
+{{{cmid}}}
+{{{cend}}}
+
+{{{cstart}}}
+#+BEGIN_SRC asm :tangle stage0-machine-arm.s
+  .macro binops name, label, op, rest:vararg
+    entry_header \name, \label
+    fw 1f
+  1:pop {r0, r1}
+    \op r1, r0
+    push {r1}
+    b next
+    .ifnb \rest
+      binops \rest
+    .endif
+  .endm
+
+  .macro binrels name, label, rel, rest:vararg
+    entry_header \name, \label
+    fw 1f
+  1:pop {r0, r1}
+    cmp r1, r0
+    mov r0, #0
+    mov\rel r0, #-1
+    push {r0}
+    b next
+    .ifnb \rest
+      binrels \rest
+    .endif
+  .endm
+
+  .macro unops name, label, op, rest:vararg
+    entry_header \name, \label
+    fw 1f
+  1:pop {r0}
+    \op r0
+    push {r0}
+    b next
+    .ifnb \rest
+      unops \rest
+    .endif
+  .endm
+#+END_SRC
+{{{cmid}}}
+{{{cend}}}
+
+{{{cstart}}}
+#+BEGIN_SRC asm :tangle stage0-machine-arm.s
+  entry_header "EXIT", EXIT
+    fw 1f
+  1:ldr next_inst, [rsp, #4]!
+    b next
+
+  binops "+", ADD, add,   "-", SUB, sub,   "*", STAR, mul
+  binops "LSHIFT", LSHIFT, lsl,   "RSHIFT", RSHIFT, lsr
+  binops "&", AND, and,   "|", OR, orr,    "XOR", XOR, eor
+  binrels "<>", NOT_EQUAL, ne,    "U<", U_LESS_THAN, lo
+  binrels "\x3d", EQUAL, eq,    "U>", U_GREATER_THAN, hi
+  binrels "<", LESS_THAN, lt,    ">", GREATER_THAN, gt
+
+  entry_header "NEGATE", NEGATE
+    fw 1f
+    pop {r0}
+  1:rsb r0, #0
+    push {r0}
+    b next
+
+  entry_header "INVERT", INVERT
+    fw 1f
+    pop {r0}
+  1:mvn r0, r0
+    push {r0}
+    b next
+
+  entry_header "C@", C_FETCH
+    fw 1f
+    pop {r0}
+  1:ldrB r0, [r0] /* FWSIZE */
+    push {r0}
+    b next
+
+  entry_header "C!", C_STORE
+    fw 1f
+    pop {r0-r1}
+  1:strB r1, [r0] /* FWSIZE */
+    b next
+
+  entry_header "@", FETCH
+    fw 1f
+    pop {r0}
+  1:ldrH r0, [r0] /* FWSIZE */
+    push {r0}
+    b next
+
+  entry_header "!", STORE
+    fw 1f
+    pop {r0-r1}
+  1:strH r1, [r0] /* FWSIZE */
+    b next
+
+  entry_header "BRANCH", BRANCH
+    fw 1f
+  1:ldrH r0, [next_inst] /* FWSIZE */
+    add next_inst, r0
+    b next
+
+  entry_header "0BRANCH", ZBRANCH
+    fw 1f
+  1:pop {r1}
+    ldrH r0, [next_inst] /* FWSIZE */
+    cmp r1, #0
+    addeq next_inst, r0
+    addne next_inst, #2 /* FWSIZE */
+    b next
+#+END_SRC
+{{{cmid}}}
+#+BEGIN_SRC forth
+  :ASM EXIT
+        next-inst rsp 4 true LDR
+        next B ;
+  :ASM +
+        { 0 1 } value_stack POP
+        r0 r1 ADD
+        { 1 } value_stack PUSH ;
+#+END_SRC
+{{{cend}}}
+
+{{{cstart}}}
+#+BEGIN_SRC asm :tangle stage0-machine-arm.s
+  .macro .forth_interpreter
+    .4byte forth_interpreter
+  .endm
+#+END_SRC
+{{{cmid}}}
+{{{cend}}}
+
+*** Creation
+{{{cstart}}}
+#+BEGIN_SRC asm :tangle stage0.s
+  entry_header "CREATE", CREATE
+    .forth_interpreter
+    # TODO
+#+END_SRC
+{{{cmid}}}
+#+BEGIN_SRC forth
+  : create TODO ;
+#+END_SRC
+{{{cend}}}
+
+{{{cstart}}}
+#+BEGIN_SRC asm :tangle stage0.s
+  entry_header "HIDDEN?", HIDDENP
+    .forth_interpreter
+    fw CELL, ADD, C_FETCH, EXIT
+#+END_SRC
+{{{cmid}}}
+#+BEGIN_SRC forth
+  : HIDDEN? cell + C@ ;
+#+END_SRC
+{{{cend}}}
+
+{{{cstart}}}
+#+BEGIN_SRC asm :tangle stage0.s
+  entry_header "IMMEDIATE?", IMMEDIATEP
+    .forth_interpreter
+    fw CELL, ADD, CHAR, ADD, C_FETCH, EXIT
+#+END_SRC
+{{{cmid}}}
+#+BEGIN_SRC forth
+  : IMMEDIATE? cell + char + c@ ;
+#+END_SRC
+{{{cend}}}
+
+{{{cstart}}}
+#+BEGIN_SRC asm :tangle stage0.s
+  entry_header "HIDE", HIDE
+    .forth_interpreter
+    fw CELL, ADD, DUP, C_FETCH
+    fw INVERT, SWAP, C_STORE, EXIT
+#+END_SRC
+{{{cmid}}}
+#+BEGIN_SRC forth
+  : HIDE cell + dup c@ invert swap c! ;
+#+END_SRC
+{{{cend}}}
+
+{{{cstart}}}
+#+BEGIN_SRC asm :tangle stage0.s
+  entry_header "IMMEDIATE", IMMEDIATE, -1
+    .forth_interpreter
+    fw TRUE, SWAP, CELL, ADD, CHAR, ADD, C_STORE, EXIT
+#+END_SRC
+{{{cmid}}}
+#+BEGIN_SRC forth
+  : IMMEDIATE true swap cell + char + c!
+#+END_SRC
+{{{cend}}}
+
+*** Lookup
+{{{cstart}}}
+#+BEGIN_SRC asm :tangle stage0.s
+  entry_header "FIND'", FIND_NEW
+    .forth_interpreter
+    fw LATEST, FETCH
+
+  FIND_LOOP: /* ( c-addr u entry ) */
+    fw DUP, LIT, 0, EQUAL, ZBRANCH, (FIND_NON_END-.)
+    fw DROP, DROP, LIT, 0, EXIT
+
+  FIND_NON_END:
+    fw DUP, HIDDENP, INVERT
+    fw ZBRANCH, (FIND_NEXT_ENTRY-.)
+
+    fw DUP, LIT, 8, ADD, FETCH, LIT, 2, PICK
+    fw EQUAL, ZBRANCH, (FIND_NEXT_ENTRY-.)
+    /* c-addr u entry */
+    fw LIT, 1, PICK, LIT, 3, PICK
+    fw LIT, 2, PICK, LIT, 12, ADD
+    /* c-addr u entry u c-addr c-addr' */
+    fw MEMCMP, ZBRANCH, (FIND_NEXT_ENTRY-.)
+
+    fw NIP, NIP
+    fw DUP, ENTRY_TO_EXECUTION_TOKEN
+    fw SWAP, IMMEDIATEP
+    fw ZBRANCH, (NON_IMM-.), LIT, 1, BRANCH, (IMM_END-.)
+  NON_IMM:
+    fw LIT, -1
+  IMM_END:
+    fw EXIT
+
+  FIND_NEXT_ENTRY:
+    fw FETCH
+    fw BRANCH, (FIND_LOOP-.)
+#+END_SRC
+{{{cmid}}}
+#+BEGIN_SRC forth
+  : FIND' ( c-addr u -- c-addr 0 | xt 1 | xt -1 )
+    latest @
+    begin \ c-addr u entry
+      dup 0 = if drop drop 0 exit then
+      dup hidden? invert if
+        dup 8 + @ 2 pick \ c-addr u entry entry-u u
+        = if
+          1 pick 3 pick 2 pick 12 +
+          \ c-addr u entry u c-addr entry-str
+          memcmp if \ c-addr u entry
+            nip nip \ entry
+            dup entry->xt \ entry xt
+            swap immediate? if 1 else -1 then
+            exit
+          then
+        then
+      then
+      @ \ Fetch next entry
+    again ;
+#+END_SRC
+{{{cend}}}
+
+{{{cstart}}}
+#+BEGIN_SRC asm :tangle stage0.s
+  entry_header "ENTRY->XT", ENTRY_TO_EXECUTION_TOKEN
+    .forth_interpreter
+    fw DUP, LIT, 8, ADD, FETCH, ADD, LIT, 12, ADD, LIT, 1, ADD
+    fw LIT, 3, ADD, LIT, 3, INVERT, AND
+    fw LIT, 4, ADD, EXIT
+#+END_SRC
+{{{cmid}}}
+#+BEGIN_SRC forth
+  : ENTRY->XT ( entry -- xt )
+    dup 8 + @ + 12 + 1 + \ Skip over next entry, flags, c-string (and zero byte)
+    3 + 3 invert and \ Align to power of 2 (multiple of 4)
+    4 + ; \ Skip back-pointer
+#+END_SRC
+{{{cend}}}
+
+We also need to write the memory comparison, as well as the utilities
+for the flags.
+
+*** Memory comparison
+{{{cstart}}}
+#+BEGIN_SRC asm :tangle stage0.s
+  entry_header "MEMCMP", MEMCMP
+    .forth_interpreter
+    fw ROT, LIT, 0
+    fw SWAP, TO_R, TO_R
+  MEMCMP_LOOP:
+    fw TWO_DUP, R_FETCH, ADD, C_FETCH
+    fw SWAP, R_FETCH, ADD, C_FETCH
+
+    fw CHAR_EQUAL, INVERT, ZBRANCH, (MEMCMP_NEXT-.)
+    fw TWO_R_DROP, TWO_DROP, FALSE, EXIT
+  MEMCMP_NEXT:
+    fw R_FROM, LIT, 1, ADD, TO_R
+    fw TWO_R_FETCH, EQUAL
+    fw ZBRANCH, (MEMCMP_LOOP-.)
+    fw TWO_R_DROP
+
+    fw TWO_DROP, TRUE, EXIT
+#+END_SRC
+{{{cmid}}}
+#+BEGIN_SRC forth
+  : MEMCMP ( len a b -- true | false )
+    rot 0 do
+      2dup i + C@ swap i + C@
+      = invert if unloop 2drop false exit then
+    loop
+    2drop true ;
+#+END_SRC
+{{{cend}}}
+
+** Input
+*** Characters
+{{{cstart}}}
+#+BEGIN_SRC asm :tangle stage0-machine-arm.s
+  UART1_MU_IO_REG:   fw 0x20215040
+  UART1_MU_LSR_REG:  fw 0x20215054
+  entry_header "KEY", KEY
+    fw 1f
+  1:ldr r0, #UART1_MU_LSR_REG
+    ldr r0, [r0]
+    tst r0, #1
+    wfieq
+    beq 1b
+    ldr r0, #UART1_MU_IO_REG
+    ldrB r0, [r0]
+    b next
+#+END_SRC
+{{{cmid}}}
+#+BEGIN_SRC forth
+  :ASM KEY TODO BUFFER FLOW CONTROL ;
+#+END_SRC
+{{{cend}}}
+
+*** Words
+TODO: backspace (or perhaps with a modified key?)
+
+{{{cstart}}}
+#+BEGIN_SRC asm :tangle stage0.s
+  entry_header "WORD'", WORD_NEW
+    .forth_interpreter
+    fw HERE, SWAP, LIT, 0
+  WORD_SKIP:
+    fw DROP, KEY, TWO_DUP, CHAR_EQUAL
+    fw INVERT, ZBRANCH, (WORD_SKIP-.)
+  WORD_LOOP:
+    fw DUP, C_COMMA, OVER, CHAR_EQUAL
+    fw ZBRANCH, (WORD_CONT-.)
+    fw DROP, LIT, 0, CHAR, SUB, ALLOT
+    fw HERE, OVER, SUB, LIT, 0, C_COMMA, EXIT
+  WORD_CONT:
+    fw KEY, BRANCH, (WORD_LOOP-.)
+#+END_SRC
+{{{cmid}}}
+#+BEGIN_SRC forth
+  : WORD' ( char "<chars>ccc<char>" -- c-addr u )
+    here swap
+    0 begin drop key 2dup char= until
+    begin \ start char key
+      dup C,
+      over char= if \ start char
+        drop 0 char - allot
+        here over - 0 C, exit
+      then
+      key
+    again ;
+#+END_SRC
+{{{cend}}}
+
+*** Numbers
+If the character is less than '0', or between '9' and 'A' (or 'Z' and
+'a'), then it underflows, and will end up being greater than BASE.
+
+{{{cstart}}}
+#+BEGIN_SRC asm :tangle stage0.s
+  entry_header "char->digit", CHAR_TO_DIGIT
+    .forth_interpreter
+    fw LIT, '0', SUB
+    fw DUP, LIT, 9, GREATER_THAN, ZBRANCH, (C_TO_D_END-.)
+    fw LIT, ('A'-'9'-1), SUB
+    fw DUP, LIT, 10, LESS_THAN, ZBRANCH, (C_TO_D_A-.)
+    fw LIT, 10, SUB
+  C_TO_D_A:
+    fw DUP, LIT, 35, GREATER_THAN, ZBRANCH, (C_TO_D_END-.)
+    fw LIT, 32, SUB
+    fw DUP, LIT, 10, LESS_THAN, ZBRANCH, (C_TO_D_END-.)
+    fw LIT, 10, SUB
+  C_TO_D_END:
+    fw EXIT
+#+END_SRC
+{{{cmid}}}
+#+BEGIN_SRC forth
+  : CHAR->DIGIT ( char -- digit )
+    char 0 -
+    dup 9 > if
+      7 - \ 9 : ; < = > ? @ A
+      dup 10 < if 10 - then
+      dup 35 > if
+        32 - \ A-Z [ \ ] ^ _ ` a-z
+        dup 10 < if 10 - then
+      then
+    then ;
+#+END_SRC
+{{{cend}}}
+
+{{{cstart}}}
+#+BEGIN_SRC asm :tangle stage0.s
+  .data
+  BASE_VAR: fw 10
+  .text
+  entry_header "BASE", BASE
+    .forth_interpreter
+    fw LIT, BASE_VAR, EXIT
+  entry_header "DECIMAL", DECIMAL
+    .forth_interpreter
+    fw LIT, 10, LIT, BASE_VAR, STORE, EXIT
+  entry_header ">NUMBER", TO_NUMBER
+    .forth_interpreter
+    fw OVER, ADD, DUP, TO_R, SWAP
+    fw SWAP, TO_R, TO_R
+  TO_NUM_LOOP:
+    fw R_FETCH, C_FETCH, CHAR_TO_DIGIT, DUP
+    fw BASE, FETCH, LESS_THAN
+    fw ZBRANCH, (TO_NUM_ELSE-.)
+    fw SWAP, BASE, FETCH, STAR, ADD
+    fw BRANCH, (TO_NUM_NEXT-.)
+  TO_NUM_ELSE:
+    fw DROP, R_FETCH, TWO_R_DROP, R_FROM
+    fw OVER, SUB, EXIT
+  TO_NUM_NEXT:
+    fw R_FROM, LIT, 1, ADD, TO_R
+    fw TWO_R_FETCH, EQUAL
+    fw ZBRANCH, (TO_NUM_LOOP-.)
+    fw TWO_R_DROP
+    fw R_FROM, LIT, 0
+    fw EXIT
+#+END_SRC
+{{{cmid}}}
+#+BEGIN_SRC forth
+  variable BASE 10 BASE !
+  : >NUMBER ( ud1 c-addr1 u1 -- ud2 c-addr2 u2 )
+    over + dup >R swap \ ud1 c-addr1+u1 c-addr1; R: c-addr1+u1
+    do \ ud1; loops with  c-addr1 <= I < c-addr1+u1
+      I C@ char->digit dup BASE @ < if \ ud1 digit
+        swap BASE @ * +
+      else \ ud1
+        drop I unloop R> over - exit \ ud2 c-addr2 u2
+      then
+    loop
+    R> 0 ;
+#+END_SRC
+{{{cend}}}
+
+** Output
+{{{cstart}}}
+#+BEGIN_SRC asm :tangle stage0-machine-arm.s
+  entry_header "EMIT", EMIT
+    fw 1f
+  1:ldr r1, #UART1_MU_LSR_REG
+    ldr r1, [r1]
+    tst r1, #32
+    wfieq
+    beq 1b
+    ldr r1, #UART1_MU_IO_REG
+    strB r0, [r1]
+    b next
+#+END_SRC
+{{{cmid}}}
+#+BEGIN_SRC forth
+TODO
+#+END_SRC
+{{{cend}}}
+
+** Interpreting
+{{{cstart}}}
+#+BEGIN_SRC asm :tangle stage0-machine-arm.s
+  entry_header "EXECUTE", EXECUTE
+    fw 1f
+  1:pop {r0}
+    ldr r0, [r0] /* Load interpreter *
+    /* b next // TODO don't we mean forth_interpreter? Or something like it */
+    ldr r1, [r0], #4
+    bx r1
+#+END_SRC
+{{{cmid}}}
+#+BEGIN_SRC forth
+  :ASM EXECUTE
+    { r0 } value_stack POP
+    r1 r0 4 LDR+ \ TODO
+    r0 BX ;
+#+END_SRC
+{{{cend}}}
+
+** Compiling
+See §3.4 of the [[https://www.taygeta.com/forth/dpans3.htm#3.4][ANSI Forth manual]].
+
+{{{cstart}}}
+#+BEGIN_SRC asm :tangle stage0.s
+  entry_header "'", TICK
+    .forth_interpreter
+    fw LIT, ' ', WORD_NEW, FIND_NEW, DROP, EXIT
+#+END_SRC
+{{{cmid}}}
+#+BEGIN_SRC forth
+  : TICK ( "<spaces>name" -- xt )
+    bl word' find' drop ;
+#+END_SRC
+{{{cend}}}
+
+{{{cstart}}}
+#+BEGIN_SRC asm :tangle stage0.s
+  entry_header "OK", OK
+    .forth_interpreter
+    fw LIT, 'O', EMIT, LIT, 'k'
+    fw EMIT, LIT, ' ', EMIT, EXIT
+#+END_SRC
+{{{cmid}}}
+#+BEGIN_SRC forth
+  : OK
+    bl emit char O emit char k emit bl emit ;
+#+END_SRC
+{{{cend}}}
+
+{{{cstart}}}
+#+BEGIN_SRC asm :tangle stage0.s
+  entry_header "ERROR", ERROR
+    .forth_interpreter
+    fw LIT, 'E', EMIT, LIT, 'r', EMIT
+    fw LIT, 'r', EMIT, LIT, ' ', EMIT, EXIT
+#+END_SRC
+{{{cmid}}}
+#+BEGIN_SRC forth
+  : ERROR
+    char E emit char r emit char r emit bl emit ;
+#+END_SRC
+{{{cend}}}
+
+** REPL
+{{{cstart}}}
+#+BEGIN_SRC asm :tangle stage0.s
+  entry_header "QUIT-FOUND", QUIT_FOUND
+    .forth_interpreter
+    fw NIP, LIT, -1, EQUAL, STATE
+    fw FETCH, AND, ZBRANCH, (Q_F_EX-.)
+    fw COMMA, BRANCH, (Q_F_END-.)
+  Q_F_EX:
+    fw EXECUTE
+  Q_F_END:
+    fw OK, EXIT
+#+END_SRC
+{{{cmid}}}
+#+BEGIN_SRC forth
+  : QUIT_FOUND ( xt u -1|1 -- )
+    nip -1 = state @ and if \ Compiling
+      , else execute then
+    ok ;
+#+END_SRC
+{{{cend}}}
+
+{{{cstart}}}
+#+BEGIN_SRC asm :tangle stage0.s
+  entry_header "QUIT-NOT-FOUND", QUIT_NOT_FOUND
+    .forth_interpreter
+    fw ROT, ROT, TO_NUMBER, LIT, 0
+    fw EQUAL, ZBRANCH, (Q_N_F_ELSE-.)
+    fw DROP, STATE, FETCH, ZBRANCH, (Q_N_F_END-.)
+    fw LIT, LIT, COMMA, COMMA
+    fw BRANCH, (Q_N_F_END-.)
+  Q_N_F_ELSE:
+    fw TWO_DROP, ERROR, EXIT
+  Q_N_F_END:
+    fw OK, EXIT
+#+END_SRC
+{{{cmid}}}
+#+BEGIN_SRC forth
+  : QUIT_NOT_FOUND ( c-addr u 0 -- )
+    rot rot >number 0 = if
+      drop state @ if \ Compiling
+        ' lit , ,
+      then
+    else
+      2drop error exit
+    then
+    ok ;
+#+END_SRC
+{{{cend}}}
+
+{{{cstart}}}
+#+BEGIN_SRC asm :tangle stage0.s
+  entry_header "QUIT", QUIT
+    .forth_interpreter
+  QUIT_LOOP:
+    fw LIT, ' ', WORD_NEW, DUP, ROT, ROT
+    fw FIND_NEW, ROT, SWAP
+    fw DUP, ZBRANCH, (QUIT_N_F-.)
+    fw QUIT_FOUND, BRANCH, (QUIT_LOOP-.)
+  QUIT_N_F:
+    fw QUIT_NOT_FOUND, BRANCH, (QUIT_LOOP-.)
+    fw EXIT
+#+END_SRC
+{{{cmid}}}
+#+BEGIN_SRC forth
+  : QUIT ( -- )
+    \ TODO: Set up value and return stacks
+    begin
+      bl word' dup rot rot \ u c-addr u
+      find' rot swap \ c-addr u -1|0|1
+      dup if quit_found else
+            quit_not_found then
+      ok
+    again ;
+#+END_SRC
+{{{cend}}}
+
+** Brave New Words
+
+{{{cstart}}}
+#+BEGIN_SRC asm :tangle stage0.s
+  entry_header "[", LBRAC,-1
+    .forth_interpreter
+    fw LIT, 0, STATE, STORE, EXIT
+#+END_SRC
+{{{cmid}}}
+#+BEGIN_SRC forth
+  : [ false state !
+#+END_SRC
+{{{cend}}}
+
+{{{cstart}}}
+#+BEGIN_SRC asm :tangle stage0.s
+  entry_header "]", RBRAC
+    .forth_interpreter
+    fw LIT, -1, STATE, STORE, EXIT
+#+END_SRC
+{{{cmid}}}
+#+BEGIN_SRC forth
+  : ] true state !
+#+END_SRC
+{{{cend}}}
+
+{{{cstart}}}
+#+BEGIN_SRC asm :tangle stage0.s
+  entry_header ":", COLON
+    .forth_interpreter
+    fw LIT, ' ', WORD_NEW, CREATE
+    # TODO
+#+END_SRC
+{{{cmid}}}
+#+BEGIN_SRC forth
+#+END_SRC
+{{{cend}}}
+
+{{{cstart}}}
+#+BEGIN_SRC asm :tangle stage0.s
+  entry_header ";", SEMICOLON, -1
+    .forth_interpreter
+    fw LIT, EXIT, COMMA
+    fw LATEST, FETCH, HIDE, LBRAC, EXIT
+#+END_SRC
+{{{cmid}}}
+#+BEGIN_SRC forth
+  : ; ' exit , latest @ hidden [ exit
+#+END_SRC
+{{{cend}}}
+
+{{{cstart}}}
+#+BEGIN_SRC asm :tangle stage0.s
+  entry_header "HERE", HERE
+    .forth_interpreter
+    fw HERE_VAR, FETCH, EXIT
+#+END_SRC
+{{{cmid}}}
+#+BEGIN_SRC forth
+  : HERE HERE_VAR @ ;
+#+END_SRC
+{{{cend}}}
+
+{{{cstart}}}
+#+BEGIN_SRC asm :tangle stage0.s
+  entry_header "ALLOT", ALLOT
+    .forth_interpreter
+    fw HERE, ADD, HERE_VAR, STORE, EXIT
+#+END_SRC
+{{{cmid}}}
+#+BEGIN_SRC forth
+  : ALLOT HERE + HERE_VAR ! ;
+#+END_SRC
+{{{cend}}}
+
+* After REPL
+* Naming
+Plan is to extend forth to do naming, to make programs easier to
+understand.
+
+Doing this naively will probably result in a dynamic environment.
+
+Something like
+#+BEGIN_SRC forth
+  :fun REV-SUB ARG1 ARG2 => ARG2 ARG1 - ;
+#+END_SRC
+which could get turned into the equivalent of
+#+BEGIN_SRC forth
+  : REV-SUB
+    2 PUSH-STACK-FRAME
+    2 FROM-FRAME
+    1 FROM-FRAME
+    -
+    POP-FRAME
+    ;
+#+END_SRC
+Also, I wonder if we need to redefine EXIT, for premature exits, or
+perhaps have a trampoline take care of the push&pop, like so:
+#+BEGIN_SRC asm
+  fw SETUP
+  fw P
+  fw TEARDOWN
+  fw EXIT
+  P:fw BODY, ...
+#+END_SRC
+
+This might even lead to optimisations, e.g. to
+#+BEGIN_SRC forth
+  : REV-SUB
+    SWAP -
+    ;
+#+END_SRC
+
+And arg-count checking, possibly only at runtime first, to make sure
+we don't return multiple values or get too few arguments. Possibly
+static-checking too?
+
+* Ideas
+- Dereference-count :: When a pointer gets dereferenced a lot, move
+     its pointee closer to that pointer (when doing mark&move GC)?
+- Simple JIT :: Inline all the non-recursive calls?
+- Debugger :: Breakpoints and tracing?
