@@ -1,0 +1,17 @@
+- Had previous_entry point to the label/interpreter, not the "next entry" pointer
+- MEMCMP loop didn't pop loop-variables off return stack
+- Used "LIT, FALSE", not just "FALSE"
+- Used "<char1> <char2> = if unloop false exit then" and not "<char1> <char2> = invert if unloop false exit then" in memcmp
+- Used MEMCMP (and thus equal), and not STRCMP
+- In MEMCMP, forgot to drop "a" and "b", thus returning "a b (true|false)"
+- In FIND, forgot to skip back-pointer
+- In entry->xt used 1 instead of 4 (forgot to take cell size into account)
+- In entry->xt forgot to add the offset of string-len after fetching it (i.e. "dup 8 + @" not "dup 8 + @ + 12 +")
+- In entry->xt didn't account for final zero byte after string, before doing alignment
+- In WORD_NEW, forgot to drop the characters being skipped
+- In char->digit, forgot LIT before 35
+- Forgot to chall char->digit on character
+- Didn't drop number partially parsed by >number
+- Had an off-by-one error, accepting 'a' in base 10 in >number
+- Didn't keep forth and 'assembly' in sync
+- Had trouble with BASE and BASE_VAR, some places used "LIT, BASE" still, and BASE recursed, instead of doing "LIT, BASE_VAR"
