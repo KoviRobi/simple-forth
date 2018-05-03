@@ -509,6 +509,49 @@ for the flags.
 TODO: backspace (or perhaps with a modified key?)
 
 {{{cstart}}}
+#+BEGIN_SRC asm :tangle stage0.s asm :tangle stage0.s
+  entry_header "LOWER", LOWER
+    .forth_interpreter
+    fw DUP, LIT, 'A', LESS_THAN
+    fw OVER, LIT, 'Z', GREATER_THAN
+    fw OR, INVERT, ZBRANCH, (1f-.)
+    fw LIT, 32, ADD
+  1:fw EXIT
+#+END_SRC
+{{{cmid}}}
+#+BEGIN_SRC forth
+  : LOWER ( char -- char )
+    dup char A < over char Z >
+    or invert if 32 + then ;
+#+END_SRC
+{{{cend}}}
+
+{{{cstart}}}
+#+BEGIN_SRC asm :tangle stage0.s
+  entry_header "CHAR=", CHAR_EQUAL
+    .forth_interpreter
+    fw TWO_DUP, EQUAL, ZBRANCH, (1f-.)
+    fw TWO_DROP, TRUE, EXIT
+  1:fw OVER, LIT, 33, LESS_THAN
+    fw OVER, LIT, 33, LESS_THAN
+    fw AND, ZBRANCH, (2f-.)
+    fw TWO_DROP, TRUE, EXIT
+  2:fw LOWER, SWAP, LOWER, EQUAL
+    fw ZBRANCH, (3f-.)
+    fw TRUE, EXIT
+  3:fw FALSE, EXIT
+#+END_SRC
+{{{cmid}}}
+#+BEGIN_SRC forth
+  : CHAR=' ( char char -- -1|0 )
+    2dup = if 2drop true exit then
+    over 33 < over 33 < and if 2drop true exit then
+    lower swap lower = if true exit then
+    false ;
+#+END_SRC
+{{{cend}}}
+
+{{{cstart}}}
 #+BEGIN_SRC asm :tangle stage0.s
   entry_header "WORD'", WORD_NEW
     .forth_interpreter
@@ -763,7 +806,7 @@ See §3.4 of the [[https://www.taygeta.com/forth/dpans3.htm#3.4][ANSI Forth manu
   entry_header "QUIT", QUIT
     .forth_interpreter
   QUIT_LOOP:
-    fw LIT, ' ', WORD_NEW, DUP, ROT, ROT
+  fw LIT, ' ', WORD_NEW, DUP, ROT, ROT /* TODO: allot negative WORD_NEW ammout */
     fw FIND_NEW, ROT, SWAP
     fw DUP, ZBRANCH, (QUIT_N_F-.)
     fw QUIT_FOUND, BRANCH, (QUIT_LOOP-.)

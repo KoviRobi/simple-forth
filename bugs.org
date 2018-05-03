@@ -15,3 +15,6 @@
 - Had an off-by-one error, accepting 'a' in base 10 in >number
 - Didn't keep forth and 'assembly' in sync
 - Had trouble with BASE and BASE_VAR, some places used "LIT, BASE" still, and BASE recursed, instead of doing "LIT, BASE_VAR"
+- Didn't have 2drop in the right places in char=
+- Subtracted, not added 32 in ~lower~
+- In ~char=~, used ~dup 33 < over 33 <~ not ~over 33 < over 33 <~
