@@ -112,8 +112,8 @@ int main(int argc, char **argv) {
     }
     signal = inst->interpreter(&inst->instruction);
   }
-  printf("Heap: ");
-  for (char *p = heap_bottom; p < heap_bottom+10; ++p) putchar(*p);
+  printf("Heap (%p--%p): ", heap_bottom, heap);
+  for (char *p = (char*)heap_bottom; p < (char*)heap; ++p) putchar(*p);
   putchar('\n');
   exit(0);
 }

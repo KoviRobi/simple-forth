@@ -62,7 +62,6 @@ fromCC "0BRANCH", ZBRANCH;
 .4byte ERROR, ERROR, ERROR, ERROR, ABORT
 .globl forth_main; forth_main:
 .4byte QUIT, ABORT
-.4byte LIT, ' ', WORD_NEW, FIND_NEW, ABORT
 .4byte LIT, 16, LIT, BASE, STORE
 .4byte EMIT, LIT, '\n', EMIT
 .4byte ABORT
