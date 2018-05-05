@@ -1,0 +1,6 @@
+*~
+*.o
+*.html
+a.out
+*.png
+x86/simple-c-forth

@@ -146,12 +146,12 @@ int FEXECUTE (forth_instruction *_) {
   return 0;
 }
 
-int FCELL (forth_instruction *_) {
+int FCELL_SIZE (forth_instruction *_) {
   push(sizeof(scell), value_stack);
   return 0;
 }
 
-int FCHAR (forth_instruction *_) {
+int FCHAR_SIZE (forth_instruction *_) {
   push(sizeof(char), value_stack);
   return 0;
 }
@@ -176,6 +176,12 @@ binop(LESS_THAN, a<b?true:false);
 binop(GREATER_THAN, a>b?true:false);
 binop(AND, a&b);
 binop(OR, a|b);
+
+int FNEGATE (forth_instruction *_) {
+  pop(scell a, value_stack);
+  push(-a, value_stack);
+  return 0;
+}
 
  // Boolean
 
