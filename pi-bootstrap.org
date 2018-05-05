@@ -318,6 +318,27 @@ of which we will build the rest of the Forth system.
 {{{cmid}}}
 #+BEGIN_SRC forth
   : create TODO ;
+{{{cstart}}}
+#+BEGIN_SRC asm :tangle stage0.s
+  entry_header "CHAR+", CHAR_ADD
+    .forth_interpreter
+    fw CHAR_SIZE, ADD, EXIT
+#+END_SRC
+{{{cmid}}}
+#+BEGIN_SRC forth
+  : HIDDEN? char-size + C@ ;
+#+END_SRC
+{{{cend}}}
+
+{{{cstart}}}
+#+BEGIN_SRC asm :tangle stage0.s
+  entry_header "CELL+", CELL_ADD
+    .forth_interpreter
+    fw CELL_SIZE, ADD, EXIT
+#+END_SRC
+{{{cmid}}}
+#+BEGIN_SRC forth
+  : HIDDEN? cell-size + C@ ;
 #+END_SRC
 {{{cend}}}
 
@@ -325,11 +346,11 @@ of which we will build the rest of the Forth system.
 #+BEGIN_SRC asm :tangle stage0.s
   entry_header "HIDDEN?", HIDDENP
     .forth_interpreter
-    fw CELL, ADD, C_FETCH, EXIT
+    fw CELL_ADD, C_FETCH, EXIT
 #+END_SRC
 {{{cmid}}}
 #+BEGIN_SRC forth
-  : HIDDEN? cell + C@ ;
+  : HIDDEN? cell+ C@ ;
 #+END_SRC
 {{{cend}}}
 
@@ -337,11 +358,11 @@ of which we will build the rest of the Forth system.
 #+BEGIN_SRC asm :tangle stage0.s
   entry_header "IMMEDIATE?", IMMEDIATEP
     .forth_interpreter
-    fw CELL, ADD, CHAR, ADD, C_FETCH, EXIT
+    fw CELL_ADD, CHAR_ADD, C_FETCH, EXIT
 #+END_SRC
 {{{cmid}}}
 #+BEGIN_SRC forth
-  : IMMEDIATE? cell + char + c@ ;
+  : IMMEDIATE? cell+ char+ C@ ;
 #+END_SRC
 {{{cend}}}
 
@@ -349,12 +370,12 @@ of which we will build the rest of the Forth system.
 #+BEGIN_SRC asm :tangle stage0.s
   entry_header "HIDE", HIDE
     .forth_interpreter
-    fw CELL, ADD, DUP, C_FETCH
+    fw CELL_ADD, DUP, C_FETCH
     fw INVERT, SWAP, C_STORE, EXIT
 #+END_SRC
 {{{cmid}}}
 #+BEGIN_SRC forth
-  : HIDE cell + dup c@ invert swap c! ;
+  : HIDE cell+ dup c@ invert swap C! ;
 #+END_SRC
 {{{cend}}}
 
@@ -362,11 +383,11 @@ of which we will build the rest of the Forth system.
 #+BEGIN_SRC asm :tangle stage0.s
   entry_header "IMMEDIATE", IMMEDIATE, -1
     .forth_interpreter
-    fw TRUE, SWAP, CELL, ADD, CHAR, ADD, C_STORE, EXIT
+    fw TRUE, SWAP, CELL_ADD, CHAR_ADD, C_STORE, EXIT
 #+END_SRC
 {{{cmid}}}
 #+BEGIN_SRC forth
-  : IMMEDIATE true swap cell + char + c!
+  : IMMEDIATE true swap cell+ char+ C!
 #+END_SRC
 {{{cend}}}
 

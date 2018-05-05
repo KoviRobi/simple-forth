@@ -43,8 +43,9 @@ fromCC "+", ADD, "-", SUB, "*", STAR, "/", SLASH, "<", LESS_THAN, ">", GREATER_T
 fromC FALSE, TRUE, OR, AND, LSHIFT, RSHIFT
 fromCC "C\x2c", C_COMMA, "\x2c", COMMA
 fromCC "C!", C_STORE, "C@", C_FETCH, "!", STORE, "@", FETCH
-fromC INVERT, LATEST, HERE_VAR;
-fromC STATE, EXECUTE, DOCOL, CELL, CHAR
+fromC INVERT, LATEST, HERE_VAR, NEGATE
+fromC STATE, EXECUTE, DOCOL
+fromCC "CELL-SIZE", CELL_SIZE, "CHAR-SIZE", CHAR_SIZE
 
 fromC DUP, DROP, NIP, OVER
 fromC PICK, ROT, SWAP
@@ -61,7 +62,5 @@ fromCC "0BRANCH", ZBRANCH;
 
 .4byte ERROR, ERROR, ERROR, ERROR, ABORT
 .globl forth_main; forth_main:
-.4byte QUIT, ABORT
-.4byte LIT, 16, LIT, BASE, STORE
-.4byte EMIT, LIT, '\n', EMIT
-.4byte ABORT
+fw QUIT, ABORT
+fw ABORT
