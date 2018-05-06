@@ -9,3 +9,4 @@
 - Using *(char *)heap++ = ... didn't work
 - Different sizes between x86's dict entry and ARM's
 - Forgot to change ~.forth_interpreter~ when changed it to 4byte
+- Didn't put latest in .data section
