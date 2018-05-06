@@ -1,0 +1,11 @@
+- unsigned pointer to branch targed (and LIT?)
+- Didn't implement FLATEST
+- Didn't return the address of, for FLATEST (and other variables?)
+- Pick added, not subtracted (i.e. picked elements above the stack, not in it)
+- Pick used next_inst, not value_stack
+- Pick didn't take "pop" into account, so off by one
+- Didn't check for feof(stdin)/feof(stdout)
+- Failed to work out logic of "while (s = putchar(a) == EOF && !feof(stdout))" (needed parentheses around && and assignment)
+- Using *(char *)heap++ = ... didn't work
+- Different sizes between x86's dict entry and ARM's
+- Forgot to change ~.forth_interpreter~ when changed it to 4byte

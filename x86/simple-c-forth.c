@@ -9,23 +9,17 @@ typedef uint32_t forth_instruction; // FWSIZE
 typedef uint32_t ucell;
 typedef int32_t scell;
 // FWSIZE
-#define unpack(forth_word) (instruction)(forth_word)
+#define unpack_inst(forth_word) (instruction)(forth_word)
+#define unpack_interp(forth_word) \
+  (int (*) (forth_instruction *code))(forth_word)
 #define pack(c_pointer) (forth_instruction)(c_pointer)
 
-#define true ((ucell)-1)
-#define false ((ucell)0)
+#define true ((scell)-1)
+#define false ((scell)0)
 
-struct dict_entry {
-  ucell next_entry;
-  short hidden;
-  short immediate;
-  unsigned int strlen;
-};
-// dict_entry is followed by dict_entry.strlen number of chars
-// then by a "struct dict_entry *backpointer"
 // then by struct dict_interp
-struct dict_interp {
-  int (*interpreter)(forth_instruction *code);
+__attribute__((__packed__)) struct dict_interp {
+  ucell interpreter;
   forth_instruction instruction;
 };
 
@@ -104,13 +98,8 @@ int main(int argc, char **argv) {
   next_inst = &forth_main;
   int signal = 0;
   while (signal != -1) { // 'next' trampoline
-    instruction inst = unpack(*next_inst++);
-    if (getenv("TRACE"))
-    { for (int i=0; i < level; ++i) putchar('-');
-      putchar('>');
-      printf(" %p(%p)\n", inst->interpreter, &inst->instruction);
-    }
-    signal = inst->interpreter(&inst->instruction);
+    instruction inst = unpack_inst(*next_inst++);
+    signal = (unpack_interp(inst->interpreter))(&inst->instruction);
   }
   printf("Heap (%p--%p): ", heap_bottom, heap);
   for (char *p = (char*)heap_bottom; p < (char*)heap; ++p) putchar(*p);
@@ -127,8 +116,7 @@ int forth_interpreter (forth_instruction *to_execute) {
 }
 
 int FDOCOL (forth_instruction *_) {
-  push((struct dict_interp *)&forth_interpreter,
-       (struct dict_interp **)value_stack);
+  push(pack(&forth_interpreter), value_stack);
   return 0;
 }
 
@@ -142,7 +130,7 @@ int FEXIT (forth_instruction *_) {
 int FEXECUTE (forth_instruction *_) {
   pop(scell c, value_stack);
   struct dict_interp *a = (struct dict_interp *)c;
-  a->interpreter(&a->instruction);
+  (unpack_interp(a->interpreter))(&a->instruction);
   return 0;
 }
 
