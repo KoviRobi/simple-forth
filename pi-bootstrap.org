@@ -109,20 +109,24 @@ Forth uses a simple, linear list of methods.
     rankdir=LR;
     node [shape="record"];
 
-    DROP [label="<0> Next entry | Flags |Counted string\n\"DROP\" | <1> Back-pointer | Interpreter | Code | ..."];
-    DUP [label="<0> Next entry | Flags | Counted string\n\"DUP\" | Padding | <1> Back-pointer | Interpreter | Code | ..."];
+    DROP_XT [label="Drop XT", shape=none];
+    DUP_XT [label="Dup XT", shape=none];
+    DROP [label="<0> Next entry | Flags |Counted string\n\"DROP\\0\" | Padding | <1> Back-pointer | <xt> Interpreter | Code | ..."];
+    DUP [label="<0> Next entry | Flags | Counted string\n\"DUP\\0\" | <1> Back-pointer | <xt> Interpreter | Code | ..."];
 
     LAST_ENTRY [label="End"];
 
     LATEST -> DROP:0
+    DROP_XT -> DROP:xt
     DROP:1:e -> DROP:0:w
+    DUP_XT -> DUP:xt
     DROP:0 -> DUP:0
     DUP:1:e -> DUP:0:w
     DUP:0 -> LAST_ENTRY
   }
 #+END_SRC
 
-#+RESULTS[04b88b808c4ec8e0a911d96b93852d666973d977]:
+#+RESULTS[9f1017cd83564253a45c5d25ef89dda72a491f13]:
 [[file:forth-dictionary.png]]
 
 Here a counted string means that the first element of the string is a
@@ -184,9 +188,7 @@ of which we will build the rest of the Forth system.
     \op r1, r0
     push {r1}
     b next
-    .ifnb \rest
-      binops \rest
-    .endif
+    .ifnb \rest ; binops \rest ; .endif
   .endm
 
   .macro binrels name, label, rel, rest:vararg
@@ -198,9 +200,7 @@ of which we will build the rest of the Forth system.
     mov\rel r0, #-1
     push {r0}
     b next
-    .ifnb \rest
-      binrels \rest
-    .endif
+    .ifnb \rest ; binrels \rest ; .endif
   .endm
 
   .macro unops name, label, op, rest:vararg
@@ -210,9 +210,7 @@ of which we will build the rest of the Forth system.
     \op r0
     push {r0}
     b next
-    .ifnb \rest
-      unops \rest
-    .endif
+    .ifnb \rest ; unops \rest ; .endif
   .endm
 #+END_SRC
 {{{cmid}}}
@@ -286,6 +284,35 @@ of which we will build the rest of the Forth system.
     addeq next_inst, r0
     addne next_inst, #2 /* FWSIZE */
     b next
+
+  C_COMMA
+  COMMA
+  CELL
+  CHAR
+
+  HERE_VAR
+  LATEST
+
+  STATE
+  TRUE
+  FALSE
+  LIT
+
+  NIP
+  DROP
+  DUP
+  OVER
+  PICK
+  ROT
+  SWAP
+  TWO_DROP
+  TWO_DUP
+
+  TWO_R_DROP
+  TWO_R_FETCH
+  R_FETCH
+  R_FROM
+  TO_R
 #+END_SRC
 {{{cmid}}}
 #+BEGIN_SRC forth
@@ -317,7 +344,19 @@ of which we will build the rest of the Forth system.
 #+END_SRC
 {{{cmid}}}
 #+BEGIN_SRC forth
-  : create TODO ;
+  : CREATE ( "<spaces>name" -- )
+    here
+    latest @ ,
+    latest !
+    flags TODO
+    c-string TODO
+    align \ padding
+    latest @ , \ back-pointer
+    docol , \ TODO
+    ;
+#+END_SRC
+{{{cend}}}
+
 {{{cstart}}}
 #+BEGIN_SRC asm :tangle stage0.s
   entry_header "CHAR+", CHAR_ADD
@@ -461,7 +500,7 @@ of which we will build the rest of the Forth system.
 #+END_SRC
 {{{cmid}}}
 #+BEGIN_SRC forth
-  : ENTRY->XT ( entry -- xt )
+  : ENTRY->XT ( entry -- xt ) \ TODO: this is implementation specific
     dup 8 + @ + 12 + 1 + \ Skip over next entry, flags, c-string (and zero byte)
     3 + 3 invert and \ Align to power of 2 (multiple of 4)
     4 + ; \ Skip back-pointer
@@ -572,6 +611,8 @@ TODO: backspace (or perhaps with a modified key?)
 #+END_SRC
 {{{cend}}}
 
+TODO: transient region
+
 {{{cstart}}}
 #+BEGIN_SRC asm :tangle stage0.s
   entry_header "WORD'", WORD_NEW
@@ -583,8 +624,9 @@ TODO: backspace (or perhaps with a modified key?)
   WORD_LOOP:
     fw DUP, C_COMMA, OVER, CHAR_EQUAL
     fw ZBRANCH, (WORD_CONT-.)
-    fw DROP, LIT, 0, CHAR, SUB, ALLOT
+    fw DROP, CHAR_SIZE, NEGATE, ALLOT
     fw HERE, OVER, SUB, LIT, 0, C_COMMA, EXIT
+    fw LIT, -1, OVER, SUB, ALLOT, EXIT
   WORD_CONT:
     fw KEY, BRANCH, (WORD_LOOP-.)
 #+END_SRC
@@ -596,8 +638,9 @@ TODO: backspace (or perhaps with a modified key?)
     begin \ start char key
       dup C,
       over char= if \ start char
-        drop 0 char - allot
-        here over - 0 C, exit
+        drop char-size negate allot
+        here over - 0 C,
+        -1 over - allot exit
       then
       key
     again ;
@@ -610,7 +653,7 @@ If the character is less than '0', or between '9' and 'A' (or 'Z' and
 
 {{{cstart}}}
 #+BEGIN_SRC asm :tangle stage0.s
-  entry_header "char->digit", CHAR_TO_DIGIT
+  entry_header "CHAR->DIGIT", CHAR_TO_DIGIT
     .forth_interpreter
     fw LIT, '0', SUB
     fw DUP, LIT, 9, GREATER_THAN, ZBRANCH, (C_TO_D_END-.)
@@ -733,9 +776,22 @@ See §3.4 of the [[https://www.taygeta.com/forth/dpans3.htm#3.4][ANSI Forth manu
 
 {{{cstart}}}
 #+BEGIN_SRC asm :tangle stage0.s
+  entry_header "BL", BL
+    .forth_interpreter
+    fw LIT, ' ', EXIT
+#+END_SRC
+{{{cmid}}}
+#+BEGIN_SRC forth
+  : BL ( -- char )
+    32 ;
+#+END_SRC
+{{{cend}}}
+
+{{{cstart}}}
+#+BEGIN_SRC asm :tangle stage0.s
   entry_header "'", TICK
     .forth_interpreter
-    fw LIT, ' ', WORD_NEW, FIND_NEW, DROP, EXIT
+    fw BL, WORD_NEW, FIND_NEW, DROP, EXIT
 #+END_SRC
 {{{cmid}}}
 #+BEGIN_SRC forth
@@ -749,7 +805,7 @@ See §3.4 of the [[https://www.taygeta.com/forth/dpans3.htm#3.4][ANSI Forth manu
   entry_header "OK", OK
     .forth_interpreter
     fw LIT, 'O', EMIT, LIT, 'k'
-    fw EMIT, LIT, ' ', EMIT, EXIT
+    fw EMIT, BL, EMIT, EXIT
 #+END_SRC
 {{{cmid}}}
 #+BEGIN_SRC forth
@@ -763,7 +819,7 @@ See §3.4 of the [[https://www.taygeta.com/forth/dpans3.htm#3.4][ANSI Forth manu
   entry_header "ERROR", ERROR
     .forth_interpreter
     fw LIT, 'E', EMIT, LIT, 'r', EMIT
-    fw LIT, 'r', EMIT, LIT, ' ', EMIT, EXIT
+    fw LIT, 'r', EMIT, BL, EMIT, EXIT
 #+END_SRC
 {{{cmid}}}
 #+BEGIN_SRC forth
@@ -827,7 +883,7 @@ See §3.4 of the [[https://www.taygeta.com/forth/dpans3.htm#3.4][ANSI Forth manu
   entry_header "QUIT", QUIT
     .forth_interpreter
   QUIT_LOOP:
-  fw LIT, ' ', WORD_NEW, DUP, ROT, ROT /* TODO: allot negative WORD_NEW ammout */
+    fw BL, WORD_NEW, DUP, ROT, ROT
     fw FIND_NEW, ROT, SWAP
     fw DUP, ZBRANCH, (QUIT_N_F-.)
     fw QUIT_FOUND, BRANCH, (QUIT_LOOP-.)
@@ -879,7 +935,7 @@ See §3.4 of the [[https://www.taygeta.com/forth/dpans3.htm#3.4][ANSI Forth manu
 #+BEGIN_SRC asm :tangle stage0.s
   entry_header ":", COLON
     .forth_interpreter
-    fw LIT, ' ', WORD_NEW, CREATE
+    fw BL, WORD_NEW, CREATE
     # TODO
 #+END_SRC
 {{{cmid}}}
@@ -971,3 +1027,4 @@ static-checking too?
      its pointee closer to that pointer (when doing mark&move GC)?
 - Simple JIT :: Inline all the non-recursive calls?
 - Debugger :: Breakpoints and tracing?
+- Exception aspects :: To decouple the 'textbook algorithm' from exception handling?

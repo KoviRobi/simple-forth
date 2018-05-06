@@ -23,7 +23,7 @@ fw 1b
 
 .macro fromCC name, label, rest:vararg
 entry_header \name, \label
-.4byte F\label, 0
+  fw F\label, 0
 .ifnb \rest
 fromCC \rest
 .endif
@@ -57,10 +57,10 @@ fromC BRANCH
 fromCC "0BRANCH", ZBRANCH;
 
 .macro .forth_interpreter
-.8byte forth_interpreter
+.4byte forth_interpreter
 .endm
 
-.4byte ERROR, ERROR, ERROR, ERROR, ABORT
+fw ERROR, ERROR, ERROR, ERROR, ABORT
 .globl forth_main; forth_main:
 fw QUIT, ABORT
 fw ABORT
