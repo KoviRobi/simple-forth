@@ -101,9 +101,12 @@ int main(int argc, char **argv) {
     instruction inst = unpack_inst(*next_inst++);
     signal = (unpack_interp(inst->interpreter))(&inst->instruction);
   }
-  printf("Heap (%p--%p): ", heap_bottom, heap);
-  for (char *p = (char*)heap_bottom; p < (char*)heap; ++p) putchar(*p);
-  putchar('\n');
+  printf("Heap (%p--%p):\n ", heap_bottom, heap);
+  for (char *p = (char*)heap_bottom; p < (char*)heap; ++p)
+  { printf("%p:\t0x%02x\t%c\n",
+           (void*)(p-(char*)heap_bottom),
+           *(unsigned char*)p, *p);
+  }
   exit(0);
 }
 
@@ -160,8 +163,11 @@ binop(SLASH, a/b);
 binop(LSHIFT, a<<b);
 binop(RSHIFT, a>>b);
 binop(EQUAL, a==b?true:false);
+binop(NOT_EQUAL, a!=b?true:false);
 binop(LESS_THAN, a<b?true:false);
 binop(GREATER_THAN, a>b?true:false);
+binop(U_LESS_THAN, ((ucell)a)<((ucell)b)?true:false);
+binop(U_GREATER_THAN, ((ucell)a)>((ucell)b)?true:false);
 binop(AND, a&b);
 binop(OR, a|b);
 
@@ -247,38 +253,21 @@ int FHERE_VAR (forth_instruction *_) {
 }
 
  // Memory
-int FP_STORE (forth_instruction *_) {
-  pop(scell addr, value_stack);
-  scell **pvalue_stack = (scell **)value_stack;
-  pop(scell *value, pvalue_stack);
-  value_stack = (scell *)pvalue_stack;
-  *(scell **)addr = value;
-  return 0;
-}
-
 int FC_STORE (forth_instruction *_) {
-  pop(scell addr, value_stack);
-  pop(scell value, value_stack);
+  pop(ucell addr, value_stack);
+  pop(ucell value, value_stack);
   *(char *)addr = (char)value;
   return 0;
 }
 
-int FP_FETCH (forth_instruction *_) {
-  pop(scell a, value_stack);
-  scell **pvalue_stack = (scell **)value_stack;
-  push(*(scell **)a, pvalue_stack);
-  value_stack = (scell *)pvalue_stack;
-  return 0;
-}
-
 int FC_FETCH (forth_instruction *_) {
-  pop(scell a, value_stack);
-  push(*(char *)a, value_stack);
+  pop(ucell a, value_stack);
+  push(*(unsigned char *)a, value_stack);
   return 0;
 }
 
 int FSTORE (forth_instruction *_) {
-  pop(scell addr, value_stack);
+  pop(ucell addr, value_stack);
   pop(scell value, value_stack);
   *(scell *)addr = value;
   return 0;

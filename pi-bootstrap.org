@@ -326,41 +326,79 @@ of which we will build the rest of the Forth system.
 #+END_SRC
 {{{cend}}}
 
-{{{cstart}}}
-#+BEGIN_SRC asm :tangle stage0-machine-arm.s
-  .macro .forth_interpreter
-    .4byte forth_interpreter
-  .endm
-#+END_SRC
-{{{cmid}}}
-{{{cend}}}
-
 *** Creation
 {{{cstart}}}
 #+BEGIN_SRC asm :tangle stage0.s
+  entry_header "HERE", HERE
+    fw forth_interpreter
+    fw HERE_VAR, FETCH, EXIT
+#+END_SRC
+{{{cmid}}}
+#+BEGIN_SRC forth
+  : HERE HERE_VAR @ ;
+#+END_SRC
+{{{cend}}}
+
+{{{cstart}}}
+#+BEGIN_SRC asm :tangle stage0.s
+  entry_header "ALLOT", ALLOT
+    fw forth_interpreter
+    fw HERE, ADD, HERE_VAR, STORE, EXIT
+#+END_SRC
+{{{cmid}}}
+#+BEGIN_SRC forth
+  : ALLOT HERE + HERE_VAR ! ;
+#+END_SRC
+{{{cend}}}
+
+{{{cstart}}}
+#+BEGIN_SRC asm :tangle stage0.s
+  entry_header "ALIGN", ALIGN
+    fw forth_interpreter
+    fw HERE, LIT, 3, ADD
+    fw LIT, 3, INVERT, AND
+    fw HERE_VAR, STORE, EXIT
+#+END_SRC
+{{{cmid}}}
+#+BEGIN_SRC forth
+  : ALIGN
+    HERE 3 + 3 invert and
+    HERE_VAR ! ;
+#+END_SRC
+{{{cend}}}
+
+{{{cstart}}}
+#+BEGIN_SRC asm :tangle stage0.s
   entry_header "CREATE", CREATE
-    .forth_interpreter
-    # TODO
+    fw forth_interpreter
+    fw HERE, LATEST, FETCH
+    fw COMMA, LATEST, STORE
+    fw LIT, 0, C_COMMA, LIT, 0, C_COMMA
+    fw ALIGN, HERE, CELL_SIZE, ALLOT
+    fw BL, WORD_NEW, NIP
+    fw TWO_DUP, SWAP, STORE
+    fw NIP, LIT, 1, ADD, ALLOT
+    fw ALIGN
+    fw LATEST, FETCH, COMMA, EXIT
 #+END_SRC
 {{{cmid}}}
 #+BEGIN_SRC forth
   : CREATE ( "<spaces>name" -- )
-    here
-    latest @ ,
-    latest !
-    flags TODO
-    c-string TODO
+    here latest @ , latest !
+    0 C, 0 C, align \ flags
+    here cell-size allot
+    bl word' \ addr start len
+    nip 2dup swap ! \ addr len
+    nip 1 + allot
     align \ padding
-    latest @ , \ back-pointer
-    docol , \ TODO
-    ;
+    latest @ , ; \ back-pointer
 #+END_SRC
 {{{cend}}}
 
 {{{cstart}}}
 #+BEGIN_SRC asm :tangle stage0.s
   entry_header "CHAR+", CHAR_ADD
-    .forth_interpreter
+    fw forth_interpreter
     fw CHAR_SIZE, ADD, EXIT
 #+END_SRC
 {{{cmid}}}
@@ -372,7 +410,7 @@ of which we will build the rest of the Forth system.
 {{{cstart}}}
 #+BEGIN_SRC asm :tangle stage0.s
   entry_header "CELL+", CELL_ADD
-    .forth_interpreter
+    fw forth_interpreter
     fw CELL_SIZE, ADD, EXIT
 #+END_SRC
 {{{cmid}}}
@@ -384,7 +422,7 @@ of which we will build the rest of the Forth system.
 {{{cstart}}}
 #+BEGIN_SRC asm :tangle stage0.s
   entry_header "HIDDEN?", HIDDENP
-    .forth_interpreter
+    fw forth_interpreter
     fw CELL_ADD, C_FETCH, EXIT
 #+END_SRC
 {{{cmid}}}
@@ -396,37 +434,48 @@ of which we will build the rest of the Forth system.
 {{{cstart}}}
 #+BEGIN_SRC asm :tangle stage0.s
   entry_header "IMMEDIATE?", IMMEDIATEP
-    .forth_interpreter
+    fw forth_interpreter
+    fw CELL_SIZE, SUB, FETCH
     fw CELL_ADD, CHAR_ADD, C_FETCH, EXIT
 #+END_SRC
 {{{cmid}}}
 #+BEGIN_SRC forth
-  : IMMEDIATE? cell+ char+ C@ ;
+  : IMMEDIATE? ( xt -- -1|0 )
+    cell-size - @
+    cell+ char+ C@ ;
 #+END_SRC
 {{{cend}}}
+
+Toggles hidden status of a given xt
 
 {{{cstart}}}
 #+BEGIN_SRC asm :tangle stage0.s
   entry_header "HIDE", HIDE
-    .forth_interpreter
+    fw forth_interpreter
+    /* Not using back-pointer, but will have to make XT be the start pointer */
     fw CELL_ADD, DUP, C_FETCH
     fw INVERT, SWAP, C_STORE, EXIT
 #+END_SRC
 {{{cmid}}}
 #+BEGIN_SRC forth
-  : HIDE cell+ dup c@ invert swap C! ;
+  : HIDE ( xt -- )
+    cell+ dup C@
+    invert swap C! ;
 #+END_SRC
 {{{cend}}}
 
 {{{cstart}}}
 #+BEGIN_SRC asm :tangle stage0.s
   entry_header "IMMEDIATE", IMMEDIATE, -1
-    .forth_interpreter
+    fw forth_interpreter
+    fw LATEST, FETCH
     fw TRUE, SWAP, CELL_ADD, CHAR_ADD, C_STORE, EXIT
 #+END_SRC
 {{{cmid}}}
 #+BEGIN_SRC forth
-  : IMMEDIATE true swap cell+ char+ C!
+  : IMMEDIATE ( -- )
+    LATEST @
+    true swap cell+ char+ C!
 #+END_SRC
 {{{cend}}}
 
@@ -434,7 +483,7 @@ of which we will build the rest of the Forth system.
 {{{cstart}}}
 #+BEGIN_SRC asm :tangle stage0.s
   entry_header "FIND'", FIND_NEW
-    .forth_interpreter
+    fw forth_interpreter
     fw LATEST, FETCH
 
   FIND_LOOP: /* ( c-addr u entry ) */
@@ -454,8 +503,8 @@ of which we will build the rest of the Forth system.
     fw MEMCMP, ZBRANCH, (FIND_NEXT_ENTRY-.)
 
     fw NIP, NIP
-    fw DUP, ENTRY_TO_EXECUTION_TOKEN
-    fw SWAP, IMMEDIATEP
+    fw ENTRY_TO_EXECUTION_TOKEN
+    fw DUP, IMMEDIATEP
     fw ZBRANCH, (NON_IMM-.), LIT, 1, BRANCH, (IMM_END-.)
   NON_IMM:
     fw LIT, -1
@@ -479,8 +528,8 @@ of which we will build the rest of the Forth system.
           \ c-addr u entry u c-addr entry-str
           memcmp if \ c-addr u entry
             nip nip \ entry
-            dup entry->xt \ entry xt
-            swap immediate? if 1 else -1 then
+            entry->xt \ xt xt
+            dup immediate? if 1 else -1 then
             exit
           then
         then
@@ -492,8 +541,8 @@ of which we will build the rest of the Forth system.
 
 {{{cstart}}}
 #+BEGIN_SRC asm :tangle stage0.s
-  entry_header "ENTRY->XT", ENTRY_TO_EXECUTION_TOKEN
-    .forth_interpreter
+  entry_header "ENTRY->XT", ENTRY_TO_EXECUTION_TOKEN /* TODO: We could make xt be the entry start, and use EXECUTE/COMPILE, */
+    fw forth_interpreter
     fw DUP, LIT, 8, ADD, FETCH, ADD, LIT, 12, ADD, LIT, 1, ADD
     fw LIT, 3, ADD, LIT, 3, INVERT, AND
     fw LIT, 4, ADD, EXIT
@@ -514,7 +563,7 @@ for the flags.
 {{{cstart}}}
 #+BEGIN_SRC asm :tangle stage0.s
   entry_header "MEMCMP", MEMCMP
-    .forth_interpreter
+    fw forth_interpreter
     fw ROT, LIT, 0
     fw SWAP, TO_R, TO_R
   MEMCMP_LOOP:
@@ -571,9 +620,9 @@ TODO: backspace (or perhaps with a modified key?)
 {{{cstart}}}
 #+BEGIN_SRC asm :tangle stage0.s asm :tangle stage0.s
   entry_header "LOWER", LOWER
-    .forth_interpreter
-    fw DUP, LIT, 'A', LESS_THAN
-    fw OVER, LIT, 'Z', GREATER_THAN
+    fw forth_interpreter
+    fw DUP, LIT, 'A', U_LESS_THAN
+    fw OVER, LIT, 'Z', U_GREATER_THAN
     fw OR, INVERT, ZBRANCH, (1f-.)
     fw LIT, 32, ADD
   1:fw EXIT
@@ -581,7 +630,7 @@ TODO: backspace (or perhaps with a modified key?)
 {{{cmid}}}
 #+BEGIN_SRC forth
   : LOWER ( char -- char )
-    dup char A < over char Z >
+    dup char A U< over char Z U>
     or invert if 32 + then ;
 #+END_SRC
 {{{cend}}}
@@ -589,11 +638,11 @@ TODO: backspace (or perhaps with a modified key?)
 {{{cstart}}}
 #+BEGIN_SRC asm :tangle stage0.s
   entry_header "CHAR=", CHAR_EQUAL
-    .forth_interpreter
+    fw forth_interpreter
     fw TWO_DUP, EQUAL, ZBRANCH, (1f-.)
     fw TWO_DROP, TRUE, EXIT
-  1:fw OVER, LIT, 33, LESS_THAN
-    fw OVER, LIT, 33, LESS_THAN
+  1:fw OVER, LIT, 33, U_LESS_THAN
+    fw OVER, LIT, 33, U_LESS_THAN
     fw AND, ZBRANCH, (2f-.)
     fw TWO_DROP, TRUE, EXIT
   2:fw LOWER, SWAP, LOWER, EQUAL
@@ -605,7 +654,7 @@ TODO: backspace (or perhaps with a modified key?)
 #+BEGIN_SRC forth
   : CHAR=' ( char char -- -1|0 )
     2dup = if 2drop true exit then
-    over 33 < over 33 < and if 2drop true exit then
+    over 33 U< over 33 U< and if 2drop true exit then
     lower swap lower = if true exit then
     false ;
 #+END_SRC
@@ -616,7 +665,7 @@ TODO: transient region
 {{{cstart}}}
 #+BEGIN_SRC asm :tangle stage0.s
   entry_header "WORD'", WORD_NEW
-    .forth_interpreter
+    fw forth_interpreter
     fw HERE, SWAP, LIT, 0
   WORD_SKIP:
     fw DROP, KEY, TWO_DUP, CHAR_EQUAL
@@ -625,7 +674,7 @@ TODO: transient region
     fw DUP, C_COMMA, OVER, CHAR_EQUAL
     fw ZBRANCH, (WORD_CONT-.)
     fw DROP, CHAR_SIZE, NEGATE, ALLOT
-    fw HERE, OVER, SUB, LIT, 0, C_COMMA, EXIT
+    fw HERE, OVER, SUB, LIT, 0, C_COMMA
     fw LIT, -1, OVER, SUB, ALLOT, EXIT
   WORD_CONT:
     fw KEY, BRANCH, (WORD_LOOP-.)
@@ -654,16 +703,16 @@ If the character is less than '0', or between '9' and 'A' (or 'Z' and
 {{{cstart}}}
 #+BEGIN_SRC asm :tangle stage0.s
   entry_header "CHAR->DIGIT", CHAR_TO_DIGIT
-    .forth_interpreter
+    fw forth_interpreter
     fw LIT, '0', SUB
-    fw DUP, LIT, 9, GREATER_THAN, ZBRANCH, (C_TO_D_END-.)
+    fw DUP, LIT, 9, U_GREATER_THAN, ZBRANCH, (C_TO_D_END-.)
     fw LIT, ('A'-'9'-1), SUB
-    fw DUP, LIT, 10, LESS_THAN, ZBRANCH, (C_TO_D_A-.)
+    fw DUP, LIT, 10, U_LESS_THAN, ZBRANCH, (C_TO_D_A-.)
     fw LIT, 10, SUB
   C_TO_D_A:
-    fw DUP, LIT, 35, GREATER_THAN, ZBRANCH, (C_TO_D_END-.)
+    fw DUP, LIT, 35, U_GREATER_THAN, ZBRANCH, (C_TO_D_END-.)
     fw LIT, 32, SUB
-    fw DUP, LIT, 10, LESS_THAN, ZBRANCH, (C_TO_D_END-.)
+    fw DUP, LIT, 10, U_LESS_THAN, ZBRANCH, (C_TO_D_END-.)
     fw LIT, 10, SUB
   C_TO_D_END:
     fw EXIT
@@ -672,12 +721,12 @@ If the character is less than '0', or between '9' and 'A' (or 'Z' and
 #+BEGIN_SRC forth
   : CHAR->DIGIT ( char -- digit )
     char 0 -
-    dup 9 > if
+    dup 9 U> if
       7 - \ 9 : ; < = > ? @ A
-      dup 10 < if 10 - then
-      dup 35 > if
+      dup 10 U< if 10 - then
+      dup 35 U> if
         32 - \ A-Z [ \ ] ^ _ ` a-z
-        dup 10 < if 10 - then
+        dup 10 U< if 10 - then
       then
     then ;
 #+END_SRC
@@ -689,18 +738,18 @@ If the character is less than '0', or between '9' and 'A' (or 'Z' and
   BASE_VAR: fw 10
   .text
   entry_header "BASE", BASE
-    .forth_interpreter
+    fw forth_interpreter
     fw LIT, BASE_VAR, EXIT
   entry_header "DECIMAL", DECIMAL
-    .forth_interpreter
+    fw forth_interpreter
     fw LIT, 10, LIT, BASE_VAR, STORE, EXIT
   entry_header ">NUMBER", TO_NUMBER
-    .forth_interpreter
+    fw forth_interpreter
     fw OVER, ADD, DUP, TO_R, SWAP
     fw SWAP, TO_R, TO_R
   TO_NUM_LOOP:
     fw R_FETCH, C_FETCH, CHAR_TO_DIGIT, DUP
-    fw BASE, FETCH, LESS_THAN
+    fw BASE, FETCH, U_LESS_THAN
     fw ZBRANCH, (TO_NUM_ELSE-.)
     fw SWAP, BASE, FETCH, STAR, ADD
     fw BRANCH, (TO_NUM_NEXT-.)
@@ -721,7 +770,7 @@ If the character is less than '0', or between '9' and 'A' (or 'Z' and
   : >NUMBER ( ud1 c-addr1 u1 -- ud2 c-addr2 u2 )
     over + dup >R swap \ ud1 c-addr1+u1 c-addr1; R: c-addr1+u1
     do \ ud1; loops with  c-addr1 <= I < c-addr1+u1
-      I C@ char->digit dup BASE @ < if \ ud1 digit
+      I C@ char->digit dup BASE @ U< if \ ud1 digit
         swap BASE @ * +
       else \ ud1
         drop I unloop R> over - exit \ ud2 c-addr2 u2
@@ -777,7 +826,7 @@ See §3.4 of the [[https://www.taygeta.com/forth/dpans3.htm#3.4][ANSI Forth manu
 {{{cstart}}}
 #+BEGIN_SRC asm :tangle stage0.s
   entry_header "BL", BL
-    .forth_interpreter
+    fw forth_interpreter
     fw LIT, ' ', EXIT
 #+END_SRC
 {{{cmid}}}
@@ -790,7 +839,7 @@ See §3.4 of the [[https://www.taygeta.com/forth/dpans3.htm#3.4][ANSI Forth manu
 {{{cstart}}}
 #+BEGIN_SRC asm :tangle stage0.s
   entry_header "'", TICK
-    .forth_interpreter
+    fw forth_interpreter
     fw BL, WORD_NEW, FIND_NEW, DROP, EXIT
 #+END_SRC
 {{{cmid}}}
@@ -803,7 +852,7 @@ See §3.4 of the [[https://www.taygeta.com/forth/dpans3.htm#3.4][ANSI Forth manu
 {{{cstart}}}
 #+BEGIN_SRC asm :tangle stage0.s
   entry_header "OK", OK
-    .forth_interpreter
+    fw forth_interpreter
     fw LIT, 'O', EMIT, LIT, 'k'
     fw EMIT, BL, EMIT, EXIT
 #+END_SRC
@@ -817,7 +866,7 @@ See §3.4 of the [[https://www.taygeta.com/forth/dpans3.htm#3.4][ANSI Forth manu
 {{{cstart}}}
 #+BEGIN_SRC asm :tangle stage0.s
   entry_header "ERROR", ERROR
-    .forth_interpreter
+    fw forth_interpreter
     fw LIT, 'E', EMIT, LIT, 'r', EMIT
     fw LIT, 'r', EMIT, BL, EMIT, EXIT
 #+END_SRC
@@ -832,7 +881,7 @@ See §3.4 of the [[https://www.taygeta.com/forth/dpans3.htm#3.4][ANSI Forth manu
 {{{cstart}}}
 #+BEGIN_SRC asm :tangle stage0.s
   entry_header "QUIT-FOUND", QUIT_FOUND
-    .forth_interpreter
+    fw forth_interpreter
     fw NIP, LIT, -1, EQUAL, STATE
     fw FETCH, AND, ZBRANCH, (Q_F_EX-.)
     fw COMMA, BRANCH, (Q_F_END-.)
@@ -853,7 +902,7 @@ See §3.4 of the [[https://www.taygeta.com/forth/dpans3.htm#3.4][ANSI Forth manu
 {{{cstart}}}
 #+BEGIN_SRC asm :tangle stage0.s
   entry_header "QUIT-NOT-FOUND", QUIT_NOT_FOUND
-    .forth_interpreter
+    fw forth_interpreter
     fw ROT, ROT, TO_NUMBER, LIT, 0
     fw EQUAL, ZBRANCH, (Q_N_F_ELSE-.)
     fw DROP, STATE, FETCH, ZBRANCH, (Q_N_F_END-.)
@@ -867,7 +916,7 @@ See §3.4 of the [[https://www.taygeta.com/forth/dpans3.htm#3.4][ANSI Forth manu
 {{{cmid}}}
 #+BEGIN_SRC forth
   : QUIT_NOT_FOUND ( c-addr u 0 -- )
-    rot rot >number 0 = if
+    rot rot >number 0 = if \ TODO negative numbers
       drop state @ if \ Compiling
         ' lit , ,
       then
@@ -881,7 +930,7 @@ See §3.4 of the [[https://www.taygeta.com/forth/dpans3.htm#3.4][ANSI Forth manu
 {{{cstart}}}
 #+BEGIN_SRC asm :tangle stage0.s
   entry_header "QUIT", QUIT
-    .forth_interpreter
+    fw forth_interpreter
   QUIT_LOOP:
     fw BL, WORD_NEW, DUP, ROT, ROT
     fw FIND_NEW, ROT, SWAP
@@ -910,19 +959,19 @@ See §3.4 of the [[https://www.taygeta.com/forth/dpans3.htm#3.4][ANSI Forth manu
 {{{cstart}}}
 #+BEGIN_SRC asm :tangle stage0.s
   entry_header "[", LBRAC,-1
-    .forth_interpreter
+    fw forth_interpreter
     fw LIT, 0, STATE, STORE, EXIT
 #+END_SRC
 {{{cmid}}}
 #+BEGIN_SRC forth
-  : [ false state !
+  : [ false state ! IMMEDIATE
 #+END_SRC
 {{{cend}}}
 
 {{{cstart}}}
 #+BEGIN_SRC asm :tangle stage0.s
   entry_header "]", RBRAC
-    .forth_interpreter
+    fw forth_interpreter
     fw LIT, -1, STATE, STORE, EXIT
 #+END_SRC
 {{{cmid}}}
@@ -934,8 +983,11 @@ See §3.4 of the [[https://www.taygeta.com/forth/dpans3.htm#3.4][ANSI Forth manu
 {{{cstart}}}
 #+BEGIN_SRC asm :tangle stage0.s
   entry_header ":", COLON
-    .forth_interpreter
-    fw BL, WORD_NEW, CREATE
+    fw forth_interpreter
+    fw CREATE
+    fw LIT, forth_interpreter, COMMA
+    fw LATEST, FETCH, HIDE
+    fw RBRAC, EXIT
     # TODO
 #+END_SRC
 {{{cmid}}}
@@ -945,38 +997,14 @@ See §3.4 of the [[https://www.taygeta.com/forth/dpans3.htm#3.4][ANSI Forth manu
 
 {{{cstart}}}
 #+BEGIN_SRC asm :tangle stage0.s
-  entry_header ";", SEMICOLON, -1
-    .forth_interpreter
+  entry_header ";", SEMICOLON, -1 /* immediate */
+    fw forth_interpreter
     fw LIT, EXIT, COMMA
     fw LATEST, FETCH, HIDE, LBRAC, EXIT
 #+END_SRC
 {{{cmid}}}
 #+BEGIN_SRC forth
-  : ; ' exit , latest @ hidden [ exit
-#+END_SRC
-{{{cend}}}
-
-{{{cstart}}}
-#+BEGIN_SRC asm :tangle stage0.s
-  entry_header "HERE", HERE
-    .forth_interpreter
-    fw HERE_VAR, FETCH, EXIT
-#+END_SRC
-{{{cmid}}}
-#+BEGIN_SRC forth
-  : HERE HERE_VAR @ ;
-#+END_SRC
-{{{cend}}}
-
-{{{cstart}}}
-#+BEGIN_SRC asm :tangle stage0.s
-  entry_header "ALLOT", ALLOT
-    .forth_interpreter
-    fw HERE, ADD, HERE_VAR, STORE, EXIT
-#+END_SRC
-{{{cmid}}}
-#+BEGIN_SRC forth
-  : ALLOT HERE + HERE_VAR ! ;
+  : ; ['] exit , latest @ hidden [ exit
 #+END_SRC
 {{{cend}}}
 

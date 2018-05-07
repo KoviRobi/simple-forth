@@ -39,7 +39,10 @@ fromC KEY, EMIT
 fromC ABORT, EXIT
 fromC LIT
 
-fromCC "+", ADD, "-", SUB, "*", STAR, "/", SLASH, "<", LESS_THAN, ">", GREATER_THAN, "\x3d", EQUAL
+fromCC "+", ADD, "-", SUB, "*", STAR, "/", SLASH
+fromCC "<", LESS_THAN, ">", GREATER_THAN
+fromCC "U<", U_LESS_THAN, "U>", U_GREATER_THAN
+fromCC "<>", NOT_EQUAL, "\x3d", EQUAL
 fromC FALSE, TRUE, OR, AND, LSHIFT, RSHIFT
 fromCC "C\x2c", C_COMMA, "\x2c", COMMA
 fromCC "C!", C_STORE, "C@", C_FETCH, "!", STORE, "@", FETCH
@@ -55,10 +58,6 @@ fromCC "R@", R_FETCH, "R>", R_FROM, ">R", TO_R, "2RDROP", TWO_R_DROP, "2R@", TWO
 
 fromC BRANCH
 fromCC "0BRANCH", ZBRANCH;
-
-.macro .forth_interpreter
-.4byte forth_interpreter
-.endm
 
 fw ERROR, ERROR, ERROR, ERROR, ABORT
 .globl forth_main; forth_main:
