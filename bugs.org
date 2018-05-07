@@ -20,3 +20,4 @@
 - In ~char=~, used ~dup 33 < over 33 <~ not ~over 33 < over 33 <~
 - Turns out "CHAR" reads the next character (using WORD), not gives the size of a char
   - So made CHAR-SIZE and CHAR-ADD, but forgot to add with CHAR-ADD
+- Used signed comparison against base
