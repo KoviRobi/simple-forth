@@ -103,9 +103,10 @@ int main(int argc, char **argv) {
   }
   printf("Heap (%p--%p):\n ", heap_bottom, heap);
   for (char *p = (char*)heap_bottom; p < (char*)heap; ++p)
-  { printf("%p:\t0x%02x\t%c\n",
+  { unsigned char c = *(unsigned char *)p;
+    printf("%p:\t0x%02x\t%c\n",
            (void*)(p-(char*)heap_bottom),
-           *(unsigned char*)p, *p);
+           c, c<127?(c>32?c:32):32);
   }
   exit(0);
 }
@@ -130,7 +131,7 @@ int FEXIT (forth_instruction *_) {
   return 0;
 }
 
-int FEXECUTE (forth_instruction *_) {
+int FEXECUTE_INTERPRETER (forth_instruction *_) {
   pop(scell c, value_stack);
   struct dict_interp *a = (struct dict_interp *)c;
   (unpack_interp(a->interpreter))(&a->instruction);
@@ -220,7 +221,7 @@ int FLIT (forth_instruction *_) {
   return 0;
 }
 
-int FC_COMMA (forth_instruction *_) {
+int FC_COMMA (forth_instruction *_) { /* TODO: HERE ! CHAR-SIZE ALLOT */
   pop(scell a, value_stack);
   char *cheap = (char *)heap;
   *cheap++ = (char)a;
@@ -228,7 +229,7 @@ int FC_COMMA (forth_instruction *_) {
   return 0;
 }
 
-int FCOMMA (forth_instruction *_) {
+int FCOMMA (forth_instruction *_) { /* TODO: HERE ! CELL-SIZE ALLOT */
   pop(scell a, value_stack);
   *heap++ = a;
   return 0;
