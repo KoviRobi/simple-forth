@@ -61,6 +61,17 @@ A piece of Forth code will look like the following, in memory:
 #+RESULTS[3a92227f044b51c3c226ed658cbd98f3f405fea2]:
 [[file:forth-jump-threaded-interpreter.png]]
 
+Let's first look at the leftmost block, a forth code block, composed
+of /forth words/, which may not be 32-bits (especially for systems
+with small memory). The first forth word of a code block is always the
+interpreter, which here points to a native code block that executes
+the rest of the forth words.
+
+The forth interpreter pushes the ~next_inst~ onto the stack (like the
+program counter, but for the interpreted words), loads the start of
+the current code block from ~r0~ into ~next_inst~, and begins
+executing the current code block by jumping to ~next~, another native code block
+
 Of note here is the interpreter, which is how we differentiate between
 Forth and native methods. For Forth methods, it pushes the
 ~next_instr~ onto the return stack; for native methods it is just a
@@ -171,9 +182,12 @@ of which we will build the rest of the Forth system.
 #+BEGIN_SRC asm :tangle stage0-machine-arm.s
   .macro fw word:req, rest:vararg
     .4byte \word
-    .ifnb \rest
+    .ifnb \rest; fw \rest; .endif
+  .endm
+  /* TODO: Use this more liberally */
+  .macro fdef name:req, label:req, flags:req, rest:vararg
+    entry_header \name, \label, \flags
     fw \rest
-      .endif
   .endm
 #+END_SRC
 {{{cmid}}}
@@ -403,7 +417,7 @@ of which we will build the rest of the Forth system.
 #+END_SRC
 {{{cmid}}}
 #+BEGIN_SRC forth
-  : HIDDEN? char-size + C@ ;
+  : CHAR+ char-size + C@ ;
 #+END_SRC
 {{{cend}}}
 
@@ -415,7 +429,7 @@ of which we will build the rest of the Forth system.
 #+END_SRC
 {{{cmid}}}
 #+BEGIN_SRC forth
-  : HIDDEN? cell-size + C@ ;
+  : CELL+ cell-size + ;
 #+END_SRC
 {{{cend}}}
 
@@ -435,13 +449,11 @@ of which we will build the rest of the Forth system.
 #+BEGIN_SRC asm :tangle stage0.s
   entry_header "IMMEDIATE?", IMMEDIATEP
     fw forth_interpreter
-    fw CELL_SIZE, SUB, FETCH
     fw CELL_ADD, CHAR_ADD, C_FETCH, EXIT
 #+END_SRC
 {{{cmid}}}
 #+BEGIN_SRC forth
   : IMMEDIATE? ( xt -- -1|0 )
-    cell-size - @
     cell+ char+ C@ ;
 #+END_SRC
 {{{cend}}}
@@ -452,7 +464,6 @@ Toggles hidden status of a given xt
 #+BEGIN_SRC asm :tangle stage0.s
   entry_header "HIDE", HIDE
     fw forth_interpreter
-    /* Not using back-pointer, but will have to make XT be the start pointer */
     fw CELL_ADD, DUP, C_FETCH
     fw INVERT, SWAP, C_STORE, EXIT
 #+END_SRC
@@ -503,7 +514,6 @@ Toggles hidden status of a given xt
     fw MEMCMP, ZBRANCH, (FIND_NEXT_ENTRY-.)
 
     fw NIP, NIP
-    fw ENTRY_TO_EXECUTION_TOKEN
     fw DUP, IMMEDIATEP
     fw ZBRANCH, (NON_IMM-.), LIT, 1, BRANCH, (IMM_END-.)
   NON_IMM:
@@ -528,7 +538,6 @@ Toggles hidden status of a given xt
           \ c-addr u entry u c-addr entry-str
           memcmp if \ c-addr u entry
             nip nip \ entry
-            entry->xt \ xt xt
             dup immediate? if 1 else -1 then
             exit
           then
@@ -541,7 +550,7 @@ Toggles hidden status of a given xt
 
 {{{cstart}}}
 #+BEGIN_SRC asm :tangle stage0.s
-  entry_header "ENTRY->XT", ENTRY_TO_EXECUTION_TOKEN /* TODO: We could make xt be the entry start, and use EXECUTE/COMPILE, */
+  entry_header "ENTRY->INTERPRETER", ENTRY_TO_INTERPRETER
     fw forth_interpreter
     fw DUP, LIT, 8, ADD, FETCH, ADD, LIT, 12, ADD, LIT, 1, ADD
     fw LIT, 3, ADD, LIT, 3, INVERT, AND
@@ -549,7 +558,7 @@ Toggles hidden status of a given xt
 #+END_SRC
 {{{cmid}}}
 #+BEGIN_SRC forth
-  : ENTRY->XT ( entry -- xt ) \ TODO: this is implementation specific
+  : ENTRY->INTERPRETER ( entry -- interpreter )
     dup 8 + @ + 12 + 1 + \ Skip over next entry, flags, c-string (and zero byte)
     3 + 3 invert and \ Align to power of 2 (multiple of 4)
     4 + ; \ Skip back-pointer
@@ -803,20 +812,33 @@ TODO
 ** Interpreting
 {{{cstart}}}
 #+BEGIN_SRC asm :tangle stage0-machine-arm.s
-  entry_header "EXECUTE", EXECUTE
+  entry_header "EXECUTE-INTERPRETER", EXECUTE_INTERPRETER
     fw 1f
   1:pop {r0}
-    ldr r0, [r0] /* Load interpreter *
-    /* b next // TODO don't we mean forth_interpreter? Or something like it */
-    ldr r1, [r0], #4
+    ldr r0, [r0] // TODO: don't we want ldr r1, [r0], #4
+    ldr r1, [r0], #4 \\ TODO: ldr r1, [r1]
     bx r1
 #+END_SRC
 {{{cmid}}}
 #+BEGIN_SRC forth
-  :ASM EXECUTE
+  :ASM EXECUTE-INTERPRETER
     { r0 } value_stack POP
     r1 r0 4 LDR+ \ TODO
     r0 BX ;
+#+END_SRC
+{{{cend}}}
+
+{{{cstart}}}
+#+BEGIN_SRC asm :tangle stage0.s
+  entry_header "EXECUTE", EXECUTE
+    fw forth_interpreter
+    fw ENTRY_TO_INTERPRETER
+    fw EXECUTE_INTERPRETER, EXIT
+#+END_SRC
+{{{cmid}}}
+#+BEGIN_SRC forth
+  : EXECUTE
+    entry->interpreter execute-interpreter ;
 #+END_SRC
 {{{cend}}}
 
@@ -880,11 +902,27 @@ See §3.4 of the [[https://www.taygeta.com/forth/dpans3.htm#3.4][ANSI Forth manu
 ** REPL
 {{{cstart}}}
 #+BEGIN_SRC asm :tangle stage0.s
+  entry_header "COMPILE,", COMPILE_COMMA
+    fw forth_interpreter
+    fw ENTRY_TO_INTERPRETER
+    fw COMMA, EXIT
+#+END_SRC
+{{{cmid}}}
+#+BEGIN_SRC forth
+  : COMPILING, ( xt -- )
+    nip -1 = state @ and if \ Compiling
+      compiling, else execute then
+    ok ;
+#+END_SRC
+{{{cend}}}
+
+{{{cstart}}}
+#+BEGIN_SRC asm :tangle stage0.s
   entry_header "QUIT-FOUND", QUIT_FOUND
     fw forth_interpreter
     fw NIP, LIT, -1, EQUAL, STATE
     fw FETCH, AND, ZBRANCH, (Q_F_EX-.)
-    fw COMMA, BRANCH, (Q_F_END-.)
+    fw COMPILE_COMMA, BRANCH, (Q_F_END-.)
   Q_F_EX:
     fw EXECUTE
   Q_F_END:
@@ -894,8 +932,23 @@ See §3.4 of the [[https://www.taygeta.com/forth/dpans3.htm#3.4][ANSI Forth manu
 #+BEGIN_SRC forth
   : QUIT_FOUND ( xt u -1|1 -- )
     nip -1 = state @ and if \ Compiling
-      , else execute then
+      compiling, else execute then
     ok ;
+#+END_SRC
+{{{cend}}}
+
+{{{cstart}}}
+#+BEGIN_SRC asm :tangle stage0.s
+  entry_header "LITERAL", LITERAL, -1 /* immediate */
+    fw forth_interpreter
+    fw LIT, LIT, COMMA
+    fw COMMA, EXIT
+#+END_SRC
+{{{cmid}}}
+#+BEGIN_SRC forth
+  : LITERAL ( x -- )
+    ' lit compiling, , ; \ TODO
+  : LITERAL ['] lit , ; IMMEDIATE
 #+END_SRC
 {{{cend}}}
 
@@ -906,7 +959,7 @@ See §3.4 of the [[https://www.taygeta.com/forth/dpans3.htm#3.4][ANSI Forth manu
     fw ROT, ROT, TO_NUMBER, LIT, 0
     fw EQUAL, ZBRANCH, (Q_N_F_ELSE-.)
     fw DROP, STATE, FETCH, ZBRANCH, (Q_N_F_END-.)
-    fw LIT, LIT, COMMA, COMMA
+    fw LITERAL
     fw BRANCH, (Q_N_F_END-.)
   Q_N_F_ELSE:
     fw TWO_DROP, ERROR, EXIT
@@ -918,7 +971,7 @@ See §3.4 of the [[https://www.taygeta.com/forth/dpans3.htm#3.4][ANSI Forth manu
   : QUIT_NOT_FOUND ( c-addr u 0 -- )
     rot rot >number 0 = if \ TODO negative numbers
       drop state @ if \ Compiling
-        ' lit , ,
+        literal
       then
     else
       2drop error exit
@@ -955,7 +1008,6 @@ See §3.4 of the [[https://www.taygeta.com/forth/dpans3.htm#3.4][ANSI Forth manu
 {{{cend}}}
 
 ** Brave New Words
-
 {{{cstart}}}
 #+BEGIN_SRC asm :tangle stage0.s
   entry_header "[", LBRAC,-1
@@ -1004,9 +1056,79 @@ See §3.4 of the [[https://www.taygeta.com/forth/dpans3.htm#3.4][ANSI Forth manu
 #+END_SRC
 {{{cmid}}}
 #+BEGIN_SRC forth
-  : ; ['] exit , latest @ hidden [ exit
+    TODO
 #+END_SRC
 {{{cend}}}
+
+** Control Words
+TODO explain, especially as we don't have comments yet
+- Note, not using compile, for [']
+- Note, literal defined previously
+  - But ['] and LITERAL are very similar
+    - Can we use LIT as ['], it only needs compilation semantics?
+      - Not quite, it doesn't push XT, it pushes entry->interpreter
+        - Perhaps swap the meaning of XT back?
+#+BEGIN_SRC forth
+  : POSTPONE ' compile, ; IMMEDIATE \ Can place elsewhere TODO
+  #+END_SRC
+
+  #+BEGIN_SRC forth
+  : ['] lit lit , ' , ; IMMEDIATE
+  : IF
+    ['] 0BRANCH compile,
+    HERE 0 , ; IMMEDIATE
+  : THEN
+    HERE over - swap ! ; IMMEDIATE
+  : ELSE
+    ['] BRANCH compile,
+    HERE swap 0 ,
+    HERE over - swap ! ; IMMEDIATE
+#+END_SRC
+
+#+BEGIN_SRC forth
+  TODO TO TEST
+
+  : BEGIN
+    HERE ; IMMEDIATE
+  : AGAIN
+    ['] BRANCH compile,
+    HERE - , ; IMMEDIATE
+  : UNTIL
+    ['] 0BRANCH compile,
+    HERE - , ; IMMEDIATE
+  : WHILE
+    ['] 0BRANCH compile,
+    HERE swap 0 , ; IMMEDIATE
+  : REPEAT
+    ['] BRANCH ,
+    HERE swap - ,
+    HERE over swap - swap ! ; IMMEDIATE
+#+END_SRC
+
+#+BEGIN_SRC forth
+  : DO
+    2>R ; IMMEDIATE
+  : ?DO
+    2dup <> ['] 0BRANCH compile, HERE
+    2>R ; IMMEDIATE
+  : LOOP
+    ;
+  : +LOOP
+    ;
+  : LEAVE
+    TODO ; IMMEDIATE
+#+END_SRC
+
+** Comments
+#+BEGIN_SRC forth
+  : CHAR word' drop C@ ;
+  : [CHAR] char literal ; IMMEDIATE
+  #+END_SRC
+
+  #+BEGIN_SRC forth
+  : \ begin key 10 = until ;
+  : ( begin key [char] ) = until ;
+#+END_SRC
 
 * After REPL
 * Naming
@@ -1056,3 +1178,4 @@ static-checking too?
 - Simple JIT :: Inline all the non-recursive calls?
 - Debugger :: Breakpoints and tracing?
 - Exception aspects :: To decouple the 'textbook algorithm' from exception handling?
+- SD Card read/store :: So that we can compile to/read from disk, and don't have to
