@@ -9,10 +9,9 @@
 #+HTML_HEAD: <script type="text/javascript" src="https://www.pirilampo.org/styles/lib/js/jquery.stickytableheaders.min.js"></script>
 #+HTML_HEAD: <script type="text/javascript" src="https://www.pirilampo.org/styles/readtheorg/js/readtheorg.js"></script>
 
-#+HTML_HEAD: <style type="text/css">table.cols td { min-width: 40em; }</style>
-#+MACRO: cstart #+HTML:<table class="cols"><tr><td>
+#+MACRO: cstart #+HTML:<table class="harmonica-table"><thead><tr><td>Assembly</td><td>Forth</td></tr></thead><tbody><tr><td>
 #+MACRO: cmid #+HTML: </td><td>
-#+MACRO: cend #+HTML: </td></tr></table>
+#+MACRO: cend #+HTML: </td></tr></tbody></table>
 
 #+PROPERTY: header-args:forth :eval no
 #+OPTIONS: H:4
@@ -77,9 +76,8 @@ Forth and native methods. For Forth methods, it pushes the
 ~next_instr~ onto the return stack; for native methods it is just a
 pointer to the beginning of the assembled native code.
 
-The Forth interpreter keeps executing the interpreters of each call
-in the current method, including the exit call which goes up to the
-previously called method.
+The Forth interpreter keeps executing the interpreters of each call in
+the current method, including the exit call.
 
 {{{cstart}}}
 #+BEGIN_SRC asm :tangle stage0-machine-arm.s
@@ -95,10 +93,14 @@ previously called method.
     ldrH r0, [next_inst], #2 /* FWSIZE */
     ldr r1, [r0], #4
     bx r1
+
+  exit:  
+    ldr next_inst, [rsp, #4]!
+    b next
 #+END_SRC
 {{{cmid}}}
 #+BEGIN_SRC forth
-  : FORTH-INTERPRETER
+  :ASM FORTH-INTERPRETER
     { next_inst } return_stack PUSH
     r0 INTO next_inst MOV
     ( or next_inst FROM r0 MOV )
@@ -106,15 +108,29 @@ previously called method.
     next_inst INTO r0 2 LDRH+
     r0 INTO r1 4 LDR+ ( vs +LDR and +LDR! )
     r1 BX
+  :ASM EXIT
+    TODO
 #+END_SRC
 {{{cend}}}
 
-Exit pops the next instruction off the stack, and jumps to next, it is
-defined once we cover the dictionary.
+The exit call pops the previously saved ~next_instr~, then continuing
+executing from there on by jumping to ~next~.
+
+TODO: Have &ERR as the first thing on the return stack, so that when
+we pop off one too many, it will be detected.
 
 ** Dictionary-list
-We also need to have a look at how methods are looked up, for which
-Forth uses a simple, linear list of methods.
+Next, we need to add the basic words (words being
+procedures/methods/functions/operators) of Forth, which we will need
+to implement natively.
+
+But before we implement those words, we need to make them findable by
+the Forth system, for which we have to discuss the simple Forth
+dictionary. The dictionary is a simple linked-list containing the
+flags, name of the word, a back-pointer (as the name is
+variable-width), and the interpreter along with the code, as discussed
+above.
+
 #+BEGIN_SRC dot :file forth-dictionary.png :cache yes
   digraph {
     rankdir=LR;
@@ -140,9 +156,12 @@ Forth uses a simple, linear list of methods.
 #+RESULTS[9f1017cd83564253a45c5d25ef89dda72a491f13]:
 [[file:forth-dictionary.png]]
 
+TODO: reword from here on
+
 Here a counted string means that the first element of the string is a
 word (four bytes) containing the length of the string (in bytes),
-which is followed by the bytes of the string.
+which is followed by the bytes of the string, including a trailing
+NULL byte, and padded to forth-word boundary.
 
 To help with making dictionary entries, we will need the following
 macros. The right-hand column is the same assembly code, but in Forth,
@@ -369,8 +388,8 @@ of which we will build the rest of the Forth system.
 #+BEGIN_SRC asm :tangle stage0.s
   entry_header "ALIGN", ALIGN
     fw forth_interpreter
-    fw HERE, LIT, 3, ADD
-    fw LIT, 3, INVERT, AND
+    fw HERE, CELL_SIZE, DECR, ADD
+    fw CELL_SIZE, DECR, INVERT, AND
     fw HERE_VAR, STORE, EXIT
 #+END_SRC
 {{{cmid}}}
@@ -1179,3 +1198,48 @@ static-checking too?
 - Debugger :: Breakpoints and tracing?
 - Exception aspects :: To decouple the 'textbook algorithm' from exception handling?
 - SD Card read/store :: So that we can compile to/read from disk, and don't have to
+
+
+
+#+BEGIN_EXPORT html
+<script type="text/javascript">
+  function openTab(event) {
+    let open_index = 0;
+    for (let el of event.target.parentElement.children) {
+      if (el === event.target)
+        break;
+      ++open_index;
+    }
+    let table = event.target.
+        parentElement.parentElement.parentElement;
+    for (let tbody of table.getElementsByTagName("tbody")) {
+      for (let row of tbody.children) {
+        let index = 0;
+        for (let data of row.children) {
+          if (index == open_index) {
+            for (element of data.children)
+              element.style.display =
+                  element.style.display === "none" ?
+                  "block" : "none";
+          }
+          ++index;
+        }
+      }
+    }
+  }
+
+  for (let element of document.getElementsByClassName("harmonica-table")) {
+    for (let theads of element.getElementsByTagName("thead")) {
+      for (let row of theads.children) {
+        let index = 0;
+        for (let data of row.children) {
+          data.addEventListener(
+            "click", openTab);
+        }
+        ++index;
+      }
+    }
+  }
+</script>
+#+END_EXPORT
+
