@@ -22,7 +22,7 @@
 #+END_SRC
 
 * Forth
-** A Jump-Threaded Interpreter
+** TODO A Jump-Threaded Interpreter
 A piece of Forth code will look like the following, in memory:
 #+BEGIN_SRC dot :file forth-jump-threaded-interpreter.png :cache yes
   digraph {
@@ -60,11 +60,15 @@ A piece of Forth code will look like the following, in memory:
 #+RESULTS[3a92227f044b51c3c226ed658cbd98f3f405fea2]:
 [[file:forth-jump-threaded-interpreter.png]]
 
+#+BEGIN_COMMENT
+FWSIZE
+#+END_COMMENT
+
 Let's first look at the leftmost block, a forth code block, composed
 of /forth words/, which may not be 32-bits (especially for systems
-with small memory). The first forth word of a code block is always the
-interpreter, which here points to a native code block that executes
-the rest of the forth words.
+with small memory, but it is in this case). The first forth word of a
+code block is always the interpreter, which here points to a native
+code block that executes the rest of the forth words.
 
 The forth interpreter pushes the ~next_inst~ onto the stack (like the
 program counter, but for the interpreted words), loads the start of
@@ -79,8 +83,16 @@ pointer to the beginning of the assembled native code.
 The Forth interpreter keeps executing the interpreters of each call in
 the current method, including the exit call.
 
+For code-blocks, we will be including both assembly code, and Forth
+code (not standard, but will work once we have got to section TODO).
+
 {{{cstart}}}
 #+BEGIN_SRC asm :tangle stage0-machine-arm.s
+  .macro fw word:req, rest:vararg
+    .4byte \word /* FWSIZE */
+    .ifnb \rest ; fw \rest ; .endif
+  .endm
+
     next_inst .req r11
     rsp .req r12
 
@@ -90,7 +102,7 @@ the current method, including the exit call.
     /* b next */
 
   next:
-    ldrH r0, [next_inst], #2 /* FWSIZE */
+    ldr r0, [next_inst], #4 /* FWSIZE */
     ldr r1, [r0], #4
     bx r1
 
@@ -119,10 +131,10 @@ executing from there on by jumping to ~next~.
 TODO: Have &ERR as the first thing on the return stack, so that when
 we pop off one too many, it will be detected.
 
-** Dictionary-list
-Next, we need to add the basic words (words being
-procedures/methods/functions/operators) of Forth, which we will need
-to implement natively.
+** TODO Dictionary-list
+Next, we need to add the basic words (words being procedures, methods,
+functions, or operators) of Forth, which we will need to implement
+natively.
 
 But before we implement those words, we need to make them findable by
 the Forth system, for which we have to discuss the simple Forth
@@ -156,29 +168,26 @@ above.
 #+RESULTS[9f1017cd83564253a45c5d25ef89dda72a491f13]:
 [[file:forth-dictionary.png]]
 
-TODO: reword from here on
-
 Here a counted string means that the first element of the string is a
 word (four bytes) containing the length of the string (in bytes),
 which is followed by the bytes of the string, including a trailing
-NULL byte, and padded to forth-word boundary.
+NULL byte, and padded to Forth-word boundary.
 
 To help with making dictionary entries, we will need the following
-macros. The right-hand column is the same assembly code, but in Forth,
-so that we can have a reflective Forth interpreter.
+macro, which creates the header for a dictionary entry. This includes
+the next entry pointer, its flags, name, a back pointer, and finally
+an assembler label to use with hand-written word implementations. But
+it doesn't include the interpreter, so it can be used to create both
+native and Forth words.
 
 {{{cstart}}}
 #+BEGIN_SRC asm :tangle stage0-machine-arm.s
   .set previous_entry, 0
-  .macro entry_header name:req, label:req, immediate=0, hidden=0
+  .macro entry name:req, label:req, imm=0, hid=0
   .balign 4 /* Align to power of 2 */
-  1:fw previous_entry
-  .set previous_entry, 1b
-  .byte \hidden
-  .byte \immediate
-  .balign 4
-  fw 2f-3f
-  3: .ascii "\name"; 2: .byte 0
+  1:fw previous_entry ; .set previous_entry, 1b
+  .byte \hid, \imm ; .balign 4
+  fw 2f-3f ; 3:.ascii "\name" ; 2: .byte 0
   .balign 4 /* Align to power of 2 */
   fw 1b
   .globl \label
@@ -187,165 +196,106 @@ so that we can have a reflective Forth interpreter.
 #+END_SRC
 {{{cmid}}}
 #+BEGIN_SRC forth
-  : ENTRY-HEADER TODO FOO BAR BAZ ; IMMEDIATE
+  : CREATE ( "<spaces>name" -- )
+    here latest @ , latest !
+    0 C, 0 C, align \ flags
+    here cell-size allot
+    bl word' \ addr start len
+    nip 2dup swap ! \ addr len
+    nip 1 + allot
+    align \ padding
+    latest @ , ; \ back-pointer
 #+END_SRC
 {{{cend}}}
 
 *** Machine dependent words
-We are now ready to define the basic Forth words in assembly, on top
-of which we will build the rest of the Forth system.
-
-- TODO :: Explain "c-addr u" and fwsize
+We need a couple more macros, to remove the redundancy in defining
+some of the native words.
 
 {{{cstart}}}
 #+BEGIN_SRC asm :tangle stage0-machine-arm.s
-  .macro fw word:req, rest:vararg
-    .4byte \word
-    .ifnb \rest; fw \rest; .endif
+  .macro inst i, insts:vararg
+    \i
+    .ifnb \insts ; inst \insts ; .endif
   .endm
-  /* TODO: Use this more liberally */
-  .macro fdef name:req, label:req, flags:req, rest:vararg
-    entry_header \name, \label, \flags
-    fw \rest
-  .endm
-#+END_SRC
-{{{cmid}}}
-{{{cend}}}
-
-{{{cstart}}}
-#+BEGIN_SRC asm :tangle stage0-machine-arm.s
-  .macro binops name, label, op, rest:vararg
-    entry_header \name, \label
+  .macro fasmstart name:req, label:req, pops, insts:vararg
+    entry \name, \label
     fw 1f
-  1:pop {r0, r1}
-    \op r1, r0
-    push {r1}
+  1: .ifnc _,\pops ; pop {\pops} ; .endif
+    inst \insts
+  .endm
+  .macro fasmend pushes
+    .ifnc _,\pushes ; push {\pushes} ; .endif
     b next
+  .endm
+  .macro fasm name:req, label:req, pop, push, i:vararg
+    fasmstart \name, \label, \pop, \i
+    fasmend \push
+  .endm
+
+  .macro binops name:req, label:req, op:req, rest:vararg
+    fasm \name, \label, r0-r1, r1, "\op r1, r0"
     .ifnb \rest ; binops \rest ; .endif
   .endm
-
-  .macro binrels name, label, rel, rest:vararg
-    entry_header \name, \label
-    fw 1f
-  1:pop {r0, r1}
-    cmp r1, r0
-    mov r0, #0
-    mov\rel r0, #-1
-    push {r0}
-    b next
+  .macro binrels name:req, label:req, rel:req, rest:vararg
+    fasm \name, \label, r0-r1, r0, "cmp r1, r0", "mov r0, #0", "mov\rel r0, #-1"
     .ifnb \rest ; binrels \rest ; .endif
-  .endm
-
-  .macro unops name, label, op, rest:vararg
-    entry_header \name, \label
-    fw 1f
-  1:pop {r0}
-    \op r0
-    push {r0}
-    b next
-    .ifnb \rest ; unops \rest ; .endif
   .endm
 #+END_SRC
 {{{cmid}}}
+#+BEGIN_SRC forth
+  TODO
+#+END_SRC
 {{{cend}}}
+
+We are now ready to define the basic Forth words in assembly, on top
+of which we will build the rest of the Forth system. The ~EXIT~ we
+have already defined above
 
 {{{cstart}}}
 #+BEGIN_SRC asm :tangle stage0-machine-arm.s
-  entry_header "EXIT", EXIT
-    fw 1f
-  1:ldr next_inst, [rsp, #4]!
-    b next
+  entry "EXIT", EXIT
+    fw exit
 
   binops "+", ADD, add,   "-", SUB, sub,   "*", STAR, mul
   binops "LSHIFT", LSHIFT, lsl,   "RSHIFT", RSHIFT, lsr
   binops "&", AND, and,   "|", OR, orr,    "XOR", XOR, eor
+
   binrels "<>", NOT_EQUAL, ne,    "U<", U_LESS_THAN, lo
   binrels "\x3d", EQUAL, eq,    "U>", U_GREATER_THAN, hi
   binrels "<", LESS_THAN, lt,    ">", GREATER_THAN, gt
 
-  entry_header "NEGATE", NEGATE
-    fw 1f
-    pop {r0}
-  1:rsb r0, #0
-    push {r0}
-    b next
+  fasm "NEGATE", NEGATE, r0, r0, "rsb r0, #0"
+  fasm "INVERT", INVERT, r0, r0, "mvn r0, r0"
+  fasm "C\x64", C_FETCH, r0, r0, "ldrB r0, [r0]"
+  fasm "\x64", FETCH, r0, r0, "ldr r0, [r0]" /* FWSIZE */
+  fasm "C!", C_STORE, r0-r1, _, "strB r1, [r0]"
+  fasm "!", STORE, r0-r1, _, "str r1, [r0]" /* FWSIZE */
 
-  entry_header "INVERT", INVERT
-    fw 1f
-    pop {r0}
-  1:mvn r0, r0
-    push {r0}
-    b next
+  fasm "BRANCH", BRANCH, _, _, "ldr r0, [next_inst]" /* FWSIZE */
+  fasm "0BRANCH", ZBRANCH, r1, _, "ldr r0, [next_inst]", "cmp r1, #0", "addeq next_inst, r0", "addne next_inst, #4" /* FWSIZE */
 
-  entry_header "C@", C_FETCH
-    fw 1f
-    pop {r0}
-  1:ldrB r0, [r0] /* FWSIZE */
-    push {r0}
-    b next
+  fasm "[']", LIT, _, r0, "ldr r0, [next_inst], #4" /* FWSIZE */
 
-  entry_header "C!", C_STORE
-    fw 1f
-    pop {r0-r1}
-  1:strB r1, [r0] /* FWSIZE */
-    b next
+  fasm "CELL-SIZE", CELL_SIZE, _, r0, "mov r0, #4" /* CELLSIZE */
+  fasm "CHAR-SIZE", CHAR_SIZE, _, r0, "mov r0, #1" /* CHARSIZE */
 
-  entry_header "@", FETCH
-    fw 1f
-    pop {r0}
-  1:ldrH r0, [r0] /* FWSIZE */
-    push {r0}
-    b next
+  fasm "NIP", NIP, r0-r1, r1
+  fasm "DROP", DROP, _, _, "sub sp, #4" /* CELLSIZE */
+  fasm "DUP", DUP, _, r0, "ldr r0, [sp]"
+  fasm "OVER", OVER, _, r0, "ldr r0, [sp, #4]" /* CELLSIZE */
+  fasm "PICK", PICK, r0, r0, "ldr r0, [sp, r0]"
+  fasm "ROT", ROT, r0-r2, r0-r1, "push {r2}"
+  fasm "SWAP", SWAP, r0-r1, r1,"push {r0}"
 
-  entry_header "!", STORE
-    fw 1f
-    pop {r0-r1}
-  1:strH r1, [r0] /* FWSIZE */
-    b next
+  fasm "R\x64", R_FETCH, _, r0, "ldr r0, [rsp]" /* FWSIZE */
+  fasm "R>", R_FROM, _, r0, "ldm rsp, {r0}" /* FWSIZE */
+  fasm ">R", TO_R, r0, _, "stm rsp, {r0}" /* FWSIZE */
 
-  entry_header "BRANCH", BRANCH
-    fw 1f
-  1:ldrH r0, [next_inst] /* FWSIZE */
-    add next_inst, r0
-    b next
 
-  entry_header "0BRANCH", ZBRANCH
-    fw 1f
-  1:pop {r1}
-    ldrH r0, [next_inst] /* FWSIZE */
-    cmp r1, #0
-    addeq next_inst, r0
-    addne next_inst, #2 /* FWSIZE */
-    b next
-
-  C_COMMA
-  COMMA
-  CELL
-  CHAR
-
-  HERE_VAR
-  LATEST
-
-  STATE
-  TRUE
-  FALSE
-  LIT
-
-  NIP
-  DROP
-  DUP
-  OVER
-  PICK
-  ROT
-  SWAP
-  TWO_DROP
-  TWO_DUP
-
-  TWO_R_DROP
-  TWO_R_FETCH
-  R_FETCH
-  R_FROM
-  TO_R
+  /* HERE_VAR */
+  /* LATEST */
+  /* STATE */
 #+END_SRC
 {{{cmid}}}
 #+BEGIN_SRC forth
@@ -359,10 +309,21 @@ of which we will build the rest of the Forth system.
 #+END_SRC
 {{{cend}}}
 
-*** Creation
+*** TODO Creation
 {{{cstart}}}
 #+BEGIN_SRC asm :tangle stage0.s
-  entry_header "HERE", HERE
+  /* TODO: Use this more liberally */
+  .macro fdef name:req, label:req, flags:req, rest:vararg
+    entry \name, \label, \flags
+    fw \rest
+  .endm
+#+END_SRC
+{{{cmid}}}
+{{{cend}}}
+
+{{{cstart}}}
+#+BEGIN_SRC asm :tangle stage0.s
+  entry "HERE", HERE
     fw forth_interpreter
     fw HERE_VAR, FETCH, EXIT
 #+END_SRC
@@ -374,7 +335,7 @@ of which we will build the rest of the Forth system.
 
 {{{cstart}}}
 #+BEGIN_SRC asm :tangle stage0.s
-  entry_header "ALLOT", ALLOT
+  entry "ALLOT", ALLOT
     fw forth_interpreter
     fw HERE, ADD, HERE_VAR, STORE, EXIT
 #+END_SRC
@@ -386,7 +347,7 @@ of which we will build the rest of the Forth system.
 
 {{{cstart}}}
 #+BEGIN_SRC asm :tangle stage0.s
-  entry_header "ALIGN", ALIGN
+  entry "ALIGN", ALIGN
     fw forth_interpreter
     fw HERE, CELL_SIZE, DECR, ADD
     fw CELL_SIZE, DECR, INVERT, AND
@@ -402,7 +363,7 @@ of which we will build the rest of the Forth system.
 
 {{{cstart}}}
 #+BEGIN_SRC asm :tangle stage0.s
-  entry_header "CREATE", CREATE
+  entry "CREATE", CREATE
     fw forth_interpreter
     fw HERE, LATEST, FETCH
     fw COMMA, LATEST, STORE
@@ -430,7 +391,7 @@ of which we will build the rest of the Forth system.
 
 {{{cstart}}}
 #+BEGIN_SRC asm :tangle stage0.s
-  entry_header "CHAR+", CHAR_ADD
+  entry "CHAR+", CHAR_ADD
     fw forth_interpreter
     fw CHAR_SIZE, ADD, EXIT
 #+END_SRC
@@ -442,7 +403,7 @@ of which we will build the rest of the Forth system.
 
 {{{cstart}}}
 #+BEGIN_SRC asm :tangle stage0.s
-  entry_header "CELL+", CELL_ADD
+  entry "CELL+", CELL_ADD
     fw forth_interpreter
     fw CELL_SIZE, ADD, EXIT
 #+END_SRC
@@ -454,7 +415,7 @@ of which we will build the rest of the Forth system.
 
 {{{cstart}}}
 #+BEGIN_SRC asm :tangle stage0.s
-  entry_header "HIDDEN?", HIDDENP
+  entry "HIDDEN?", HIDDENP
     fw forth_interpreter
     fw CELL_ADD, C_FETCH, EXIT
 #+END_SRC
@@ -466,7 +427,7 @@ of which we will build the rest of the Forth system.
 
 {{{cstart}}}
 #+BEGIN_SRC asm :tangle stage0.s
-  entry_header "IMMEDIATE?", IMMEDIATEP
+  entry "IMMEDIATE?", IMMEDIATEP
     fw forth_interpreter
     fw CELL_ADD, CHAR_ADD, C_FETCH, EXIT
 #+END_SRC
@@ -481,7 +442,7 @@ Toggles hidden status of a given xt
 
 {{{cstart}}}
 #+BEGIN_SRC asm :tangle stage0.s
-  entry_header "HIDE", HIDE
+  entry "HIDE", HIDE
     fw forth_interpreter
     fw CELL_ADD, DUP, C_FETCH
     fw INVERT, SWAP, C_STORE, EXIT
@@ -496,7 +457,7 @@ Toggles hidden status of a given xt
 
 {{{cstart}}}
 #+BEGIN_SRC asm :tangle stage0.s
-  entry_header "IMMEDIATE", IMMEDIATE, -1
+  entry "IMMEDIATE", IMMEDIATE, -1
     fw forth_interpreter
     fw LATEST, FETCH
     fw TRUE, SWAP, CELL_ADD, CHAR_ADD, C_STORE, EXIT
@@ -509,10 +470,13 @@ Toggles hidden status of a given xt
 #+END_SRC
 {{{cend}}}
 
-*** Lookup
+*** TODO Lookup
+- TODO :: Explain "c-addr u" and fwsize
+
+
 {{{cstart}}}
 #+BEGIN_SRC asm :tangle stage0.s
-  entry_header "FIND'", FIND_NEW
+  entry "FIND'", FIND_NEW
     fw forth_interpreter
     fw LATEST, FETCH
 
@@ -569,7 +533,7 @@ Toggles hidden status of a given xt
 
 {{{cstart}}}
 #+BEGIN_SRC asm :tangle stage0.s
-  entry_header "ENTRY->INTERPRETER", ENTRY_TO_INTERPRETER
+  entry "ENTRY->INTERPRETER", ENTRY_TO_INTERPRETER
     fw forth_interpreter
     fw DUP, LIT, 8, ADD, FETCH, ADD, LIT, 12, ADD, LIT, 1, ADD
     fw LIT, 3, ADD, LIT, 3, INVERT, AND
@@ -587,10 +551,10 @@ Toggles hidden status of a given xt
 We also need to write the memory comparison, as well as the utilities
 for the flags.
 
-*** Memory comparison
+*** TODO Memory comparison
 {{{cstart}}}
 #+BEGIN_SRC asm :tangle stage0.s
-  entry_header "MEMCMP", MEMCMP
+  entry "MEMCMP", MEMCMP
     fw forth_interpreter
     fw ROT, LIT, 0
     fw SWAP, TO_R, TO_R
@@ -619,13 +583,13 @@ for the flags.
 #+END_SRC
 {{{cend}}}
 
-** Input
+** TODO Input
 *** Characters
 {{{cstart}}}
 #+BEGIN_SRC asm :tangle stage0-machine-arm.s
   UART1_MU_IO_REG:   fw 0x20215040
   UART1_MU_LSR_REG:  fw 0x20215054
-  entry_header "KEY", KEY
+  entry "KEY", KEY
     fw 1f
   1:ldr r0, #UART1_MU_LSR_REG
     ldr r0, [r0]
@@ -647,7 +611,7 @@ TODO: backspace (or perhaps with a modified key?)
 
 {{{cstart}}}
 #+BEGIN_SRC asm :tangle stage0.s asm :tangle stage0.s
-  entry_header "LOWER", LOWER
+  entry "LOWER", LOWER
     fw forth_interpreter
     fw DUP, LIT, 'A', U_LESS_THAN
     fw OVER, LIT, 'Z', U_GREATER_THAN
@@ -665,7 +629,7 @@ TODO: backspace (or perhaps with a modified key?)
 
 {{{cstart}}}
 #+BEGIN_SRC asm :tangle stage0.s
-  entry_header "CHAR=", CHAR_EQUAL
+  entry "CHAR=", CHAR_EQUAL
     fw forth_interpreter
     fw TWO_DUP, EQUAL, ZBRANCH, (1f-.)
     fw TWO_DROP, TRUE, EXIT
@@ -692,7 +656,7 @@ TODO: transient region
 
 {{{cstart}}}
 #+BEGIN_SRC asm :tangle stage0.s
-  entry_header "WORD'", WORD_NEW
+  entry "WORD'", WORD_NEW
     fw forth_interpreter
     fw HERE, SWAP, LIT, 0
   WORD_SKIP:
@@ -730,7 +694,7 @@ If the character is less than '0', or between '9' and 'A' (or 'Z' and
 
 {{{cstart}}}
 #+BEGIN_SRC asm :tangle stage0.s
-  entry_header "CHAR->DIGIT", CHAR_TO_DIGIT
+  entry "CHAR->DIGIT", CHAR_TO_DIGIT
     fw forth_interpreter
     fw LIT, '0', SUB
     fw DUP, LIT, 9, U_GREATER_THAN, ZBRANCH, (C_TO_D_END-.)
@@ -765,13 +729,13 @@ If the character is less than '0', or between '9' and 'A' (or 'Z' and
   .data
   BASE_VAR: fw 10
   .text
-  entry_header "BASE", BASE
+  entry "BASE", BASE
     fw forth_interpreter
     fw LIT, BASE_VAR, EXIT
-  entry_header "DECIMAL", DECIMAL
+  entry "DECIMAL", DECIMAL
     fw forth_interpreter
     fw LIT, 10, LIT, BASE_VAR, STORE, EXIT
-  entry_header ">NUMBER", TO_NUMBER
+  entry ">NUMBER", TO_NUMBER
     fw forth_interpreter
     fw OVER, ADD, DUP, TO_R, SWAP
     fw SWAP, TO_R, TO_R
@@ -808,10 +772,10 @@ If the character is less than '0', or between '9' and 'A' (or 'Z' and
 #+END_SRC
 {{{cend}}}
 
-** Output
+** TODO Output
 {{{cstart}}}
 #+BEGIN_SRC asm :tangle stage0-machine-arm.s
-  entry_header "EMIT", EMIT
+  entry "EMIT", EMIT
     fw 1f
   1:ldr r1, #UART1_MU_LSR_REG
     ldr r1, [r1]
@@ -828,14 +792,14 @@ TODO
 #+END_SRC
 {{{cend}}}
 
-** Interpreting
+** TODO Interpreting
 {{{cstart}}}
 #+BEGIN_SRC asm :tangle stage0-machine-arm.s
-  entry_header "EXECUTE-INTERPRETER", EXECUTE_INTERPRETER
+  entry "EXECUTE-INTERPRETER", EXECUTE_INTERPRETER
     fw 1f
   1:pop {r0}
-    ldr r0, [r0] // TODO: don't we want ldr r1, [r0], #4
-    ldr r1, [r0], #4 \\ TODO: ldr r1, [r1]
+    ldr r0, [r0] /* TODO: don't we want ldr r1, [r0], #4 */
+    ldr r1, [r0], #4 /* TODO: ldr r1, [r1] */
     bx r1
 #+END_SRC
 {{{cmid}}}
@@ -849,7 +813,7 @@ TODO
 
 {{{cstart}}}
 #+BEGIN_SRC asm :tangle stage0.s
-  entry_header "EXECUTE", EXECUTE
+  entry "EXECUTE", EXECUTE
     fw forth_interpreter
     fw ENTRY_TO_INTERPRETER
     fw EXECUTE_INTERPRETER, EXIT
@@ -861,12 +825,12 @@ TODO
 #+END_SRC
 {{{cend}}}
 
-** Compiling
+** TODO Compiling
 See §3.4 of the [[https://www.taygeta.com/forth/dpans3.htm#3.4][ANSI Forth manual]].
 
 {{{cstart}}}
 #+BEGIN_SRC asm :tangle stage0.s
-  entry_header "BL", BL
+  entry "BL", BL
     fw forth_interpreter
     fw LIT, ' ', EXIT
 #+END_SRC
@@ -879,7 +843,7 @@ See §3.4 of the [[https://www.taygeta.com/forth/dpans3.htm#3.4][ANSI Forth manu
 
 {{{cstart}}}
 #+BEGIN_SRC asm :tangle stage0.s
-  entry_header "'", TICK
+  entry "'", TICK
     fw forth_interpreter
     fw BL, WORD_NEW, FIND_NEW, DROP, EXIT
 #+END_SRC
@@ -892,7 +856,7 @@ See §3.4 of the [[https://www.taygeta.com/forth/dpans3.htm#3.4][ANSI Forth manu
 
 {{{cstart}}}
 #+BEGIN_SRC asm :tangle stage0.s
-  entry_header "OK", OK
+  entry "OK", OK
     fw forth_interpreter
     fw LIT, 'O', EMIT, LIT, 'k'
     fw EMIT, BL, EMIT, EXIT
@@ -906,7 +870,7 @@ See §3.4 of the [[https://www.taygeta.com/forth/dpans3.htm#3.4][ANSI Forth manu
 
 {{{cstart}}}
 #+BEGIN_SRC asm :tangle stage0.s
-  entry_header "ERROR", ERROR
+  entry "ERROR", ERROR
     fw forth_interpreter
     fw LIT, 'E', EMIT, LIT, 'r', EMIT
     fw LIT, 'r', EMIT, BL, EMIT, EXIT
@@ -918,10 +882,10 @@ See §3.4 of the [[https://www.taygeta.com/forth/dpans3.htm#3.4][ANSI Forth manu
 #+END_SRC
 {{{cend}}}
 
-** REPL
+** TODO REPL
 {{{cstart}}}
 #+BEGIN_SRC asm :tangle stage0.s
-  entry_header "COMPILE,", COMPILE_COMMA
+  entry "COMPILE,", COMPILE_COMMA
     fw forth_interpreter
     fw ENTRY_TO_INTERPRETER
     fw COMMA, EXIT
@@ -937,7 +901,7 @@ See §3.4 of the [[https://www.taygeta.com/forth/dpans3.htm#3.4][ANSI Forth manu
 
 {{{cstart}}}
 #+BEGIN_SRC asm :tangle stage0.s
-  entry_header "QUIT-FOUND", QUIT_FOUND
+  entry "QUIT-FOUND", QUIT_FOUND
     fw forth_interpreter
     fw NIP, LIT, -1, EQUAL, STATE
     fw FETCH, AND, ZBRANCH, (Q_F_EX-.)
@@ -958,7 +922,7 @@ See §3.4 of the [[https://www.taygeta.com/forth/dpans3.htm#3.4][ANSI Forth manu
 
 {{{cstart}}}
 #+BEGIN_SRC asm :tangle stage0.s
-  entry_header "LITERAL", LITERAL, -1 /* immediate */
+  entry "LITERAL", LITERAL, -1 /* immediate */
     fw forth_interpreter
     fw LIT, LIT, COMMA
     fw COMMA, EXIT
@@ -973,7 +937,7 @@ See §3.4 of the [[https://www.taygeta.com/forth/dpans3.htm#3.4][ANSI Forth manu
 
 {{{cstart}}}
 #+BEGIN_SRC asm :tangle stage0.s
-  entry_header "QUIT-NOT-FOUND", QUIT_NOT_FOUND
+  entry "QUIT-NOT-FOUND", QUIT_NOT_FOUND
     fw forth_interpreter
     fw ROT, ROT, TO_NUMBER, LIT, 0
     fw EQUAL, ZBRANCH, (Q_N_F_ELSE-.)
@@ -1001,7 +965,7 @@ See §3.4 of the [[https://www.taygeta.com/forth/dpans3.htm#3.4][ANSI Forth manu
 
 {{{cstart}}}
 #+BEGIN_SRC asm :tangle stage0.s
-  entry_header "QUIT", QUIT
+  entry "QUIT", QUIT
     fw forth_interpreter
   QUIT_LOOP:
     fw BL, WORD_NEW, DUP, ROT, ROT
@@ -1026,10 +990,10 @@ See §3.4 of the [[https://www.taygeta.com/forth/dpans3.htm#3.4][ANSI Forth manu
 #+END_SRC
 {{{cend}}}
 
-** Brave New Words
+** TODO Brave New Words
 {{{cstart}}}
 #+BEGIN_SRC asm :tangle stage0.s
-  entry_header "[", LBRAC,-1
+  entry "[", LBRAC,-1
     fw forth_interpreter
     fw LIT, 0, STATE, STORE, EXIT
 #+END_SRC
@@ -1041,7 +1005,7 @@ See §3.4 of the [[https://www.taygeta.com/forth/dpans3.htm#3.4][ANSI Forth manu
 
 {{{cstart}}}
 #+BEGIN_SRC asm :tangle stage0.s
-  entry_header "]", RBRAC
+  entry "]", RBRAC
     fw forth_interpreter
     fw LIT, -1, STATE, STORE, EXIT
 #+END_SRC
@@ -1053,7 +1017,7 @@ See §3.4 of the [[https://www.taygeta.com/forth/dpans3.htm#3.4][ANSI Forth manu
 
 {{{cstart}}}
 #+BEGIN_SRC asm :tangle stage0.s
-  entry_header ":", COLON
+  entry ":", COLON
     fw forth_interpreter
     fw CREATE
     fw LIT, forth_interpreter, COMMA
@@ -1068,7 +1032,7 @@ See §3.4 of the [[https://www.taygeta.com/forth/dpans3.htm#3.4][ANSI Forth manu
 
 {{{cstart}}}
 #+BEGIN_SRC asm :tangle stage0.s
-  entry_header ";", SEMICOLON, -1 /* immediate */
+  entry ";", SEMICOLON, -1 /* immediate */
     fw forth_interpreter
     fw LIT, EXIT, COMMA
     fw LATEST, FETCH, HIDE, LBRAC, EXIT
@@ -1079,7 +1043,7 @@ See §3.4 of the [[https://www.taygeta.com/forth/dpans3.htm#3.4][ANSI Forth manu
 #+END_SRC
 {{{cend}}}
 
-** Control Words
+** TODO Control Words
 TODO explain, especially as we don't have comments yet
 - Note, not using compile, for [']
 - Note, literal defined previously
@@ -1138,7 +1102,7 @@ TODO explain, especially as we don't have comments yet
     TODO ; IMMEDIATE
 #+END_SRC
 
-** Comments
+** TODO Comments
 #+BEGIN_SRC forth
   : CHAR word' drop C@ ;
   : [CHAR] char literal ; IMMEDIATE
@@ -1149,8 +1113,8 @@ TODO explain, especially as we don't have comments yet
   : ( begin key [char] ) = until ;
 #+END_SRC
 
-* After REPL
-* Naming
+* TODO After REPL
+* TODO Naming
 Plan is to extend forth to do naming, to make programs easier to
 understand.
 
@@ -1191,7 +1155,8 @@ And arg-count checking, possibly only at runtime first, to make sure
 we don't return multiple values or get too few arguments. Possibly
 static-checking too?
 
-* Ideas
+* TODO Forth Assembler
+* TODO Ideas
 - Dereference-count :: When a pointer gets dereferenced a lot, move
      its pointee closer to that pointer (when doing mark&move GC)?
 - Simple JIT :: Inline all the non-recursive calls?
@@ -1200,7 +1165,7 @@ static-checking too?
 - SD Card read/store :: So that we can compile to/read from disk, and don't have to
 
 
-
+* COMMENT Table column
 #+BEGIN_EXPORT html
 <script type="text/javascript">
   function openTab(event) {
