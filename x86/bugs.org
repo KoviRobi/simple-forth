@@ -10,3 +10,4 @@
 - Different sizes between x86's dict entry and ARM's
 - Forgot to change ~.forth_interpreter~ when changed it to 4byte
 - Didn't put latest in .data section
+- FOVER() was broken, due to macro substitution and *value_stack++ = *(value_stack-2) (when you assign *(value_stack-2) to a value first, it works

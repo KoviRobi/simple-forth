@@ -105,7 +105,7 @@ int main(int argc, char **argv) {
   for (char *p = (char*)heap_bottom; p < (char*)heap; ++p)
   { unsigned char c = *(unsigned char *)p;
     printf("%p:\t0x%02x\t%c\n",
-           (void*)(p-(char*)heap_bottom),
+           (void*)p,
            c, c<127?(c>32?c:32):32);
   }
   exit(0);
@@ -289,19 +289,8 @@ int FDUP (forth_instruction *_) {
   return 0;
 }
 
-int FTWO_DUP (forth_instruction *_) {
-  push((scell)*(value_stack-2), value_stack);
-  push((scell)*(value_stack-2), value_stack);
-  return 0;
-}
-
 int FDROP (forth_instruction *_) {
   pop(scell a, value_stack);
-  return 0;
-}
-
-int FTWO_DROP (forth_instruction *_) {
-  value_stack -= 2;
   return 0;
 }
 
@@ -358,18 +347,6 @@ int FR_FROM (forth_instruction *_) {
 int FTO_R (forth_instruction *_) {
   pop(scell a, value_stack);
   push((void*)a, frame_stack);
-  return 0;
-}
-
-int FTWO_R_DROP (forth_instruction *_) {
-  frame_stack -= 2;
-  return 0;
-}
-
-int FTWO_R_FETCH (forth_instruction *_) {
-  // R> R> 2DUP >R >R SWAP
-  push((scell)*(frame_stack-1), value_stack);
-  push((scell)*(frame_stack-2), value_stack);
   return 0;
 }
 

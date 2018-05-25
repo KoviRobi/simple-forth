@@ -103,7 +103,7 @@ code (not standard, but will work once we have got to section TODO).
 
   next:
     ldr r0, [next_inst], #4 /* FWSIZE */
-    ldr r1, [r0], #4
+    ldr r1, [r0], #4 /* FWSIZE */
     bx r1
 
   exit:  
@@ -183,15 +183,18 @@ native and Forth words.
 {{{cstart}}}
 #+BEGIN_SRC asm :tangle stage0-machine-arm.s
   .set previous_entry, 0
-  .macro entry name:req, label:req, imm=0, hid=0
+  .macro entry name:req, label, imm=0, hid=0
   .balign 4 /* Align to power of 2 */
   1:fw previous_entry ; .set previous_entry, 1b
   .byte \hid, \imm ; .balign 4
   fw 2f-3f ; 3:.ascii "\name" ; 2: .byte 0
   .balign 4 /* Align to power of 2 */
   fw 1b
-  .globl \label
-  \label :
+  .ifc _,\label
+  .globl \name ; \name :
+  .else
+  .globl \label ; \label :
+  .endif
   .endm
 #+END_SRC
 {{{cmid}}}
@@ -209,6 +212,14 @@ native and Forth words.
 {{{cend}}}
 
 *** Machine dependent words
+
+TODO: reword from here
+
+#+BEGIN_SRC asm :tangle stage0-machine-arm.s
+  entry "EXIT", EXIT
+    fw exit
+#+END_SRC
+
 We need a couple more macros, to remove the redundancy in defining
 some of the native words.
 
@@ -218,26 +229,20 @@ some of the native words.
     \i
     .ifnb \insts ; inst \insts ; .endif
   .endm
-  .macro fasmstart name:req, label:req, pops, insts:vararg
+  .macro fasm name:req, label, pop, push, i:vararg
     entry \name, \label
     fw 1f
-  1: .ifnc _,\pops ; pop {\pops} ; .endif
-    inst \insts
-  .endm
-  .macro fasmend pushes
-    .ifnc _,\pushes ; push {\pushes} ; .endif
+  1: .ifnc _,\pop ; pop {\pop} ; .endif
+    inst \i
+    .ifnc _,\push ; push {\push} ; .endif
     b next
   .endm
-  .macro fasm name:req, label:req, pop, push, i:vararg
-    fasmstart \name, \label, \pop, \i
-    fasmend \push
-  .endm
 
-  .macro binops name:req, label:req, op:req, rest:vararg
+  .macro binops name:req, label, op:req, rest:vararg
     fasm \name, \label, r0-r1, r1, "\op r1, r0"
     .ifnb \rest ; binops \rest ; .endif
   .endm
-  .macro binrels name:req, label:req, rel:req, rest:vararg
+  .macro binrels name:req, label, rel:req, rest:vararg
     fasm \name, \label, r0-r1, r0, "cmp r1, r0", "mov r0, #0", "mov\rel r0, #-1"
     .ifnb \rest ; binrels \rest ; .endif
   .endm
@@ -254,39 +259,39 @@ have already defined above
 
 {{{cstart}}}
 #+BEGIN_SRC asm :tangle stage0-machine-arm.s
-  entry "EXIT", EXIT
-    fw exit
-
   binops "+", ADD, add,   "-", SUB, sub,   "*", STAR, mul
-  binops "LSHIFT", LSHIFT, lsl,   "RSHIFT", RSHIFT, lsr
-  binops "&", AND, and,   "|", OR, orr,    "XOR", XOR, eor
+  binops "LSHIFT", _, lsl,   "RSHIFT", _, lsr
+  binops "&", AND, and,   "|", OR, orr,    "XOR", _, eor
 
   binrels "<>", NOT_EQUAL, ne,    "U<", U_LESS_THAN, lo
   binrels "\x3d", EQUAL, eq,    "U>", U_GREATER_THAN, hi
   binrels "<", LESS_THAN, lt,    ">", GREATER_THAN, gt
 
-  fasm "NEGATE", NEGATE, r0, r0, "rsb r0, #0"
-  fasm "INVERT", INVERT, r0, r0, "mvn r0, r0"
+  fasm "NEGATE", _, r0, r0, "rsb r0, #0"
+  fasm "INVERT", _, r0, r0, "mvn r0, r0"
   fasm "C\x64", C_FETCH, r0, r0, "ldrB r0, [r0]"
   fasm "\x64", FETCH, r0, r0, "ldr r0, [r0]" /* FWSIZE */
   fasm "C!", C_STORE, r0-r1, _, "strB r1, [r0]"
   fasm "!", STORE, r0-r1, _, "str r1, [r0]" /* FWSIZE */
+#+END_SRC
 
-  fasm "BRANCH", BRANCH, _, _, "ldr r0, [next_inst]" /* FWSIZE */
+#+BEGIN_SRC asm :tangle stage0-machine-arm.s
+  fasm "BRANCH", _, _, _, "ldr r0, [next_inst]" /* FWSIZE */
   fasm "0BRANCH", ZBRANCH, r1, _, "ldr r0, [next_inst]", "cmp r1, #0", "addeq next_inst, r0", "addne next_inst, #4" /* FWSIZE */
-
   fasm "[']", LIT, _, r0, "ldr r0, [next_inst], #4" /* FWSIZE */
+#+END_SRC
 
+#+BEGIN_SRC asm :tangle stage0-machine-arm.s
   fasm "CELL-SIZE", CELL_SIZE, _, r0, "mov r0, #4" /* CELLSIZE */
   fasm "CHAR-SIZE", CHAR_SIZE, _, r0, "mov r0, #1" /* CHARSIZE */
 
-  fasm "NIP", NIP, r0-r1, r1
-  fasm "DROP", DROP, _, _, "sub sp, #4" /* CELLSIZE */
-  fasm "DUP", DUP, _, r0, "ldr r0, [sp]"
-  fasm "OVER", OVER, _, r0, "ldr r0, [sp, #4]" /* CELLSIZE */
-  fasm "PICK", PICK, r0, r0, "ldr r0, [sp, r0]"
-  fasm "ROT", ROT, r0-r2, r0-r1, "push {r2}"
-  fasm "SWAP", SWAP, r0-r1, r1,"push {r0}"
+  fasm "NIP", _, r0-r1, r1
+  fasm "DROP", _, _, _, "sub sp, #4" /* CELLSIZE */
+  fasm "DUP", _, _, r0, "ldr r0, [sp]"
+  fasm "OVER", _, _, r0, "ldr r0, [sp, #4]" /* CELLSIZE */
+  fasm "PICK", _, r0, r0, "ldr r0, [sp, r0]"
+  fasm "ROT", _, r0-r2, r0-r1, "push {r2}"
+  fasm "SWAP", _, r0-r1, r1,"push {r0}"
 
   fasm "R\x64", R_FETCH, _, r0, "ldr r0, [rsp]" /* FWSIZE */
   fasm "R>", R_FROM, _, r0, "ldm rsp, {r0}" /* FWSIZE */
@@ -309,30 +314,39 @@ have already defined above
 #+END_SRC
 {{{cend}}}
 
-*** TODO Creation
+*** TODO Simple helper words
 {{{cstart}}}
 #+BEGIN_SRC asm :tangle stage0.s
   /* TODO: Use this more liberally */
-  .macro fdef name:req, label:req, flags:req, rest:vararg
-    entry \name, \label, \flags
+  .macro fdef name:req, label, rest:vararg
+    entry \name, \label
+    fw forth_interpreter
     fw \rest
+    fw EXIT
   .endm
 #+END_SRC
 {{{cmid}}}
 {{{cend}}}
 
-{{{cstart}}}
 #+BEGIN_SRC asm :tangle stage0.s
-  entry "HERE", HERE
-    fw forth_interpreter
-    fw HERE_VAR, FETCH, EXIT
+  fdef "1-", DECR, LIT, 1, SUB
+  fdef "1+", INCR, LIT, 1, SUB
+  fdef "2DUP", TWO_DUP, OVER, OVER
+  fdef "2DROP", TWO_DROP, DROP, DROP
+  fdef "2>R", TWO_TO_R, R_FROM, ROT, ROT, SWAP, TO_R, TO_R, TO_R
+  fdef "2R>", TWO_R_FROM, R_FROM, R_FROM, R_FROM, SWAP, ROT, TO_R
+  fdef "2RDROP", TWO_R_DROP, R_FROM R_FROM, R_FROM, TWO_DROP, TO_R
+  fdef "2R@", TWO_R_FETCH, TWO_R_FROM, TWO_DUP, TWO_TO_R
+  fdef "TRUE", _, LIT, -1
+  fdef "FALSE", _, LIT, 0
+  fdef "HERE", _, HERE_VAR, FETCH
+  fdef "CHAR+", CHAR_ADD, CHAR_SIZE, ADD
+  fdef "CELL+", CELL_ADD, CELL_SIZE, ADD
+  fdef "C\x2c", C_COMMA, HERE, C_STORE, HERE, CHAR_ADD, HERE_VAR, STORE
+  fdef "\x2c", COMMA, HERE, STORE, HERE, CELL_ADD, HERE_VAR, STORE
 #+END_SRC
-{{{cmid}}}
-#+BEGIN_SRC forth
-  : HERE HERE_VAR @ ;
-#+END_SRC
-{{{cend}}}
 
+*** TODO Creation
 {{{cstart}}}
 #+BEGIN_SRC asm :tangle stage0.s
   entry "ALLOT", ALLOT
@@ -386,30 +400,6 @@ have already defined above
     nip 1 + allot
     align \ padding
     latest @ , ; \ back-pointer
-#+END_SRC
-{{{cend}}}
-
-{{{cstart}}}
-#+BEGIN_SRC asm :tangle stage0.s
-  entry "CHAR+", CHAR_ADD
-    fw forth_interpreter
-    fw CHAR_SIZE, ADD, EXIT
-#+END_SRC
-{{{cmid}}}
-#+BEGIN_SRC forth
-  : CHAR+ char-size + C@ ;
-#+END_SRC
-{{{cend}}}
-
-{{{cstart}}}
-#+BEGIN_SRC asm :tangle stage0.s
-  entry "CELL+", CELL_ADD
-    fw forth_interpreter
-    fw CELL_SIZE, ADD, EXIT
-#+END_SRC
-{{{cmid}}}
-#+BEGIN_SRC forth
-  : CELL+ cell-size + ;
 #+END_SRC
 {{{cend}}}
 
@@ -557,7 +547,7 @@ for the flags.
   entry "MEMCMP", MEMCMP
     fw forth_interpreter
     fw ROT, LIT, 0
-    fw SWAP, TO_R, TO_R
+    fw TWO_TO_R
   MEMCMP_LOOP:
     fw TWO_DUP, R_FETCH, ADD, C_FETCH
     fw SWAP, R_FETCH, ADD, C_FETCH
@@ -1157,13 +1147,13 @@ static-checking too?
 
 * TODO Forth Assembler
 * TODO Ideas
+- DMA Forth :: Do [[cite:runDMA][run-DMA] TODO this link
 - Dereference-count :: When a pointer gets dereferenced a lot, move
      its pointee closer to that pointer (when doing mark&move GC)?
 - Simple JIT :: Inline all the non-recursive calls?
 - Debugger :: Breakpoints and tracing?
 - Exception aspects :: To decouple the 'textbook algorithm' from exception handling?
 - SD Card read/store :: So that we can compile to/read from disk, and don't have to
-
 
 * COMMENT Table column
 #+BEGIN_EXPORT html
@@ -1208,3 +1198,6 @@ static-checking too?
 </script>
 #+END_EXPORT
 
+
+* Bibliography
+#+BIBLIOGRAHPY: pi-bootstrap plain

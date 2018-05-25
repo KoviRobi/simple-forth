@@ -21,3 +21,6 @@
 - Turns out "CHAR" reads the next character (using WORD), not gives the size of a char
   - So made CHAR-SIZE and CHAR-ADD, but forgot to add with CHAR-ADD
 - Used signed comparison against base
+- Had flags in fdef macro which didn't match up with entry macro (and I didn't use them)
+- Problem of implementing 2R>, etc, in Forth, using R>, is that you get the address of 2R> pushed to r-stack, which you then move to the value stack
+- Copy&paste error with FALSE returning -1 (TRUE)
