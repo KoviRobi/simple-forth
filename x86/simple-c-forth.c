@@ -62,6 +62,12 @@ void *allocate(unsigned int count, unsigned int size) {
 extern char WORD_BUF[];
 extern unsigned int WORD_BUF_MAX;
 
+char char_disp(char *p) {
+  char c = *p;
+  if (c < 32 || c > 126) return ' ';
+  else return c;
+}
+
 int level = 0;
 int main(int argc, char **argv) {
   atexit(exit_print);
@@ -101,13 +107,28 @@ int main(int argc, char **argv) {
     instruction inst = unpack_inst(*next_inst++);
     signal = (unpack_interp(inst->interpreter))(&inst->instruction);
   }
-  printf("Heap (%p--%p):\n ", heap_bottom, heap);
-  for (char *p = (char*)heap_bottom; p < (char*)heap; ++p)
-  { unsigned char c = *(unsigned char *)p;
-    printf("%p:\t0x%02x\t%c\n",
+  printf("Heap (%p--%p):\n", heap_bottom, heap);
+  char *p = (char*)heap_bottom;
+  for (; p+3 < (char*)heap; p += 4) {
+    printf("%p:\t0x%08x\t%c%c%c%c\n",
            (void*)p,
-           c, c<127?(c>32?c:32):32);
+           *(uint32_t*)p,
+           char_disp(p), char_disp(p+1),
+           char_disp(p+2), char_disp(p+3));
   }
+
+  if (p < (char*)heap) {
+    printf("%p:\t", (void*)p);
+    intptr_t diff = (char*)heap - p;
+    uint32_t mask = (1<<(diff*8))-1;
+    uint32_t value = *(uint32_t*)p;
+    printf("0x%08x", value&mask);
+  }
+  if (p < (char*)heap) printf("\t");
+  for (char *c = p; c < (char*)heap; c += 1)
+    printf("%c", char_disp(c));
+  if (p < (char*)heap) printf("\n");
+
   exit(0);
 }
 

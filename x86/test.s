@@ -50,12 +50,15 @@ fromC DUP, DROP, NIP, OVER
 fromC PICK, ROT, SWAP
 
 fromCC "R@", R_FETCH, "R>", R_FROM, ">R", TO_R
+/*fromCC "2R@", TWO_R_FETCH, "2RDROP", TWO_R_DROP
+fromCC "2R>", TWO_R_FROM, "2>R", TWO_TO_R*/
 
 fromC BRANCH
 fromCC "0BRANCH", ZBRANCH;
 
 fw ERROR, ERROR, ERROR, ERROR, ABORT
 .globl forth_main; forth_main:
-fw BL, WORD_NEW, ABORT
 fw QUIT, ABORT
 fw ABORT
+
+str: .ascii "hullo"

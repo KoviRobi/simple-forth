@@ -333,15 +333,18 @@ have already defined above
   fdef "1+", INCR, LIT, 1, SUB
   fdef "2DUP", TWO_DUP, OVER, OVER
   fdef "2DROP", TWO_DROP, DROP, DROP
-  fdef "2>R", TWO_TO_R, R_FROM, ROT, ROT, SWAP, TO_R, TO_R, TO_R
-  fdef "2R>", TWO_R_FROM, R_FROM, R_FROM, R_FROM, SWAP, ROT, TO_R
-  fdef "2RDROP", TWO_R_DROP, R_FROM R_FROM, R_FROM, TWO_DROP, TO_R
-  fdef "2R@", TWO_R_FETCH, TWO_R_FROM, TWO_DUP, TWO_TO_R
+  fdef "-ROT", NROT, ROT, ROT
+  fdef "2>R", TWO_TO_R, R_FROM, NROT, SWAP, TO_R, TO_R, TO_R
+  fdef "2R>", TWO_R_FROM, R_FROM, R_FROM, R_FROM, ROT, TO_R, SWAP
+  fdef "2RDROP", TWO_R_DROP, R_FROM, R_FROM, R_FROM, TWO_DROP, TO_R
+  fdef "2R@", TWO_R_FETCH, R_FROM, TWO_R_FROM, TWO_DUP, TWO_TO_R, ROT, TO_R
   fdef "TRUE", _, LIT, -1
   fdef "FALSE", _, LIT, 0
   fdef "HERE", _, HERE_VAR, FETCH
   fdef "CHAR+", CHAR_ADD, CHAR_SIZE, ADD
   fdef "CELL+", CELL_ADD, CELL_SIZE, ADD
+  fdef "CHARS", _, CHAR_SIZE, STAR
+  fdef "CELLS", _, CELL_SIZE, STAR
   fdef "C\x2c", C_COMMA, HERE, C_STORE, HERE, CHAR_ADD, HERE_VAR, STORE
   fdef "\x2c", COMMA, HERE, STORE, HERE, CELL_ADD, HERE_VAR, STORE
 #+END_SRC
@@ -405,13 +408,31 @@ have already defined above
 
 {{{cstart}}}
 #+BEGIN_SRC asm :tangle stage0.s
-  entry "HIDDEN?", HIDDENP
-    fw forth_interpreter
-    fw CELL_ADD, C_FETCH, EXIT
+  fdef "BALIGN", BALIGN, DECR, SWAP, OVER, ADD, SWAP, INVERT, AND
+  fdef "ENTRY-NEXT", ENTRY_NEXT, EXIT
+  fdef "ENTRY-FLAGS", ENTRY_FLAGS, CELL_ADD
+  fdef "ENTRY-LEN", ENTRY_LEN, LIT, 2, CELLS, ADD
+  fdef "ENTRY-CHARS", ENTRY_CHARS, LIT, 3, CELLS, ADD
+  fdef "ENTRY-PREV", ENTRY_PREV, DUP, ENTRY_LEN, FETCH, LIT, 1, ADD, SWAP, ENTRY_CHARS, ADD, LIT, 4, BALIGN
+  fdef "ENTRY-XT", ENTRY_XT, ENTRY_PREV, CELL_ADD
 #+END_SRC
 {{{cmid}}}
 #+BEGIN_SRC forth
-  : HIDDEN? cell+ C@ ;
+  TODO
+#+END_SRC
+{{{cend}}}
+
+
+
+{{{cstart}}}
+#+BEGIN_SRC asm :tangle stage0.s
+  entry "HIDDEN?", HIDDENP
+    fw forth_interpreter
+    fw ENTRY_FLAGS, C_FETCH, EXIT
+#+END_SRC
+{{{cmid}}}
+#+BEGIN_SRC forth
+  : HIDDEN? entry-flags C@ ;
 #+END_SRC
 {{{cend}}}
 
@@ -419,12 +440,12 @@ have already defined above
 #+BEGIN_SRC asm :tangle stage0.s
   entry "IMMEDIATE?", IMMEDIATEP
     fw forth_interpreter
-    fw CELL_ADD, CHAR_ADD, C_FETCH, EXIT
+    fw ENTRY_FLAGS, CHAR_ADD, C_FETCH, EXIT
 #+END_SRC
 {{{cmid}}}
 #+BEGIN_SRC forth
   : IMMEDIATE? ( xt -- -1|0 )
-    cell+ char+ C@ ;
+    entry-flags char+ C@ ;
 #+END_SRC
 {{{cend}}}
 
@@ -478,16 +499,17 @@ Toggles hidden status of a given xt
     fw DUP, HIDDENP, INVERT
     fw ZBRANCH, (FIND_NEXT_ENTRY-.)
 
-    fw DUP, LIT, 8, ADD, FETCH, LIT, 2, PICK
-    fw EQUAL, ZBRANCH, (FIND_NEXT_ENTRY-.)
+    fw TWO_DUP, ENTRY_LEN, FETCH, EQUAL
+    fw ZBRANCH, (FIND_NEXT_ENTRY-.)
     /* c-addr u entry */
-    fw LIT, 1, PICK, LIT, 3, PICK
-    fw LIT, 2, PICK, LIT, 12, ADD
-    /* c-addr u entry u c-addr c-addr' */
+    fw TWO_DUP, ENTRY_CHARS
+    fw LIT, 4, PICK
+    /* c-addr u entry u entry-str c-addr */
     fw MEMCMP, ZBRANCH, (FIND_NEXT_ENTRY-.)
 
     fw NIP, NIP
-    fw DUP, IMMEDIATEP
+    fw DUP, ENTRY_XT
+    fw SWAP, IMMEDIATEP
     fw ZBRANCH, (NON_IMM-.), LIT, 1, BRANCH, (IMM_END-.)
   NON_IMM:
     fw LIT, -1
@@ -505,36 +527,19 @@ Toggles hidden status of a given xt
     begin \ c-addr u entry
       dup 0 = if drop drop 0 exit then
       dup hidden? invert if
-        dup 8 + @ 2 pick \ c-addr u entry entry-u u
-        = if
-          1 pick 3 pick 2 pick 12 +
-          \ c-addr u entry u c-addr entry-str
+        2dup entry-len = if \ c-addr u entry entry-len u
+          2dup entry-chars 4 pick
+          \ c-addr u entry u entry-str c-addr
           memcmp if \ c-addr u entry
             nip nip \ entry
-            dup immediate? if 1 else -1 then
+            dup entry-xt
+            swap immediate? if 1 else -1 then
             exit
           then
         then
       then
       @ \ Fetch next entry
     again ;
-#+END_SRC
-{{{cend}}}
-
-{{{cstart}}}
-#+BEGIN_SRC asm :tangle stage0.s
-  entry "ENTRY->INTERPRETER", ENTRY_TO_INTERPRETER
-    fw forth_interpreter
-    fw DUP, LIT, 8, ADD, FETCH, ADD, LIT, 12, ADD, LIT, 1, ADD
-    fw LIT, 3, ADD, LIT, 3, INVERT, AND
-    fw LIT, 4, ADD, EXIT
-#+END_SRC
-{{{cmid}}}
-#+BEGIN_SRC forth
-  : ENTRY->INTERPRETER ( entry -- interpreter )
-    dup 8 + @ + 12 + 1 + \ Skip over next entry, flags, c-string (and zero byte)
-    3 + 3 invert and \ Align to power of 2 (multiple of 4)
-    4 + ; \ Skip back-pointer
 #+END_SRC
 {{{cend}}}
 
@@ -805,13 +810,12 @@ TODO
 #+BEGIN_SRC asm :tangle stage0.s
   entry "EXECUTE", EXECUTE
     fw forth_interpreter
-    fw ENTRY_TO_INTERPRETER
     fw EXECUTE_INTERPRETER, EXIT
 #+END_SRC
 {{{cmid}}}
 #+BEGIN_SRC forth
   : EXECUTE
-    entry->interpreter execute-interpreter ;
+    execute-interpreter ;
 #+END_SRC
 {{{cend}}}
 
@@ -877,15 +881,11 @@ See §3.4 of the [[https://www.taygeta.com/forth/dpans3.htm#3.4][ANSI Forth manu
 #+BEGIN_SRC asm :tangle stage0.s
   entry "COMPILE,", COMPILE_COMMA
     fw forth_interpreter
-    fw ENTRY_TO_INTERPRETER
     fw COMMA, EXIT
 #+END_SRC
 {{{cmid}}}
 #+BEGIN_SRC forth
-  : COMPILING, ( xt -- )
-    nip -1 = state @ and if \ Compiling
-      compiling, else execute then
-    ok ;
+  TODO
 #+END_SRC
 {{{cend}}}
 
@@ -929,7 +929,7 @@ See §3.4 of the [[https://www.taygeta.com/forth/dpans3.htm#3.4][ANSI Forth manu
 #+BEGIN_SRC asm :tangle stage0.s
   entry "QUIT-NOT-FOUND", QUIT_NOT_FOUND
     fw forth_interpreter
-    fw ROT, ROT, TO_NUMBER, LIT, 0
+    fw NROT, TO_NUMBER, LIT, 0
     fw EQUAL, ZBRANCH, (Q_N_F_ELSE-.)
     fw DROP, STATE, FETCH, ZBRANCH, (Q_N_F_END-.)
     fw LITERAL
@@ -958,7 +958,7 @@ See §3.4 of the [[https://www.taygeta.com/forth/dpans3.htm#3.4][ANSI Forth manu
   entry "QUIT", QUIT
     fw forth_interpreter
   QUIT_LOOP:
-    fw BL, WORD_NEW, DUP, ROT, ROT
+    fw BL, WORD_NEW, DUP, NROT
     fw FIND_NEW, ROT, SWAP
     fw DUP, ZBRANCH, (QUIT_N_F-.)
     fw QUIT_FOUND, BRANCH, (QUIT_LOOP-.)
