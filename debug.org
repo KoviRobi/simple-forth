@@ -1,0 +1,3 @@
+* Gadgets/simple test cases
+* Tracing via 'next'
+Put ~bl puthex~ as the first thing in ~next~
