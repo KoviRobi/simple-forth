@@ -102,13 +102,52 @@ code (not standard, but will work once we have got to section TODO).
     /* b next */
 
   next:
+    mov r0, next_inst
+    bl puthex
     ldr r0, [next_inst], #4 /* FWSIZE */
     ldr r1, [r0], #4 /* FWSIZE */
     bx r1
 
-  exit:  
+  exit:
     ldr next_inst, [rsp, #4]!
     b next
+#+END_SRC
+
+** DEBUG
+#+BEGIN_SRC asm :tangle stage0-machine-arm.s
+  putc:
+    push {r0}
+  1:ldr r0, #UART1_MU_LSR_REG
+    ldr r0, [r0]
+    tst r0, #32
+    wfieq
+    beq 1b
+    ldr r0, #UART1_MU_IO_REG
+    strB r1, [r0]
+    pop {r0}
+    bx lr
+
+  tohex:
+    cmp r1, #10
+    addge r1, #'A'-10
+    addlt r1, #'0'
+    bx lr
+
+  puthex:
+    push {r0-r3,lr}
+    mov r1, #'0' ; bl putc
+    mov r1, #'x' ; bl putc
+    mov r2, #15
+    mov r3, #8
+    ror r0, r0, #28 /* 01 23 45 67 */
+  puthex_loop:
+    and r1, r0, r2 ; bl tohex ; bl putc
+    ror r0, #28
+    subs r3, #1
+    bne puthex_loop
+  puthex_end:
+    mov r1, #'\n' ; bl putc
+    pop {r0-r3,pc}
 #+END_SRC
 {{{cmid}}}
 #+BEGIN_SRC forth
@@ -337,7 +376,7 @@ have already defined above
   fdef "2>R", TWO_TO_R, R_FROM, NROT, SWAP, TO_R, TO_R, TO_R
   fdef "2R>", TWO_R_FROM, R_FROM, R_FROM, R_FROM, ROT, TO_R, SWAP
   fdef "2RDROP", TWO_R_DROP, R_FROM, R_FROM, R_FROM, TWO_DROP, TO_R
-  fdef "2R@", TWO_R_FETCH, R_FROM, TWO_R_FROM, TWO_DUP, TWO_TO_R, ROT, TO_R
+  fdef "2R\x40", TWO_R_FETCH, R_FROM, TWO_R_FROM, TWO_DUP, TWO_TO_R, ROT, TO_R
   fdef "TRUE", _, LIT, -1
   fdef "FALSE", _, LIT, 0
   fdef "HERE", _, HERE_VAR, FETCH
@@ -593,6 +632,7 @@ for the flags.
     beq 1b
     ldr r0, #UART1_MU_IO_REG
     ldrB r0, [r0]
+    push {r0}
     b next
 #+END_SRC
 {{{cmid}}}
@@ -772,7 +812,8 @@ If the character is less than '0', or between '9' and 'A' (or 'Z' and
 #+BEGIN_SRC asm :tangle stage0-machine-arm.s
   entry "EMIT", EMIT
     fw 1f
-  1:ldr r1, #UART1_MU_LSR_REG
+  1:pop {r0}
+    ldr r1, #UART1_MU_LSR_REG
     ldr r1, [r1]
     tst r1, #32
     wfieq
@@ -1104,6 +1145,25 @@ TODO explain, especially as we don't have comments yet
 #+END_SRC
 
 * TODO After REPL
+
+* TODO Forth Assembler
+* TODO Ideas
+- DMA Forth :: Do [[cite:runDMA][run-DMA] TODO this link
+- [[Naming][Naming]] :: All the stack manipulation could be simplified by having
+            names.
+- [[PRF][Partial Recursive Functions (PRF)]] :: Perhaps could take inspiration
+     from the way composition is implemented there, in order to avoid
+     all the stack manipulation? This could be more in the Forth
+     spirit than [[Naming][naming]].
+- Dereference-count :: When a pointer gets dereferenced a lot, move
+     its pointee closer to that pointer (when doing mark&move GC)? To
+     make it more likely to be in the cache (akin to
+     simulated-annealing in the connection machine).
+- Simple JIT :: Inline all the non-recursive calls?
+- Debugger :: Breakpoints and tracing?
+- Exception aspects :: To decouple the 'textbook algorithm' from exception handling?
+- SD Card read/store :: So that we can compile to/read from disk, and don't have to
+
 * TODO Naming
 Plan is to extend forth to do naming, to make programs easier to
 understand.
@@ -1145,16 +1205,22 @@ And arg-count checking, possibly only at runtime first, to make sure
 we don't return multiple values or get too few arguments. Possibly
 static-checking too?
 
-* TODO Forth Assembler
-* TODO Ideas
-- DMA Forth :: Do [[cite:runDMA][run-DMA] TODO this link
-- Dereference-count :: When a pointer gets dereferenced a lot, move
-     its pointee closer to that pointer (when doing mark&move GC)?
-- Simple JIT :: Inline all the non-recursive calls?
-- Debugger :: Breakpoints and tracing?
-- Exception aspects :: To decouple the 'textbook algorithm' from exception handling?
-- SD Card read/store :: So that we can compile to/read from disk, and don't have to
-
+* TODO Partial Recursive Functions (PRF) <<PRF>>
+Perhaps turn something like
+#+BEGIN_SRC forth
+  \ FOO ( A B C -- V W )
+  \ BAR ( E F -- X )
+  \ BAZ ( V W X -- M N O )
+  { FOO , , BAR } BAZ
+#+END_SRC
+into
+#+BEGIN_SRC forth
+  FOO >R
+  >R \ from the empty
+  BAR >R
+  R> R> R>
+  BAZ
+#+END_SRC
 * COMMENT Table column
 #+BEGIN_EXPORT html
 <script type="text/javascript">

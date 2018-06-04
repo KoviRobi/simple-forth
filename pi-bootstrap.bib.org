@@ -1,0 +1,12 @@
+* Run-DMA
+:PROPERTIES:
+:TITLE:    Run-DMA
+:BTYPE:    inproceedings
+:CUSTOM_ID: 191964
+:AUTHOR:   Michael Rushanan and Stephen Checkoway
+:BOOKTITLE: 9th {USENIX} Workshop on Offensive Technologies ({WOOT} 15)
+:YEAR:     2015
+:ADDRESS:  Washington, D.C.
+:URL:      https://www.usenix.org/conference/woot15/workshop-program/presentation/rushanan
+:PUBLISHER: {USENIX} Association
+:END:
