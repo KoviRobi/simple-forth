@@ -25,3 +25,13 @@
 - Problem of implementing 2R>, etc, in Forth, using R>, is that you get the address of 2R> pushed to r-stack, which you then move to the value stack. Got problems with 2R@ etc too
 - Copy&paste error with FALSE returning -1 (TRUE)
 - Not using FETCH after ENTRY_NEXT
+- Not using link-script.ld to ensure Forth gets loaded to 0x8000
+- Didn't have the start method at 0x8000 (used .init not .text.init section)
+- Didn't pop {r0} in EMIT or push {r0} in KEY
+- Used 'b' instead of 'bl' in puthex
+- Used 'sub' instead of 'subs' in puthex_loop
+- Had the jump target for a loop include the initialization (i = 0), so i was reset each time (in test.s, testing puthex)
+- Used "ror r0, #4" not "ror r0, #28" in puthex
+- For tracing (in next), printed r0, not next_inst
+- Used "BAR" not "(BAR-.)" in BRANCH target in a test gadget
+- For some reason, the EMIT/putc is interfering(!?) Perhaps forgot to disable interrupts?
