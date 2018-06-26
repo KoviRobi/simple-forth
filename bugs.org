@@ -35,3 +35,21 @@
 - For tracing (in next), printed r0, not next_inst
 - Used "BAR" not "(BAR-.)" in BRANCH target in a test gadget
 - For some reason, the EMIT/putc is interfering(!?) Perhaps forgot to disable interrupts?
+  - Using a single uart_putc seems to have fixed it
+- In puthex, r1 was overwritten by uart_putc
+- ARM BRANCH only loaded the offset, didn't add it to next_inst
+- Commented out label 1: when debugging uart_getc
+- Only loading a byte from the UART meant the FIFO never got cleared (perhaps similar with storing)
+- Used HERE_VAR without LIT before it (I swear I made this mistake a couple of other times already)
+  - Yes, but then made HERE_VAR push the location, not be the location (with the simple-forth)
+  - Then had HERE_LOC be HERE_VAR
+- DROP did "sub sp, #4" not "add sp, #4"
+- Didn't have 'LIT' before 'HERE_VAR' in "fdef HERE" definition
+- arm NIP behaved as DROP
+- EXECUTE did dereference twice
+- INCR had a copy&paste error, so did DECR
+- R_FROM (and TO_R) didn't update rsp, and didn't have direction (used stm not stmdb)
+- Had pre- and post- decrement/increment mixed up in forth_interpreter/exit
+  - This might have meant we overwrote 0x8000?
+- Broke >NUMBER with a 'debug' "R_FROM, HEX_PRINT" (should be "R_FETCH, HEX_PRINT")
+TODO: swap >r >r

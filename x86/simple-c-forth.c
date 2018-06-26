@@ -30,7 +30,8 @@ extern forth_instruction forth_main;
 forth_instruction *next_inst;
 code *frame_stack, *frame_stack_bottom, *frame_stack_top;
 scell *value_stack, *value_stack_bottom, *value_stack_top;
-scell *heap, *heap_bottom, *heap_top;
+scell *HERE_LOC, *heap_bottom, *heap_top;
+scell STATE_LOC = false;
 
 void print_value_stack() {
   printf("Values from bottom\n");
@@ -96,8 +97,8 @@ int main(int argc, char **argv) {
     value_stack = (scell *)allocate(values_size, sizeof(scell));
     value_stack_bottom = value_stack;
     value_stack_top = value_stack_bottom + values_size;
-    heap = (scell*)allocate(heap_size, sizeof(scell));
-    heap_bottom = heap;
+    HERE_LOC = (scell*)allocate(heap_size, sizeof(scell));
+    heap_bottom = HERE_LOC;
     heap_top = heap_bottom + heap_size;
   }
 
@@ -107,9 +108,9 @@ int main(int argc, char **argv) {
     instruction inst = unpack_inst(*next_inst++);
     signal = (unpack_interp(inst->interpreter))(&inst->instruction);
   }
-  printf("Heap (%p--%p):\n", heap_bottom, heap);
+  printf("Heap (%p--%p):\n", heap_bottom, HERE_LOC);
   char *p = (char*)heap_bottom;
-  for (; p+3 < (char*)heap; p += 4) {
+  for (; p+3 < (char*)HERE_LOC; p += 4) {
     printf("%p:\t0x%08x\t%c%c%c%c\n",
            (void*)p,
            *(uint32_t*)p,
@@ -117,17 +118,17 @@ int main(int argc, char **argv) {
            char_disp(p+2), char_disp(p+3));
   }
 
-  if (p < (char*)heap) {
+  if (p < (char*)HERE_LOC) {
     printf("%p:\t", (void*)p);
-    intptr_t diff = (char*)heap - p;
+    intptr_t diff = (char*)HERE_LOC - p;
     uint32_t mask = (1<<(diff*8))-1;
     uint32_t value = *(uint32_t*)p;
     printf("0x%08x", value&mask);
   }
-  if (p < (char*)heap) printf("\t");
-  for (char *c = p; c < (char*)heap; c += 1)
+  if (p < (char*)HERE_LOC) printf("\t");
+  for (char *c = p; c < (char*)HERE_LOC; c += 1)
     printf("%c", char_disp(c));
-  if (p < (char*)heap) printf("\n");
+  if (p < (char*)HERE_LOC) printf("\n");
 
   exit(0);
 }
@@ -152,7 +153,7 @@ int FEXIT (forth_instruction *_) {
   return 0;
 }
 
-int FEXECUTE_INTERPRETER (forth_instruction *_) {
+int FEXECUTE (forth_instruction *_) {
   pop(scell c, value_stack);
   struct dict_interp *a = (struct dict_interp *)c;
   (unpack_interp(a->interpreter))(&a->instruction);
@@ -244,33 +245,15 @@ int FLIT (forth_instruction *_) {
 
 int FC_COMMA (forth_instruction *_) { /* TODO: HERE ! CHAR-SIZE ALLOT */
   pop(scell a, value_stack);
-  char *cheap = (char *)heap;
-  *cheap++ = (char)a;
-  heap = (scell *)cheap;
+  char *charheap = (char *)HERE_LOC;
+  *charheap++ = (char)a;
+  HERE_LOC = (scell *)charheap;
   return 0;
 }
 
 int FCOMMA (forth_instruction *_) { /* TODO: HERE ! CELL-SIZE ALLOT */
   pop(scell a, value_stack);
-  *heap++ = a;
-  return 0;
-}
-
- // Variable
-scell state = false;
-int FSTATE (forth_instruction *_) {
-  push((scell)&state, value_stack);
-  return 0;
-}
-
-extern ucell latest;
-int FLATEST (forth_instruction *_) {
-  push((ucell)&latest, value_stack);
-  return 0;
-}
-
-int FHERE_VAR (forth_instruction *_) {
-  push(pack(&heap), value_stack);
+  *HERE_LOC++ = a;
   return 0;
 }
 

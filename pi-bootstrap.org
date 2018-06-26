@@ -97,57 +97,53 @@ code (not standard, but will work once we have got to section TODO).
     rsp .req r12
 
   forth_interpreter:
-    str next_inst, [rsp], #-4
+    str next_inst, [rsp, #-4]!
     mov next_inst, r0
     /* b next */
 
   next:
+    /**
+    mov r0, #'t' ; bl uart_putc ; mov r0, #'o' ; bl uart_putc ; mov r0, #'p' ; bl uart_putc ; mov r0, #':' ; bl uart_putc ; mov r0, #' ' ; bl uart_putc
+    ldr r0, [sp] ; bl puthex
     mov r0, next_inst
     bl puthex
+    /**/
     ldr r0, [next_inst], #4 /* FWSIZE */
+    /**
+    bl puthex
+    push {r0-r1} ; mov r0, #'\n' ; bl uart_putc ; pop {r0-r1}
+    /**/
     ldr r1, [r0], #4 /* FWSIZE */
     bx r1
 
   exit:
-    ldr next_inst, [rsp, #4]!
+    ldr next_inst, [rsp], #4
     b next
 #+END_SRC
 
 ** DEBUG
 #+BEGIN_SRC asm :tangle stage0-machine-arm.s
-  putc:
-    push {r0}
-  1:ldr r0, #UART1_MU_LSR_REG
-    ldr r0, [r0]
-    tst r0, #32
-    wfieq
-    beq 1b
-    ldr r0, #UART1_MU_IO_REG
-    strB r1, [r0]
-    pop {r0}
-    bx lr
-
   tohex:
-    cmp r1, #10
-    addge r1, #'A'-10
-    addlt r1, #'0'
+    cmp r0, #10
+    addge r0, #'A'-10
+    addlt r0, #'0'
     bx lr
 
   puthex:
-    push {r0-r3,lr}
-    mov r1, #'0' ; bl putc
-    mov r1, #'x' ; bl putc
-    mov r2, #15
-    mov r3, #8
-    ror r0, r0, #28 /* 01 23 45 67 */
+    push {r0-r4,lr}
+    ror r2, r0, #28 /* 01 23 45 67 */
+    mov r0, #'0' ; bl uart_putc
+    mov r0, #'x' ; bl uart_putc
+    mov r3, #15
+    mov r4, #8
   puthex_loop:
-    and r1, r0, r2 ; bl tohex ; bl putc
-    ror r0, #28
-    subs r3, #1
+    and r0, r2, r3 ; bl tohex ; bl uart_putc
+    ror r2, #28
+    subs r4, #1
     bne puthex_loop
   puthex_end:
-    mov r1, #'\n' ; bl putc
-    pop {r0-r3,pc}
+    mov r0, #'\n' ; bl uart_putc
+    pop {r0-r4,pc}
 #+END_SRC
 {{{cmid}}}
 #+BEGIN_SRC forth
@@ -315,7 +311,7 @@ have already defined above
 #+END_SRC
 
 #+BEGIN_SRC asm :tangle stage0-machine-arm.s
-  fasm "BRANCH", _, _, _, "ldr r0, [next_inst]" /* FWSIZE */
+  fasm "BRANCH", _, _, _, "ldr r0, [next_inst]", "add next_inst, r0" /* FWSIZE */
   fasm "0BRANCH", ZBRANCH, r1, _, "ldr r0, [next_inst]", "cmp r1, #0", "addeq next_inst, r0", "addne next_inst, #4" /* FWSIZE */
   fasm "[']", LIT, _, r0, "ldr r0, [next_inst], #4" /* FWSIZE */
 #+END_SRC
@@ -324,22 +320,27 @@ have already defined above
   fasm "CELL-SIZE", CELL_SIZE, _, r0, "mov r0, #4" /* CELLSIZE */
   fasm "CHAR-SIZE", CHAR_SIZE, _, r0, "mov r0, #1" /* CHARSIZE */
 
-  fasm "NIP", _, r0-r1, r1
-  fasm "DROP", _, _, _, "sub sp, #4" /* CELLSIZE */
+  fasm "NIP", _, r0-r1, r0
+  fasm "DROP", _, _, _, "add sp, #4" /* CELLSIZE */
   fasm "DUP", _, _, r0, "ldr r0, [sp]"
   fasm "OVER", _, _, r0, "ldr r0, [sp, #4]" /* CELLSIZE */
-  fasm "PICK", _, r0, r0, "ldr r0, [sp, r0]"
-  fasm "ROT", _, r0-r2, r0-r1, "push {r2}"
+  fasm "PICK", _, r0, r0, "ldr r0, [sp, r0, LSL #2]" /* CELLSIZE */
+  fasm "ROT", _, r0-r2, r2, "push {r0-r1}"
   fasm "SWAP", _, r0-r1, r1,"push {r0}"
 
   fasm "R\x64", R_FETCH, _, r0, "ldr r0, [rsp]" /* FWSIZE */
-  fasm "R>", R_FROM, _, r0, "ldm rsp, {r0}" /* FWSIZE */
-  fasm ">R", TO_R, r0, _, "stm rsp, {r0}" /* FWSIZE */
-
+  fasm "R>", R_FROM, _, r0, "ldr r0, [rsp], #4" /* FWSIZE */
+  fasm ">R", TO_R, r0, _, "str r0, [rsp, #-4]!" /* FWSIZE */
+  fasm "DEPTH", _, _, r0, "rsb r0, sp, #0x8000", "lsr r0, #2" /* FWSIZE */
 
   /* HERE_VAR */
   /* LATEST */
   /* STATE */
+#+END_SRC
+TODO
+#+BEGIN_SRC asm :tangle stage0-machine-arm.s
+fasm "HCF", _, _, _, "1: b 1b"
+fasm "TOP", _, _, _, "ldr r0, [sp]", "bl puthex"
 #+END_SRC
 {{{cmid}}}
 #+BEGIN_SRC forth
@@ -361,31 +362,40 @@ have already defined above
     entry \name, \label
     fw forth_interpreter
     fw \rest
-    fw EXIT
   .endm
 #+END_SRC
 {{{cmid}}}
 {{{cend}}}
 
 #+BEGIN_SRC asm :tangle stage0.s
-  fdef "1-", DECR, LIT, 1, SUB
-  fdef "1+", INCR, LIT, 1, SUB
-  fdef "2DUP", TWO_DUP, OVER, OVER
-  fdef "2DROP", TWO_DROP, DROP, DROP
-  fdef "-ROT", NROT, ROT, ROT
-  fdef "2>R", TWO_TO_R, R_FROM, NROT, SWAP, TO_R, TO_R, TO_R
-  fdef "2R>", TWO_R_FROM, R_FROM, R_FROM, R_FROM, ROT, TO_R, SWAP
-  fdef "2RDROP", TWO_R_DROP, R_FROM, R_FROM, R_FROM, TWO_DROP, TO_R
-  fdef "2R\x40", TWO_R_FETCH, R_FROM, TWO_R_FROM, TWO_DUP, TWO_TO_R, ROT, TO_R
-  fdef "TRUE", _, LIT, -1
-  fdef "FALSE", _, LIT, 0
-  fdef "HERE", _, HERE_VAR, FETCH
-  fdef "CHAR+", CHAR_ADD, CHAR_SIZE, ADD
-  fdef "CELL+", CELL_ADD, CELL_SIZE, ADD
-  fdef "CHARS", _, CHAR_SIZE, STAR
-  fdef "CELLS", _, CELL_SIZE, STAR
-  fdef "C\x2c", C_COMMA, HERE, C_STORE, HERE, CHAR_ADD, HERE_VAR, STORE
-  fdef "\x2c", COMMA, HERE, STORE, HERE, CELL_ADD, HERE_VAR, STORE
+  fdef "1-", DECR, LIT, 1, SUB, EXIT
+  fdef "1+", INCR, LIT, 1, ADD, EXIT
+  fdef "2DUP", TWO_DUP, OVER, OVER, EXIT
+  fdef "2DROP", TWO_DROP, DROP, DROP, EXIT
+  fdef "-ROT", NROT, ROT, ROT, EXIT
+  fdef "2>R", TWO_TO_R, R_FROM, NROT, SWAP
+  fw TO_R, TO_R, TO_R, EXIT
+  fdef "2R>", TWO_R_FROM, R_FROM, R_FROM
+  fw R_FROM, ROT, TO_R, SWAP, EXIT
+  fdef "2RDROP", TWO_R_DROP, R_FROM, R_FROM
+  fw R_FROM, TWO_DROP, TO_R, EXIT
+  fdef "2R\x40", TWO_R_FETCH, R_FROM
+  fw TWO_R_FROM, TWO_DUP, TWO_TO_R, ROT
+  fw TO_R, EXIT
+  fdef "TRUE", _, LIT, -1, EXIT
+  fdef "FALSE", _, LIT, 0, EXIT
+  fdef "HERE_VAR", _, LIT, HERE_LOC, EXIT
+  fdef "LATEST", _, LIT, LATEST_LOC, EXIT
+  fdef "STATE", _, LIT, STATE_LOC, EXIT
+  fdef "HERE", _, HERE_VAR, FETCH, EXIT
+  fdef "CHAR+", CHAR_ADD, CHAR_SIZE, ADD, EXIT
+  fdef "CELL+", CELL_ADD, CELL_SIZE, ADD, EXIT
+  fdef "CHARS", _, CHAR_SIZE, STAR, EXIT
+  fdef "CELLS", _, CELL_SIZE, STAR, EXIT
+  fdef "C\x2c", C_COMMA, HERE, C_STORE, HERE
+  fw CHAR_ADD, HERE_VAR, STORE, EXIT
+  fdef "\x2c", COMMA, HERE, STORE, HERE
+  fw CELL_ADD, HERE_VAR, STORE, EXIT
 #+END_SRC
 
 *** TODO Creation
@@ -447,13 +457,19 @@ have already defined above
 
 {{{cstart}}}
 #+BEGIN_SRC asm :tangle stage0.s
-  fdef "BALIGN", BALIGN, DECR, SWAP, OVER, ADD, SWAP, INVERT, AND
+  fdef "BALIGN", BALIGN, DECR, SWAP, OVER
+  fw ADD, SWAP, INVERT, AND, EXIT
   fdef "ENTRY-NEXT", ENTRY_NEXT, EXIT
-  fdef "ENTRY-FLAGS", ENTRY_FLAGS, CELL_ADD
-  fdef "ENTRY-LEN", ENTRY_LEN, LIT, 2, CELLS, ADD
-  fdef "ENTRY-CHARS", ENTRY_CHARS, LIT, 3, CELLS, ADD
-  fdef "ENTRY-PREV", ENTRY_PREV, DUP, ENTRY_LEN, FETCH, LIT, 1, ADD, SWAP, ENTRY_CHARS, ADD, LIT, 4, BALIGN
-  fdef "ENTRY-XT", ENTRY_XT, ENTRY_PREV, CELL_ADD
+  fdef "ENTRY-FLAGS", ENTRY_FLAGS, CELL_ADD, EXIT
+  fdef "ENTRY-LEN", ENTRY_LEN, LIT, 2
+  fw CELLS, ADD, EXIT
+  fdef "ENTRY-CHARS", ENTRY_CHARS, LIT, 3
+  fw CELLS, ADD, EXIT
+  fdef "ENTRY-PREV", ENTRY_PREV, DUP
+  fw ENTRY_LEN, FETCH, LIT, 1, ADD, SWAP
+  fw ENTRY_CHARS, ADD, LIT, 4, BALIGN, EXIT
+  fdef "ENTRY-XT", ENTRY_XT, ENTRY_PREV
+  fw CELL_ADD, EXIT
 #+END_SRC
 {{{cmid}}}
 #+BEGIN_SRC forth
@@ -621,19 +637,7 @@ for the flags.
 *** Characters
 {{{cstart}}}
 #+BEGIN_SRC asm :tangle stage0-machine-arm.s
-  UART1_MU_IO_REG:   fw 0x20215040
-  UART1_MU_LSR_REG:  fw 0x20215054
-  entry "KEY", KEY
-    fw 1f
-  1:ldr r0, #UART1_MU_LSR_REG
-    ldr r0, [r0]
-    tst r0, #1
-    wfieq
-    beq 1b
-    ldr r0, #UART1_MU_IO_REG
-    ldrB r0, [r0]
-    push {r0}
-    b next
+  fasm "KEY", _, _, r0, "bl uart_getc", "bl uart_putc"
 #+END_SRC
 {{{cmid}}}
 #+BEGIN_SRC forth
@@ -762,18 +766,18 @@ If the character is less than '0', or between '9' and 'A' (or 'Z' and
 {{{cstart}}}
 #+BEGIN_SRC asm :tangle stage0.s
   .data
-  BASE_VAR: fw 10
+  BASE_LOC: fw 10
   .text
   entry "BASE", BASE
     fw forth_interpreter
-    fw LIT, BASE_VAR, EXIT
+    fw LIT, BASE_LOC, EXIT
   entry "DECIMAL", DECIMAL
     fw forth_interpreter
-    fw LIT, 10, LIT, BASE_VAR, STORE, EXIT
+    fw LIT, 10, BASE, STORE, EXIT
   entry ">NUMBER", TO_NUMBER
     fw forth_interpreter
     fw OVER, ADD, DUP, TO_R, SWAP
-    fw SWAP, TO_R, TO_R
+    fw TWO_TO_R
   TO_NUM_LOOP:
     fw R_FETCH, C_FETCH, CHAR_TO_DIGIT, DUP
     fw BASE, FETCH, U_LESS_THAN
@@ -782,7 +786,7 @@ If the character is less than '0', or between '9' and 'A' (or 'Z' and
     fw BRANCH, (TO_NUM_NEXT-.)
   TO_NUM_ELSE:
     fw DROP, R_FETCH, TWO_R_DROP, R_FROM
-    fw OVER, SUB, EXIT
+    fw OVER, SUB,  EXIT
   TO_NUM_NEXT:
     fw R_FROM, LIT, 1, ADD, TO_R
     fw TWO_R_FETCH, EQUAL
@@ -799,7 +803,7 @@ If the character is less than '0', or between '9' and 'A' (or 'Z' and
     do \ ud1; loops with  c-addr1 <= I < c-addr1+u1
       I C@ char->digit dup BASE @ U< if \ ud1 digit
         swap BASE @ * +
-      else \ ud1
+      else \ ud2 digit
         drop I unloop R> over - exit \ ud2 c-addr2 u2
       then
     loop
@@ -810,17 +814,7 @@ If the character is less than '0', or between '9' and 'A' (or 'Z' and
 ** TODO Output
 {{{cstart}}}
 #+BEGIN_SRC asm :tangle stage0-machine-arm.s
-  entry "EMIT", EMIT
-    fw 1f
-  1:pop {r0}
-    ldr r1, #UART1_MU_LSR_REG
-    ldr r1, [r1]
-    tst r1, #32
-    wfieq
-    beq 1b
-    ldr r1, #UART1_MU_IO_REG
-    strB r0, [r1]
-    b next
+  fasm "EMIT", _, r0, _, "bl uart_putc"
 #+END_SRC
 {{{cmid}}}
 #+BEGIN_SRC forth
@@ -828,14 +822,27 @@ TODO
 #+END_SRC
 {{{cend}}}
 
+*** Hex number
+{{{cstart}}}
+#+BEGIN_SRC asm :tangle stage0-machine-arm.s
+  fasm "HEX.", HEX_PRINT, r0, _, "bl puthex"
+  fasm "HEXAMINE", _, _, _, "ldr r0, [sp]", "bl puthex", "ldr r0, [sp, #4]", "bl puthex", "ldr r0, [sp, #8]", "bl puthex"
+  fasm "HEXRTSTK", _, _, _, "ldr r0, [rsp]", "bl puthex", "ldr r0, [rsp, #4]", "bl puthex", "ldr r0, [rsp, #8]", "bl puthex"
+#+END_SRC
+{{{cmid}}}
+#+BEGIN_SRC forth
+  :ASM KEY TODO BUFFER FLOW CONTROL ;
+#+END_SRC
+{{{cend}}}
+
+
 ** TODO Interpreting
 {{{cstart}}}
 #+BEGIN_SRC asm :tangle stage0-machine-arm.s
-  entry "EXECUTE-INTERPRETER", EXECUTE_INTERPRETER
+  entry "EXECUTE", EXECUTE
     fw 1f
   1:pop {r0}
-    ldr r0, [r0] /* TODO: don't we want ldr r1, [r0], #4 */
-    ldr r1, [r0], #4 /* TODO: ldr r1, [r1] */
+    ldr r1, [r0], #4 /* FWSIZE */
     bx r1
 #+END_SRC
 {{{cmid}}}
@@ -844,19 +851,6 @@ TODO
     { r0 } value_stack POP
     r1 r0 4 LDR+ \ TODO
     r0 BX ;
-#+END_SRC
-{{{cend}}}
-
-{{{cstart}}}
-#+BEGIN_SRC asm :tangle stage0.s
-  entry "EXECUTE", EXECUTE
-    fw forth_interpreter
-    fw EXECUTE_INTERPRETER, EXIT
-#+END_SRC
-{{{cmid}}}
-#+BEGIN_SRC forth
-  : EXECUTE
-    execute-interpreter ;
 #+END_SRC
 {{{cend}}}
 
@@ -1148,6 +1142,8 @@ TODO explain, especially as we don't have comments yet
 
 * TODO Forth Assembler
 * TODO Ideas
+- Server and client :: Have the C implementation be a REPL server,
+     with separate messages, errors, and stack buffers?
 - DMA Forth :: Do [[cite:runDMA][run-DMA] TODO this link
 - [[Naming][Naming]] :: All the stack manipulation could be simplified by having
             names.
