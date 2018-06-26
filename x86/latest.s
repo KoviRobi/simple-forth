@@ -1,2 +1,2 @@
 .data
-.globl latest; latest: .4byte previous_entry
+.globl LATEST_LOC; LATEST_LOC: .4byte previous_entry

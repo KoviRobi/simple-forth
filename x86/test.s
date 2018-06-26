@@ -42,8 +42,8 @@ fromCC "U<", U_LESS_THAN, "U>", U_GREATER_THAN
 fromCC "<>", NOT_EQUAL, "\x3d", EQUAL
 fromC OR, AND, LSHIFT, RSHIFT
 fromCC "C!", C_STORE, "C@", C_FETCH, "!", STORE, "@", FETCH
-fromC INVERT, LATEST, HERE_VAR, NEGATE
-fromC STATE, EXECUTE_INTERPRETER, DOCOL
+fromC INVERT, NEGATE
+fromC EXECUTE, DOCOL
 fromCC "CELL-SIZE", CELL_SIZE, "CHAR-SIZE", CHAR_SIZE
 
 fromC DUP, DROP, NIP, OVER
@@ -58,7 +58,5 @@ fromCC "0BRANCH", ZBRANCH;
 
 fw ERROR, ERROR, ERROR, ERROR, ABORT
 .globl forth_main; forth_main:
-fw QUIT, ABORT
+fw QUIT
 fw ABORT
-
-str: .ascii "hullo"

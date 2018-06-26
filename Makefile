@@ -1,16 +1,29 @@
 ARM = arm-none-eabi
 
-all: kernel.img program
+all: kernel.img prog output decoded
 
 %.img: %.elf
 	$(ARM)-objcopy $< -O binary $@
 
-kernel.elf: kernel.o
-	$(ARM)-ld -T link-script.ld kernel.o -o kernel.elf
+%.elf: %.o
+	$(ARM)-ld -T link-script.ld $< -o $@
 
-kernel.o: test.s stage0-machine-arm.s stage0.s vars.s
-	$(ARM)-as -mcpu=arm1176jzf-s -c $^ -o kernel.o
+%.o: stage0-machine-arm.s %.s stage0.s vars.s uart.s
+	$(ARM)-as -mcpu=arm1176jzf-s -c $^ -o $@
 
-.PHONY: program prog
-program prog: kernel.img
-	./ld /dev/ttyUSB0 kernel.img
+labels: kernel.elf
+	objdump -t $< | grep '\.text' > labels
+
+.PHONY: prog test
+prog: kernel.img
+	-./ld /dev/ttyUSB0 kernel.img | tee output
+
+test: unit-tests.img
+	-./ld /dev/ttyUSB0 unit-tests.img | tee output
+
+.PHONY: output
+output:
+	sed -i output -e 's/\x11//g' -e 's/\x13//'
+
+decoded: output labels
+	awk -f decode.awk <output >decoded

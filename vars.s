@@ -1,6 +1,6 @@
 .data
 .balign 4
-HERE_VAR: .4byte DATA
+HERE_LOC: .4byte DATA_END
 .globl previous_entry
-LATEST:   .4byte previous_entry
-STATE:    .4byte 0
+LATEST_LOC:   .4byte previous_entry
+STATE_LOC:    .4byte 0
