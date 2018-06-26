@@ -17,4 +17,6 @@ SECTIONS
   .data :
   { *(.data)
   }
+  data_size = SIZEOF(.data);
+  DATA_END = .;
 }
