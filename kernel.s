@@ -14,7 +14,7 @@ b next
 
 MAIN:
 fw QUIT
-fw HCF
+fw BRANCH, -4
 
 loader:
 ldr r4, =START_VALUE_STASH

@@ -52,4 +52,6 @@
 - Had pre- and post- decrement/increment mixed up in forth_interpreter/exit
   - This might have meant we overwrote 0x8000?
 - Broke >NUMBER with a 'debug' "R_FROM, HEX_PRINT" (should be "R_FETCH, HEX_PRINT")
+- When using macro fasm1 I didn't pop {r0}
+- TODO: WHY DOES ['] and @ not work?
 TODO: swap >r >r
