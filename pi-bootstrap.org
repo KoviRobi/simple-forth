@@ -302,8 +302,8 @@ binrels "<", LESS_THAN, lt,    ">", GREATER_THAN, gt
 
 fasm "NEGATE", _, r0, r0, "rsb r0, #0"
 fasm "INVERT", _, r0, r0, "mvn r0, r0"
-fasm "C\x64", C_FETCH, r0, r0, "ldrB r0, [r0]"
-fasm "\x64", FETCH, r0, r0, "ldr r0, [r0]" /* FWSIZE */
+fasm "C\x40", C_FETCH, r0, r0, "ldrB r0, [r0]"
+fasm "\x40", FETCH, r0, r0, "ldr r0, [r0]" /* FWSIZE */
 fasm "C!", C_STORE, r0-r1, _, "strB r1, [r0]"
 fasm "!", STORE, r0-r1, _, "str r1, [r0]" /* FWSIZE */
 #+END_SRC
@@ -320,7 +320,7 @@ add next_inst, r0 ; b next /* FWSIZE */
 fasm1 "0BRANCH", ZBRANCH, r1, "ldr r0, [next_inst]"
 cmp r1, #0 ; addeq next_inst, r0 ; addne next_inst, #4
 b next /* FWSIZE */
-fasm "[']", LIT, _, r0, "ldr r0, [next_inst], #4" /* FWSIZE */
+fasm "[\x27]", LIT, _, r0, "ldr r0, [next_inst], #4" /* FWSIZE */
 #+END_SRC
 {{{cmid}}}
 #+BEGIN_SRC forth
@@ -341,7 +341,7 @@ fasm "PICK", _, r0, r0, "ldr r0, [sp, r0, LSL #2]" /* CELLSIZE */
 fasm "ROT", _, r0-r2, r2, "push {r0-r1}"
 fasm "SWAP", _, r0-r1, r1,"push {r0}"
 
-fasm "R\x64", R_FETCH, _, r0, "ldr r0, [rsp]" /* FWSIZE */
+fasm "R\x40", R_FETCH, _, r0, "ldr r0, [rsp]" /* FWSIZE */
 fasm "R>", R_FROM, _, r0, "ldr r0, [rsp], #4" /* FWSIZE */
 fasm ">R", TO_R, r0, _, "str r0, [rsp, #-4]!" /* FWSIZE */
 fasm "DEPTH", _, _, r0, "rsb r0, sp, #0x8000", "lsr r0, #2" /* FWSIZE */
@@ -364,7 +364,6 @@ HERE_LOC: .4byte DATA_END
 .globl previous_entry
 LATEST_LOC:   .4byte previous_entry
 STATE_LOC:    .4byte 0
-.4byte DATA_END
 #+END_SRC
 {{{cmid}}}
 #+BEGIN_SRC forth
