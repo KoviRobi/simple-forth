@@ -53,5 +53,6 @@
   - This might have meant we overwrote 0x8000?
 - Broke >NUMBER with a 'debug' "R_FROM, HEX_PRINT" (should be "R_FETCH, HEX_PRINT")
 - When using macro fasm1 I didn't pop {r0}
-- TODO: WHY DOES ['] and @ not work?
+- For @ and C@, used \x64 not \x40 (it is decimal 64)
+- For ['] for some reason it ended up as [93 (93 is the hex code for ] so gnu as bug?)
 TODO: swap >r >r
