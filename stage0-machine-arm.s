@@ -49,7 +49,6 @@ puthex_end:
 .byte \hid, \imm ; .balign 4
 fw 2f-3f ; 3:.ascii "\name" ; 2: .byte 0
 .balign 4 /* Align to power of 2 */
-fw 1b
 .ifc _,\label
 .globl \name ; \name :
 .else
@@ -102,7 +101,7 @@ fasm "!", STORE, r0-r1, _, "str r1, [r0]" /* FWSIZE */
 
 fasm1 "BRANCH", _, _, "ldr r0, [next_inst]"
 add next_inst, r0 ; b next /* FWSIZE */
-fasm1 "0BRANCH", ZBRANCH, r1, "ldr r0, [next_inst]"
+fasm1 "?BRANCH", ZBRANCH, r1, "ldr r0, [next_inst]"
 cmp r1, #0 ; addeq next_inst, r0 ; addne next_inst, #4
 b next /* FWSIZE */
 fasm "[\x27]", LIT, _, r0, "ldr r0, [next_inst], #4" /* FWSIZE */

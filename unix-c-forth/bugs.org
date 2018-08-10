@@ -1,0 +1,21 @@
+#+OPTIONS: H:1
+#+PROPERTY: header-args :exports code
+* x86/ bugs
+- unsigned pointer to branch targed (and LIT?)
+- Didn't implement FLATEST
+- Didn't return the address of, for FLATEST (and other variables?)
+- Pick added, not subtracted (i.e. picked elements above the stack, not in it)
+- Pick used next_inst, not value_stack
+- Pick didn't take "pop" into account, so off by one
+- Didn't check for feof(stdin)/feof(stdout)
+- Failed to work out logic of "while (s = putchar(a) == EOF && !feof(stdout))" (needed parentheses around && and assignment)
+- Using *(char *)heap++ = ... didn't work
+- Different sizes between x86's dict entry and ARM's
+- Forgot to change ~.forth_interpreter~ when changed it to 4byte
+- Didn't put latest in .data section
+- FOVER() was broken, due to macro substitution and *value_stack++ = *(value_stack-2) (when you assign *(value_stack-2) to a value first, it works
+
+* unix-c-forth/ bugs
+** Had the interpreter pointer as src_c{int (**)(forth_instruction*)} and not src_C{int (*)(forth_instruction*)}
+** Had src_C{#define false ((scell)-1)}
+** Didn't get rid of back-pointer in ENTRY_XT
