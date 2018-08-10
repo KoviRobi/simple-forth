@@ -167,9 +167,8 @@ natively.
 But before we implement those words, we need to make them findable by
 the Forth system, for which we have to discuss the simple Forth
 dictionary. The dictionary is a simple linked-list containing the
-flags, name of the word, a back-pointer (as the name is
-variable-width), and the interpreter along with the code, as discussed
-above.
+flags, name of the word, and the interpreter along with the code, as
+discussed above.
 
 #+BEGIN_SRC dot :file forth-dictionary.png :cache yes
 digraph {
@@ -178,22 +177,20 @@ digraph {
 
   DROP_XT [label="Drop XT", shape=none];
   DUP_XT [label="Dup XT", shape=none];
-  DROP [label="<0> Next entry | Flags |Counted string\n\"DROP\\0\" | Padding | <1> Back-pointer | <xt> Interpreter | Code | ..."];
-  DUP [label="<0> Next entry | Flags | Counted string\n\"DUP\\0\" | <1> Back-pointer | <xt> Interpreter | Code | ..."];
+  DROP [label="<0> Next entry | Flags |Counted string\n\"DROP\\0\" | Padding | <xt> Interpreter | Code | ..."];
+  DUP [label="<0> Next entry | Flags | Counted string\n\"DUP\\0\" | <xt> Interpreter | Code | ..."];
 
   LAST_ENTRY [label="End"];
 
   LATEST -> DROP:0
   DROP_XT -> DROP:xt
-  DROP:1:e -> DROP:0:w
   DUP_XT -> DUP:xt
   DROP:0 -> DUP:0
-  DUP:1:e -> DUP:0:w
   DUP:0 -> LAST_ENTRY
 }
 #+END_SRC
 
-#+RESULTS[9f1017cd83564253a45c5d25ef89dda72a491f13]:
+#+RESULTS[414409f65d09462df2bc5443a9c55f3713246576]:
 [[file:forth-dictionary.png]]
 
 Here a counted string means that the first element of the string is a
@@ -203,10 +200,10 @@ NULL byte, and padded to Forth-word boundary.
 
 To help with making dictionary entries, we will need the following
 macro, which creates the header for a dictionary entry. This includes
-the next entry pointer, its flags, name, a back pointer, and finally
-an assembler label to use with hand-written word implementations. But
-it doesn't include the interpreter, so it can be used to create both
-native and Forth words.
+the next entry pointer, its flags, name, and finally an assembler
+label to use with hand-written word implementations. But it doesn't
+include the interpreter, so it can be used to create both native and
+Forth words.
 
 {{{cstart}}}
 #+BEGIN_SRC asm :tangle stage0-machine-arm.s
@@ -217,7 +214,6 @@ native and Forth words.
 .byte \hid, \imm ; .balign 4
 fw 2f-3f ; 3:.ascii "\name" ; 2: .byte 0
 .balign 4 /* Align to power of 2 */
-fw 1b
 .ifc _,\label
 .globl \name ; \name :
 .else
@@ -234,8 +230,7 @@ fw 1b
   bl word' \ addr start len
   nip 2dup swap ! \ addr len
   nip 1 + allot
-  align \ padding
-  latest @ , ; \ back-pointer
+  align ; \ padding
 #+END_SRC
 {{{cend}}}
 
@@ -317,7 +312,7 @@ TODO
 #+BEGIN_SRC asm :tangle stage0-machine-arm.s
 fasm1 "BRANCH", _, _, "ldr r0, [next_inst]"
 add next_inst, r0 ; b next /* FWSIZE */
-fasm1 "0BRANCH", ZBRANCH, r1, "ldr r0, [next_inst]"
+fasm1 "?BRANCH", ZBRANCH, r1, "ldr r0, [next_inst]"
 cmp r1, #0 ; addeq next_inst, r0 ; addne next_inst, #4
 b next /* FWSIZE */
 fasm "[\x27]", LIT, _, r0, "ldr r0, [next_inst], #4" /* FWSIZE */
@@ -481,8 +476,7 @@ entry "CREATE", CREATE
   bl word' \ addr start len
   nip 2dup swap ! \ addr len
   nip 1 + allot
-  align \ padding
-  latest @ , ; \ back-pointer
+  align ; \ padding
 #+END_SRC
 {{{cend}}}
 
@@ -496,11 +490,9 @@ fdef "ENTRY-LEN", ENTRY_LEN, LIT, 2
 fw CELLS, ADD, EXIT
 fdef "ENTRY-CHARS", ENTRY_CHARS, LIT, 3
 fw CELLS, ADD, EXIT
-fdef "ENTRY-PREV", ENTRY_PREV, DUP
+fdef "ENTRY-XT", ENTRY_XT, DUP
 fw ENTRY_LEN, FETCH, LIT, 1, ADD, SWAP
 fw ENTRY_CHARS, ADD, LIT, 4, BALIGN, EXIT
-fdef "ENTRY-XT", ENTRY_XT, ENTRY_PREV
-fw CELL_ADD, EXIT
 #+END_SRC
 {{{cmid}}}
 #+BEGIN_SRC forth
@@ -1077,7 +1069,7 @@ TODO explain, especially as we don't have comments yet
 #+BEGIN_SRC forth
 : ['] lit lit , ' , ; IMMEDIATE
 : IF
-  ['] 0BRANCH compile,
+  ['] ?BRANCH compile,
   HERE 0 , ; IMMEDIATE
 : THEN
   HERE over - swap ! ; IMMEDIATE
@@ -1096,10 +1088,10 @@ TODO TO TEST
   ['] BRANCH compile,
   HERE - , ; IMMEDIATE
 : UNTIL
-  ['] 0BRANCH compile,
+  ['] ?BRANCH compile,
   HERE - , ; IMMEDIATE
 : WHILE
-  ['] 0BRANCH compile,
+  ['] ?BRANCH compile,
   HERE swap 0 , ; IMMEDIATE
 : REPEAT
   ['] BRANCH ,
@@ -1111,7 +1103,7 @@ TODO TO TEST
 : DO
   2>R ; IMMEDIATE
 : ?DO
-  2dup <> ['] 0BRANCH compile, HERE
+  2dup <> ['] ?BRANCH compile, HERE
   2>R ; IMMEDIATE
 : LOOP
   ;
