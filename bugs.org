@@ -55,4 +55,5 @@
 - When using macro fasm1 I didn't pop {r0}
 - For @ and C@, used \x64 not \x40 (it is decimal 64)
 - For ['] for some reason it ended up as [93 (93 is the hex code for ] so gnu as bug?)
+- Didn't change ENTRY-XT when removing back-pointer
 TODO: swap >r >r

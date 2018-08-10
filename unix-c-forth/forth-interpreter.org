@@ -1,0 +1,801 @@
+#+TITLE: Simple Forth interpreter in C
+#+AUTHOR: Robert Kovacsics (rmk35)
+
+#+HTML_HEAD: <link rel="stylesheet" type="text/css" href="https://www.pirilampo.org/styles/readtheorg/css/htmlize.css"/>
+#+HTML_HEAD: <link rel="stylesheet" type="text/css" href="https://www.pirilampo.org/styles/readtheorg/css/readtheorg.css"/>
+
+#+HTML_HEAD: <script src="https://ajax.googleapis.com/ajax/libs/jquery/2.1.3/jquery.min.js"></script>
+#+HTML_HEAD: <script src="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.4/js/bootstrap.min.js"></script>
+#+HTML_HEAD: <script type="text/javascript" src="https://www.pirilampo.org/styles/lib/js/jquery.stickytableheaders.min.js"></script>
+#+HTML_HEAD: <script type="text/javascript" src="https://www.pirilampo.org/styles/readtheorg/js/readtheorg.js"></script>
+
+#+PROPERTY: header-args:C :noweb tangle
+
+* High-level overview
+#+CAPTION: *simple-forth.c*
+#+NAME: simple-forth.c
+#+BEGIN_SRC C :tangle simple-forth.c
+<<includes>>
+
+#include "simple-forth.h"
+
+extern forth_instruction forth_main;
+extern int level;
+forth_instruction *next_inst;
+<<globals>>
+
+<<before main>>
+
+void
+print_stacks_and_heap() {
+  print_frame_stack();
+  char *name = addr2name(next_inst);
+  char *name_end = name + ((ucell*)name)[-1] + 1; // name len + null byte
+  uintptr_t offset = (uintptr_t)name_end;
+  offset = (offset+3) & (~3); // 4-byte align
+  printf("next inst:\n%8p\t%s+%lu\n", next_inst, name,
+          ((uintptr_t)next_inst)-offset);
+  print_value_stack();
+  print_heap();
+  fflush(stdout);
+}
+
+void
+exit_handler() {
+  print_stacks_and_heap();
+  <<exit clean-up>>
+}
+
+int
+main(int argc, char **argv) {
+  <<set up signal handling>>
+  <<parse arguments>>
+  <<initialize variables>>
+  atexit(exit_handler);
+
+  next_inst = &forth_main;
+  int exit_loop = 0;
+  while (exit_loop != -1) { // 'next' trampoline
+    exit_loop = unpack_and_execute_instruction(*next_inst++);
+  }
+  exit(0);
+}
+#+END_SRC
+
+An encoded instruction is a 32-bit value, representing the offset from
+the start of instruction space to where the pointer to the interpreter
+is. It is decoded to be a function pointer before executing the
+interpreter it points to. The return stack contains pointers to the
+next encoded instruction to execute.
+#+CAPTION: *types.h*
+#+NAME: types.h
+#+BEGIN_SRC C :tangle types.h
+#ifndef _UNIX_C_FORTH_TYPES_H_
+#define _UNIX_C_FORTH_TYPES_H_
+
+#include <stdint.h>
+
+typedef uint32_t forth_instruction;
+typedef int  (*forth_instruction_decoded)(forth_instruction*);
+#+END_SRC
+#+CAPTION: ~<<globals>>~
+#+NAME: globals
+#+BEGIN_SRC C
+forth_instruction **frame_stack, **frame_stack_bottom, **frame_stack_top;
+#+END_SRC
+
+We also have types for a cell, which is a standard unit on the value
+stack, and on the heap.
+#+CAPTION: *types.h*
+#+NAME: types.h
+#+BEGIN_SRC C :tangle types.h
+typedef int32_t  scell;
+typedef uint32_t ucell;
+
+extern forth_instruction forth_main;
+extern forth_instruction *next_inst;
+extern forth_instruction **frame_stack, **frame_stack_bottom, **frame_stack_top;
+extern scell *value_stack, *value_stack_bottom, *value_stack_top;
+extern scell *HERE_LOC, *heap_bottom, *heap_top;
+#+END_SRC
+
+#+CAPTION: ~<<globals>>~
+#+NAME: globals
+#+BEGIN_SRC C
+scell *value_stack, *value_stack_bottom, *value_stack_top;
+scell *HERE_LOC, *heap_bottom, *heap_top;
+#+END_SRC
+
+The conversion from ~forth_instruction~ to ~forth_instruction_decoded~
+is by offsetting it from the base of the heap. This involves some
+complicated casting, so it has been broken up into several variables.
+#+CAPTION: *simple-forth.h*
+#+NAME: simple-forth.h
+#+BEGIN_SRC C :tangle simple-forth.h :noweb tangle
+#ifndef _UNIX_C_FORTH_SIMPLE_FORTH_H_
+#define _UNIX_C_FORTH_SIMPLE_FORTH_H_
+
+#include "types.h"
+int unpack_and_execute_instruction(forth_instruction inst);
+
+#endif // _UNIX_C_FORTH_SIMPLE_FORTH_H_
+#+END_SRC
+#+CAPTION: ~<<before main>>~
+#+NAME: before main
+#+BEGIN_SRC C
+int
+unpack_and_execute_instruction(forth_instruction inst)
+{
+  typedef forth_instruction_decoded decoded;
+  // Offset is in bytes
+  uint8_t *byte_addressed_heap = (uint8_t*)0; // TODO
+  uint8_t *interpreter_ptr_addr = byte_addressed_heap + inst;
+  // Convert to pointer, so that dereferencing loads a whole cell,,
+  // not just a byte
+  scell *interpreter_ptr_cell = (scell *)interpreter_ptr_addr;
+  decoded interpreter_ptr = (decoded)(uintptr_t)*interpreter_ptr_cell;
+  // Skip interpreter pointer, to the first forth instruction
+  scell *first_forth_instruction = interpreter_ptr_cell+1;
+  return (*interpreter_ptr)((forth_instruction*)first_forth_instruction);
+}
+#+END_SRC
+
+* Putting it together
+#+CAPTION: *Makefile*
+#+NAME: Makefile
+#+BEGIN_SRC Makefile :tangle Makefile
+SRCS := simple-forth.c c-words.c arguments.c
+OBJS := $(patsubst %.c,%.o,$(SRCS)) words.o
+
+CFLAGS := -g -rdynamic $(CFLAGS)
+LIBS   := -lc -ldl
+
+.PHONY: all
+all: unix-c-forth
+
+unix-c-forth: $(OBJS)
+	cc $(CFLAGS) $^ -o $@ $(LIBS)
+
+words.o: c-words.s ../stage0.s vars.s
+	as -g $^ -o $@
+
+.PHONY: clean
+clean:
+	rm simple-c-forth $(OBJS)
+#+END_SRC
+
+#+CAPTION: *vars.s*
+#+NAME: vars.s
+#+BEGIN_SRC asm :tangle vars.s
+.data
+.balign 4
+.globl previous_entry, LATEST_LOC
+LATEST_LOC:   .4byte previous_entry
+#+END_SRC
+* Command-line arguments
+#+CAPTION: ~<<includes>>~
+#+NAME: includes
+#+BEGIN_SRC C
+#include "arguments.h"
+#+END_SRC
+
+#+CAPTION: *arguments.h*
+#+NAME: arguments.h
+#+BEGIN_SRC C :tangle arguments.h
+#ifndef _UNIX_C_FORTH_ARGUMENTS_H_
+#define _UNIX_C_FORTH_ARGUMENTS_H_
+
+#include <argp.h>
+
+#include "types.h"
+
+/* Used by main to communicate with parse_opt. */
+struct arguments
+{
+  uint64_t values_size;
+  uint64_t frames_size;
+  uint64_t heap_size;
+  char *output;
+  uint64_t offset;
+  uint64_t target_word_size;
+  char **inputs;
+};
+
+void
+parse_arguments(int argc, char **argv, struct arguments *arguments);
+
+#endif // _UNIX_C_FORTH_ARGUMENTS_H_
+#+END_SRC
+
+#+CAPTION: *arguments.c*
+#+NAME: arguments.c
+#+BEGIN_SRC C :tangle arguments.c
+#include <stdlib.h>
+
+#include "arguments.h"
+
+const char *argp_program_version =
+  "simple-c-forth 1.0";
+const char *argp_program_bug_address =
+  "Robert Kovacsics <rmk35@cl.cam.ac.uk>";
+
+/* Program documentation. */
+static char doc[] =
+  "A simple forth interpreter written in C, part of "
+  "https://github.com/KoviRobi/simple-forth";
+
+/* A description of the arguments we accept. */
+static char args_doc[] = "[Input files]";
+
+/* The options we understand. */
+static struct argp_option options[] = {
+  {"value-stack",      'v', "elements", 0,
+    "Size of the value stack (in elements)" },
+  {"value-stack-size", 'v', "elements", OPTION_ALIAS },
+  {"frame-stack",      'f', "elements", 0,
+    "Size of the frame stack (in elements)" },
+  {"frame-stack-size", 'f', "elements", OPTION_ALIAS },
+  {"heap",             'H', "bytes",    0,
+    "Size of the heap (in bytes)" },
+  {"heap-size",        'H', "bytes",    OPTION_ALIAS },
+  {"output",           'o', "file",     0,
+    "Output dump of compiling input files" },
+  {"offset",           'O', "bytes",    0,
+    "Offset for output file (default is zero, i.e. first compiled word is at 0)" },
+  // TODO: builtin words
+  {"word",             'w', "bits",     0,
+    "Size of a forth word for output file (in bits)" },
+  {"target-word-size", 'w', "bits",     OPTION_ALIAS },
+  { 0 }
+};
+
+/* Parse a single option. */
+static error_t
+parse_opt (int key, char *arg, struct argp_state *state)
+{
+  struct arguments *arguments = state->input;
+
+  switch (key)
+  {
+    case 'v': arguments->values_size      = atoi(arg); break;
+    case 'f': arguments->frames_size      = atoi(arg); break;
+    case 'H': arguments->heap_size        = atoi(arg); break;
+    case 'o': arguments->output           = arg;       break;
+    case 'O': arguments->offset           = atoi(arg); break;
+    case 'w': arguments->target_word_size = atoi(arg); break;
+
+    case ARGP_KEY_ARG:
+      arguments->inputs = &state->argv[state->next-1];
+      state->next = state->argc; // Stop parsing
+      break;
+
+    default:
+      return ARGP_ERR_UNKNOWN;
+  }
+  return 0;
+}
+
+/* Our argp parser. */
+static struct argp argp = { options, parse_opt, args_doc, doc };
+
+void
+parse_arguments(int argc, char **argv, struct arguments *arguments)
+{
+  argp_parse(&argp, argc, argv, 0, 0, arguments);
+}
+#+END_SRC
+
+#+CAPTION: ~<<parse arguments>>~
+#+NAME: parse arguments
+#+BEGIN_SRC C
+struct arguments arguments;
+arguments.values_size      = 1024;
+arguments.frames_size      = 1024;
+arguments.heap_size        = 4096;
+arguments.output           = NULL;
+arguments.offset           = 0;
+arguments.target_word_size = 0;
+arguments.inputs           = 0;
+parse_arguments(argc, argv, &arguments);
+#+END_SRC
+** Allocating stacks and heap
+#+CAPTION: ~<<before main>>~
+#+NAME: before main
+#+BEGIN_SRC C
+void *allocate(unsigned int count, unsigned int size) {
+  void *rtn = calloc(count, size);
+  if ((void *)rtn == NULL) perror("Failed to allocate");
+  return rtn;
+}
+#+END_SRC
+
+#+CAPTION: ~<<initialize variables>>~
+#+NAME: initialize variables
+#+BEGIN_SRC C
+  frame_stack = allocate(arguments.frames_size, sizeof(forth_instruction*));
+  frame_stack_bottom = frame_stack;
+  frame_stack_top = frame_stack_bottom + arguments.frames_size;
+  value_stack = allocate(arguments.values_size, sizeof(scell));
+  value_stack_bottom = value_stack;
+  value_stack_top = value_stack_bottom + arguments.values_size;
+  HERE_LOC = allocate(arguments.heap_size, sizeof(scell));
+  heap_bottom = HERE_LOC;
+  heap_top = heap_bottom + arguments.heap_size;
+#+END_SRC
+* Unix-signal handling (to print stacks)
+#+CAPTION: ~<<includes>>~
+#+NAME: includes
+#+BEGIN_SRC C
+#include <signal.h>
+#+END_SRC
+#+CAPTION: ~<<set up signal handling>>~
+#+NAME: set up signal handling
+#+BEGIN_SRC C
+struct sigaction new_action, old_action;
+new_action.sa_handler = exit;
+sigemptyset (&new_action.sa_mask);
+new_action.sa_flags = 0;
+sigaction (SIGINT, NULL, &old_action);
+if (old_action.sa_handler != SIG_IGN)
+  sigaction (SIGINT, &new_action, NULL);
+new_action.sa_handler = print_stacks_and_heap;
+sigaction (SIGQUIT, NULL, &old_action);
+if (old_action.sa_handler != SIG_IGN)
+  sigaction (SIGQUIT, &new_action, NULL);
+#+END_SRC
+* Printing stacks and heaps
+#+CAPTION: ~<<before main>>~
+#+NAME: before main
+#+BEGIN_SRC C
+void
+print_value_stack() {
+  printf("Values (bottom first)\n");
+  for (scell *i = value_stack_bottom; i < value_stack; ++i)
+    printf("%12d %12u 0x%08x\n", *i, *i, *i);
+}
+#+END_SRC
+
+#+CAPTION: ~<<before main>>~
+#+NAME: before main
+#+BEGIN_SRC C
+char
+char_disp(char *p) {
+  char c = *p;
+  if (c < 32 || c > 126) return ' ';
+  else return c;
+}
+
+void
+print_heap() {
+  printf("Heap (%p--%p):\n", heap_bottom, HERE_LOC);
+  char *p = (char*)heap_bottom;
+  // Print in block of 4 bytes
+  for (; p+3 < (char*)HERE_LOC; p += 4) {
+    printf("%p:\t0x%08x\t%c%c%c%c\n",
+           (void*)p,
+           *(uint32_t*)p,
+           char_disp(p), char_disp(p+1),
+           char_disp(p+2), char_disp(p+3));
+  }
+  // Print the remaining bytes
+  if (p < (char*)HERE_LOC) {
+    printf("%p:\t", (void*)p);
+    intptr_t diff = (char*)HERE_LOC - p;
+    uint32_t mask = (1<<(diff*8))-1;
+    uint32_t value = *(uint32_t*)p;
+    printf("0x%08x\t", value&mask);
+    for (char *c = p; c < (char*)HERE_LOC; c += 1)
+      printf("%c", char_disp(c));
+    printf("\n");
+  }
+}
+#+END_SRC
+
+** Mapping addresses to names
+#+CAPTION: ~<<includes>>~
+#+NAME: includes
+#+BEGIN_SRC C
+#include <dlfcn.h>
+#include <stdio.h>
+#include <stdlib.h>
+#+END_SRC
+
+#+CAPTION: *types.h*
+#+NAME: types.h
+#+BEGIN_SRC C :tangle types.h
+char *addr2name(void *addr);
+#endif // _UNIX_C_FORTH_TYPES_H_
+#+END_SRC
+
+#+CAPTION: ~<<globals>>~
+#+NAME: globals
+#+BEGIN_SRC C
+extern scell LATEST_LOC;
+#+END_SRC
+#+CAPTION: ~<<before main>>~
+#+NAME: before main
+#+BEGIN_SRC C
+typedef struct dict_entry {
+  ucell prev;
+  ucell flags;
+  ucell name_len;
+  char name_start;
+} entry;
+
+char *
+addr2name(void *addr)
+{
+  for (entry *p = (entry*)(uintptr_t)LATEST_LOC; p != NULL;
+              p = (entry*)(uintptr_t)p->prev)
+    if ((uintptr_t)p<(uintptr_t)addr)
+      return &p->name_start;
+  return NULL;
+}
+
+void
+print_frame_stack() {
+  printf("Frames (bottom first)\n");
+  for (forth_instruction **i = frame_stack_bottom; i < frame_stack; ++i) {
+    char *name = addr2name(*i);
+    printf("%8p\t%s\n", *i, name!=NULL?name:"Cannot translate");
+  }
+}
+#+END_SRC
+
+* Basic words
+** C implementation
+#+CAPTION: *c-words.c*
+#+NAME: c-words.c
+#+BEGIN_SRC C :tangle c-words.c
+#include <stdio.h>
+#include <stdint.h>
+
+#include "simple-forth.h"
+
+#define true ((scell)-1)
+#define false ((scell)0)
+
+scell STATE_LOC = false;
+
+#define push(value, stack) *stack++ = value;
+#define pop(value, stack) value = *--stack;
+
+int level = 0;
+int forth_interpreter (forth_instruction *to_execute) {
+  ++level;
+  forth_instruction *frame = (forth_instruction*)(next_inst);
+  push(frame, frame_stack);
+  next_inst = to_execute;
+#ifdef TRACE
+  for (int i = 0; i < level; ++i) printf("-");
+  char *name = addr2name(next_inst);
+  printf(">\t%8p\t> %s\n", next_inst, name!=NULL?name:"Cannot translate");
+#endif
+  return 0; // 'next' is a trampoline
+}
+
+int FEXIT (forth_instruction *_) {
+#ifdef TRACE
+  for (int i = 0; i < level; ++i) printf("-");
+  char *name = addr2name(next_inst);
+  printf("<\t%8p\t< %s\n", next_inst, name!=NULL?name:"Cannot translate");
+#endif
+  --level;
+  pop(forth_instruction *frame, frame_stack);
+  next_inst = frame;
+  return 0;
+}
+
+int FEXECUTE (forth_instruction *_) {
+  pop(scell c, value_stack);
+  unpack_and_execute_instruction((forth_instruction)c);
+  return 0;
+}
+
+int FCELL_SIZE (forth_instruction *_) {
+  push(sizeof(scell), value_stack);
+  return 0;
+}
+
+int FCHAR_SIZE (forth_instruction *_) {
+  push(sizeof(char), value_stack);
+  return 0;
+}
+#+END_SRC
+
+#+CAPTION: *c-words.c*
+#+NAME: c-words.c
+#+BEGIN_SRC C :tangle c-words.c
+#define binop(type, name, op) int F##name(forth_instruction *_) { \
+    pop(type b, value_stack);                               \
+    pop(type a, value_stack);                               \
+    push(op, value_stack);                                  \
+    return 0;                                               \
+  }
+#define sbinop(name, op) binop(scell, name, op)
+#define ubinop(name, op) binop(ucell, name, op)
+
+ // Binary
+sbinop(ADD, a+b);
+sbinop(SUB, a-b);
+sbinop(STAR, a*b);
+sbinop(SLASH, a/b);
+sbinop(LSHIFT, a<<b);
+sbinop(RSHIFT, a>>b);
+sbinop(EQUAL, a==b?true:false);
+sbinop(NOT_EQUAL, a!=b?true:false);
+sbinop(LESS_THAN, a<b?true:false);
+sbinop(GREATER_THAN, a>b?true:false);
+ubinop(U_LESS_THAN, a<b?true:false);
+ubinop(U_GREATER_THAN, a>b?true:false);
+sbinop(AND, a&b);
+sbinop(OR, a|b);
+
+int FNEGATE (forth_instruction *_) {
+  pop(scell a, value_stack);
+  push(-a, value_stack);
+  return 0;
+}
+#+END_SRC
+
+#+CAPTION: *c-words.c*
+#+NAME: c-words.c
+#+BEGIN_SRC C :tangle c-words.c
+ // Boolean
+
+int FINVERT (forth_instruction *_) {
+  pop(scell a, value_stack);
+  push(~a, value_stack);
+  return 0;
+}
+
+int FTRUE (forth_instruction *_) {
+  push(true, value_stack);
+  return 0;
+}
+
+int FFALSE (forth_instruction *_) {
+  push(false, value_stack);
+  return 0;
+}
+#+END_SRC
+
+#+CAPTION: *c-words.c*
+#+NAME: c-words.c
+#+BEGIN_SRC C :tangle c-words.c
+// TODO: categorize
+int FEMIT (forth_instruction *_) {
+  pop(ucell a, value_stack);
+  int s = EOF;
+  while (((s = putchar(a)) == EOF) && (!feof(stdout))) { }
+  return feof(stdout)?-1:0;
+}
+
+int FKEY (forth_instruction *_) {
+  int c = EOF;
+  while (((c = getchar()) == EOF) && (!feof(stdin))) { }
+  if (feof(stdin)) return -1;
+  push(c, value_stack);
+  return 0;
+}
+
+int FBYE (forth_instruction *_) {
+  return -1;
+}
+
+int FLIT (forth_instruction *_) {
+  scell value = *(scell*)next_inst++;
+  push(value, value_stack);
+  return 0;
+}
+
+int FC_COMMA (forth_instruction *_) { /* TODO: HERE ! CHAR-SIZE ALLOT */
+  pop(scell a, value_stack);
+  char *charheap = (char *)HERE_LOC;
+  ,*charheap++ = (char)a;
+  HERE_LOC = (scell *)charheap;
+  return 0;
+}
+
+int FCOMMA (forth_instruction *_) { /* TODO: HERE ! CELL-SIZE ALLOT */
+  pop(scell a, value_stack);
+  ,*HERE_LOC++ = a;
+  return 0;
+}
+#+END_SRC
+
+#+CAPTION: *c-words.c*
+#+NAME: c-words.c
+#+BEGIN_SRC C :tangle c-words.c
+ // Memory
+int FC_STORE (forth_instruction *_) {
+  pop(ucell addr, value_stack);
+  pop(ucell value, value_stack);
+  *(unsigned char*)(uintptr_t)addr = (unsigned char)value;
+  return 0;
+}
+
+int FC_FETCH (forth_instruction *_) {
+  pop(ucell a, value_stack);
+  push(*(char*)(uintptr_t)a, value_stack);
+  return 0;
+}
+
+int FSTORE (forth_instruction *_) {
+  pop(ucell addr, value_stack);
+  pop(ucell value, value_stack);
+  *(ucell*)(uintptr_t)addr = value;
+  return 0;
+}
+
+int FFETCH (forth_instruction *_) {
+  pop(ucell a, value_stack);
+  push(*(scell*)(uintptr_t)a, value_stack);
+  return 0;
+}
+#+END_SRC
+
+#+CAPTION: *c-words.c*
+#+NAME: c-words.c
+#+BEGIN_SRC C :tangle c-words.c
+ // Stack
+
+int FDUP (forth_instruction *_) {
+  pop(scell a, value_stack);
+  push(a, value_stack);
+  push(a, value_stack);
+  return 0;
+}
+
+int FDROP (forth_instruction *_) {
+  pop(scell a, value_stack);
+  return 0;
+}
+
+int FNIP (forth_instruction *_) {
+  pop(scell a, value_stack);
+  pop(scell b, value_stack);
+  push(a, value_stack);
+  return 0;
+}
+
+int FOVER (forth_instruction *_) {
+  scell value = *(value_stack-2);
+  push(value, value_stack);
+  return 0;
+}
+
+int FPICK (forth_instruction *_) {
+  pop(scell u, value_stack);
+  scell *picked =  value_stack - 1 - u;
+  push(*picked, value_stack);
+  return 0;
+}
+
+int FSWAP (forth_instruction *_) {
+  pop(scell a, value_stack);
+  pop(scell b, value_stack);
+  push(a, value_stack);
+  push(b, value_stack);
+  return 0;
+}
+
+int FROT (forth_instruction *_) {
+  pop(scell x3, value_stack);
+  pop(scell x2, value_stack);
+  pop(scell x1, value_stack);
+  push(x2, value_stack);
+  push(x3, value_stack);
+  push(x1, value_stack);
+  return 0;
+}
+#+END_SRC
+
+#+CAPTION: *c-words.c*
+#+NAME: c-words.c
+#+BEGIN_SRC C :tangle c-words.c
+ // Return stack
+
+int FR_FETCH (forth_instruction *_) {
+  scell value = *(scell*)(frame_stack-1);
+  push(value, value_stack);
+  return 0;
+}
+
+int FR_FROM (forth_instruction *_) {
+  --frame_stack;
+  scell a = *(scell*)frame_stack;
+  push(a, value_stack);
+  return 0;
+}
+
+int FTO_R (forth_instruction *_) {
+  pop(scell a, value_stack);
+  *(scell*)frame_stack = a;
+  ++frame_stack;
+  return 0;
+}
+#+END_SRC
+
+#+CAPTION: *c-words.c*
+#+NAME: c-words.c
+#+BEGIN_SRC C :tangle c-words.c
+ // Branches
+
+int FBRANCH (forth_instruction *_) {
+  next_inst += (*(scell *)next_inst)/sizeof(*next_inst);
+  return 0;
+}
+
+int FZBRANCH (forth_instruction *_) {
+  pop(scell a, value_stack);
+  if (a==0) next_inst += (*(scell *)next_inst)/sizeof(*next_inst);
+  else ++next_inst; // skip over target
+  return 0;
+}
+#+END_SRC
+** Mapping to dictionary entries
+#+CAPTION: *c-words.s*
+#+NAME: c-words.s
+#+BEGIN_SRC asm :tangle c-words.s
+.macro fw word:req, rest:vararg
+  .4byte \word /* FWSIZE */
+  .ifnb \rest
+      fw \rest
+  .endif
+.endm
+
+.set previous_entry, 0
+.macro entry name:req, label, imm=0, hid=0
+.ifc _,\label
+    entry \name, \name, \imm, \hid
+.else
+    .balign 4 /* Align to power of 2 */
+    .globl FHDR_\label
+    FHDR_\label :
+    1:fw previous_entry
+    .set previous_entry, 1b
+    .byte \hid, \imm
+    .balign 4
+    fw 2f-3f
+    3:.ascii "\name"
+    2:.byte 0
+    .balign 4 /* Align to power of 2 */
+    .globl \label
+    \label :
+.endif
+.endm
+
+.macro fromC name, label, rest:vararg
+.ifc _,\label
+    fromC \name, \name
+.else
+    entry \name, \label
+    fw F\label, 0
+.endif
+.ifnb \rest
+    fromC \rest
+.endif
+.endm
+
+fromC KEY, _, EMIT, _
+fromC BYE, _, EXIT, _, EXECUTE, _
+fromC "[']", LIT
+
+fromC "+", ADD, "-", SUB, "*", STAR, "/", SLASH
+fromC "<", LESS_THAN, ">", GREATER_THAN
+fromC "U<", U_LESS_THAN, "U>", U_GREATER_THAN
+fromC "<>", NOT_EQUAL, "\x3d", EQUAL
+fromC OR, _, AND, _, LSHIFT, _, RSHIFT, _, INVERT, _, NEGATE, _
+fromC "C!", C_STORE, "C@", C_FETCH, "!", STORE, "@", FETCH
+fromC "CELL-SIZE", CELL_SIZE, "CHAR-SIZE", CHAR_SIZE
+
+fromC DUP, _, DROP, _, NIP, _, OVER, _, PICK, _, ROT, _, SWAP, _
+fromC "R@", R_FETCH, "R>", R_FROM, ">R", TO_R
+
+fromC BRANCH, _, "?BRANCH", ZBRANCH;
+
+entry "<FORTH_MAIN>", forth_main, 0, -1
+fw QUIT
+fw BYE
+#+END_SRC
