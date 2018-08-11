@@ -488,8 +488,7 @@ int FEXIT (forth_instruction *_) {
 
 int FEXECUTE (forth_instruction *_) {
   pop(scell c, value_stack);
-  unpack_and_execute_instruction((forth_instruction)c);
-  return 0;
+  return unpack_and_execute_instruction((forth_instruction)c);
 }
 
 int FCELL_SIZE (forth_instruction *_) {
