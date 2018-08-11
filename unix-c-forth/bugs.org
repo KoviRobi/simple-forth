@@ -19,3 +19,4 @@
 ** Had the interpreter pointer as src_c{int (**)(forth_instruction*)} and not src_C{int (*)(forth_instruction*)}
 ** Had src_C{#define false ((scell)-1)}
 ** Didn't get rid of back-pointer in ENTRY_XT
+** FEXECUTE didn't return the status it got from executing, so FBYE didn't work in the interpreter
