@@ -46,15 +46,15 @@ entry "ALIGN", ALIGN
 
 entry "CREATE", CREATE
   fw forth_interpreter
+  fw ALIGN
   fw HERE, LATEST, FETCH
   fw COMMA, LATEST, STORE
-  fw LIT, 0, C_COMMA, LIT, 0, C_COMMA
-  fw ALIGN, HERE, CELL_SIZE, ALLOT
-  fw BL, WORD_NEW, NIP
-  fw TWO_DUP, SWAP, STORE
-  fw NIP, LIT, 1, ADD, ALLOT
-  fw ALIGN
-  fw LATEST, FETCH, COMMA, EXIT
+  fw LIT, 0, C_COMMA, LIT, 0, C_COMMA, ALIGN
+  fw BL, WORD
+  fw CELL_SIZE, ALLOT
+  fw FETCH, CHARS, ALLOT
+  fw LIT, 0, C_COMMA
+  fw EXIT
 
 fdef "BALIGN", BALIGN, DECR, SWAP, OVER
 fw ADD, SWAP, INVERT, AND, EXIT
@@ -172,6 +172,13 @@ WORD_LOOP:
   fw LIT, -1, OVER, SUB, ALLOT, EXIT
 WORD_CONT:
   fw KEY, BRANCH, (WORD_LOOP-.)
+
+entry "WORD", WORD
+  fw forth_interpreter
+  fw HERE, SWAP, CELL_SIZE, ALLOT,
+  fw WORD_NEW, ROT, STORE
+  fw CELL_SIZE, NEGATE, ALLOT
+  fw CELL_SIZE, SUB, EXIT
 
 entry "CHAR->DIGIT", CHAR_TO_DIGIT
   fw forth_interpreter
