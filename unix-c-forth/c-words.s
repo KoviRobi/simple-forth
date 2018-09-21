@@ -56,5 +56,7 @@ fromC "R@", R_FETCH, "R>", R_FROM, ">R", TO_R
 fromC BRANCH, _, "?BRANCH", ZBRANCH;
 
 entry "<FORTH_MAIN>", forth_main, 0, -1
+.globl forth_compile
+forth_compile:
 fw QUIT
 fw BYE

@@ -20,6 +20,7 @@
 #include "simple-forth.h"
 
 extern forth_instruction forth_main;
+extern forth_instruction forth_compile;
 extern int level;
 forth_instruction *next_inst;
 <<globals>>
@@ -29,12 +30,14 @@ forth_instruction *next_inst;
 void
 print_stacks_and_heap() {
   print_frame_stack();
-  char *name = addr2name(next_inst);
-  char *name_end = name + ((ucell*)name)[-1] + 1; // name len + null byte
-  uintptr_t offset = (uintptr_t)name_end;
-  offset = (offset+3) & (~3); // 4-byte align
-  printf("next inst:\n%8p\t%s+%lu\n", next_inst, name,
-          ((uintptr_t)next_inst)-offset);
+  if (next_inst != NULL) {
+    char *name = addr2name(next_inst);
+    char *name_end = name + ((ucell*)name)[-1] + 1; // name len + null byte
+    uintptr_t offset = (uintptr_t)name_end;
+    offset = (offset+3) & (~3); // 4-byte align
+    printf("next inst:\n%8p\t%s+%lu\n", next_inst, name,
+            ((uintptr_t)next_inst)-offset);
+  }
   print_value_stack();
   print_heap();
   fflush(stdout);
@@ -53,11 +56,18 @@ main(int argc, char **argv) {
   <<initialize variables>>
   atexit(exit_handler);
 
-  next_inst = &forth_main;
-  int exit_loop = 0;
-  while (exit_loop != -1) { // 'next' trampoline
-    exit_loop = unpack_and_execute_instruction(*next_inst++);
+  <<compile input files>>
+
+  if (!arguments.no_input) {
+    next_inst = &forth_main;
+    int exit_loop = 0;
+    while (exit_loop != -1) { // 'next' trampoline
+      exit_loop = unpack_and_execute_instruction(*next_inst++);
+    }
   }
+
+  <<output compiled heap>>
+
   exit(0);
 }
 #+END_SRC
@@ -78,6 +88,7 @@ next encoded instruction to execute.
 typedef uint32_t forth_instruction;
 typedef int  (*forth_instruction_decoded)(forth_instruction*);
 #+END_SRC
+
 #+CAPTION: ~<<globals>>~
 #+NAME: globals
 #+BEGIN_SRC C
@@ -120,6 +131,7 @@ int unpack_and_execute_instruction(forth_instruction inst);
 
 #endif // _UNIX_C_FORTH_SIMPLE_FORTH_H_
 #+END_SRC
+
 #+CAPTION: ~<<before main>>~
 #+NAME: before main
 #+BEGIN_SRC C
@@ -197,8 +209,11 @@ struct arguments
   uint64_t heap_size;
   char *output;
   uint64_t offset;
-  uint64_t target_word_size;
   char **inputs;
+  unsigned input_count;
+  short no_input;
+  short target_word_size;
+  short target_le;
 };
 
 void
@@ -229,6 +244,11 @@ static char args_doc[] = "[Input files]";
 
 /* The options we understand. */
 static struct argp_option options[] = {
+  {"little-endian",    'l', 0,          0,
+    "Target is a little-endian system" },
+  {"el",               'l', 0,          OPTION_ALIAS },
+  {"no-input",         'n', 0,          0,
+    "Don't open a REPL on the standard input" },
   {"value-stack",      'v', "elements", 0,
     "Size of the value stack (in elements)" },
   {"value-stack-size", 'v', "elements", OPTION_ALIAS },
@@ -241,7 +261,8 @@ static struct argp_option options[] = {
   {"output",           'o', "file",     0,
     "Output dump of compiling input files" },
   {"offset",           'O', "bytes",    0,
-    "Offset for output file (default is zero, i.e. first compiled word is at 0)" },
+    "Offset for output file (default is zero, i.e. first"
+    " compiled word is at 0)" },
   // TODO: builtin words
   {"word",             'w', "bits",     0,
     "Size of a forth word for output file (in bits)" },
@@ -257,15 +278,18 @@ parse_opt (int key, char *arg, struct argp_state *state)
 
   switch (key)
   {
-    case 'v': arguments->values_size      = atoi(arg); break;
-    case 'f': arguments->frames_size      = atoi(arg); break;
-    case 'H': arguments->heap_size        = atoi(arg); break;
-    case 'o': arguments->output           = arg;       break;
-    case 'O': arguments->offset           = atoi(arg); break;
-    case 'w': arguments->target_word_size = atoi(arg); break;
+    case 'l': arguments->target_le         = 1;         break;
+    case 'n': arguments->no_input          = 1;         break;
+    case 'v': arguments->values_size       = atoi(arg); break;
+    case 'f': arguments->frames_size       = atoi(arg); break;
+    case 'H': arguments->heap_size         = atoi(arg); break;
+    case 'o': arguments->output            = arg;       break;
+    case 'O': arguments->offset            = atoi(arg); break;
+    case 'w': arguments->target_word_size  = atoi(arg); break;
 
     case ARGP_KEY_ARG:
       arguments->inputs = &state->argv[state->next-1];
+      arguments->input_count = state->argc - (state->next - 1);
       state->next = state->argc; // Stop parsing
       break;
 
@@ -294,8 +318,11 @@ arguments.frames_size      = 1024;
 arguments.heap_size        = 4096;
 arguments.output           = NULL;
 arguments.offset           = 0;
-arguments.target_word_size = 0;
 arguments.inputs           = 0;
+arguments.input_count      = 0;
+arguments.no_input         = 0;
+arguments.target_word_size = 32;
+arguments.target_le        = 0;
 parse_arguments(argc, argv, &arguments);
 #+END_SRC
 ** Allocating stacks and heap
@@ -439,6 +466,79 @@ print_frame_stack() {
     char *name = addr2name(*i);
     printf("%8p\t%s\n", *i, name!=NULL?name:"Cannot translate");
   }
+}
+#+END_SRC
+
+* Compiling input files
+#+CAPTION: ~<<includes>>~
+#+NAME: includes
+#+BEGIN_SRC C
+#include <err.h>
+#+END_SRC
+
+#+CAPTION: ~<<compile input files>>~
+#+NAME: compile input files
+#+BEGIN_SRC C
+for (int i = 0; i < arguments.input_count; ++i)
+{
+  char *input = arguments.inputs[i];
+  FILE *f = fopen(input, "r");
+  if (f == NULL) {
+    err(1, "Failed to open input file %s", input);
+  }
+  // set input stream to f;
+  next_inst = &forth_compile;
+  int exit_loop = 0;
+  while (exit_loop != -1) { // 'next' trampoline
+    exit_loop = unpack_and_execute_instruction(*next_inst++);
+  }
+  fclose(f);
+}
+scell *compiled_input_end = HERE_LOC;
+#+END_SRC
+
+* Outputting compiled heap
+#+CAPTION: ~<<includes>>~
+#+NAME: includes
+#+BEGIN_SRC C
+#include <endian.h>
+#+END_SRC
+
+TODO: this won't convert properly, e.g. it will read chars as cells
+and drop/byte swap them
+
+#+CAPTION: ~<<output compiled heap>>~
+#+NAME: output compiled heap
+#+BEGIN_SRC C
+if (arguments.output != NULL) {
+  FILE *output = fopen(arguments.output, "w");
+  if (output == NULL) {
+    err(2, "Failed to open output file %s", arguments.output);
+  }
+  switch (arguments.target_word_size << 1 | arguments.target_le)
+  {
+#define be_value 0
+#define le_value 1
+#define mk_switch_case(bits,endian)                                    \
+    case ((bits<<1)|endian##_value):                                   \
+      for (ucell *word = heap_bottom; word < (ucell*)HERE_LOC; ++word) \
+      { uint##bits##_t data = hto##endian##bits(*word);                \
+        data += arguments.offset;                                      \
+        fwrite(&data, sizeof(uint##bits##_t), 1, output);              \
+      }                                                                \
+      break;
+mk_switch_case(32, le);
+mk_switch_case(32, be);
+mk_switch_case(16, le);
+mk_switch_case(16, be);
+#undef mk_switch_case
+#undef be_value
+#undef le_value
+    default:
+      errx(3, "Unsupported target word-size & endianness: %d %s",
+           arguments.target_word_size, arguments.target_le==0?"be":"le");
+  }
+  fclose(output);
 }
 #+END_SRC
 
@@ -795,6 +895,21 @@ fromC "R@", R_FETCH, "R>", R_FROM, ">R", TO_R
 fromC BRANCH, _, "?BRANCH", ZBRANCH;
 
 entry "<FORTH_MAIN>", forth_main, 0, -1
+.globl forth_compile
+forth_compile:
 fw QUIT
 fw BYE
 #+END_SRC
+
+* [0/1] Tasks
+** TODO Linker
+  [2018-08-12 Sun]
+  [[file:/local/scratch/rmk35/simple-forth/unix-c-forth/forth-interpreter.org::*Tasks][Tasks]]
+
+Have the ~unix-c-forth~ interpreter output a file containing
+appropriately sized words, but not relinked, and a file with the
+symbols; then have another program to re-link it to say the bare-metal
+raspberry pi
+*** Dynamic linking
+The ideas of GOT/PLT, and a relocation register, changed when changing
+libraries, should be applicable here too.

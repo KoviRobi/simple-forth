@@ -3,10 +3,13 @@
 #include <dlfcn.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <err.h>
+#include <endian.h>
 
 #include "simple-forth.h"
 
 extern forth_instruction forth_main;
+extern forth_instruction forth_compile;
 extern int level;
 forth_instruction *next_inst;
 forth_instruction **frame_stack, **frame_stack_bottom, **frame_stack_top;
@@ -100,12 +103,14 @@ print_frame_stack() {
 void
 print_stacks_and_heap() {
   print_frame_stack();
-  char *name = addr2name(next_inst);
-  char *name_end = name + ((ucell*)name)[-1] + 1; // name len + null byte
-  uintptr_t offset = (uintptr_t)name_end;
-  offset = (offset+3) & (~3); // 4-byte align
-  printf("next inst:\n%8p\t%s+%lu\n", next_inst, name,
-          ((uintptr_t)next_inst)-offset);
+  if (next_inst != NULL) {
+    char *name = addr2name(next_inst);
+    char *name_end = name + ((ucell*)name)[-1] + 1; // name len + null byte
+    uintptr_t offset = (uintptr_t)name_end;
+    offset = (offset+3) & (~3); // 4-byte align
+    printf("next inst:\n%8p\t%s+%lu\n", next_inst, name,
+            ((uintptr_t)next_inst)-offset);
+  }
   print_value_stack();
   print_heap();
   fflush(stdout);
@@ -136,8 +141,11 @@ main(int argc, char **argv) {
   arguments.heap_size        = 4096;
   arguments.output           = NULL;
   arguments.offset           = 0;
-  arguments.target_word_size = 0;
   arguments.inputs           = 0;
+  arguments.input_count      = 0;
+  arguments.no_input         = 0;
+  arguments.target_word_size = 32;
+  arguments.target_le        = 0;
   parse_arguments(argc, argv, &arguments);
     frame_stack = allocate(arguments.frames_size, sizeof(forth_instruction*));
     frame_stack_bottom = frame_stack;
@@ -150,10 +158,61 @@ main(int argc, char **argv) {
     heap_top = heap_bottom + arguments.heap_size;
   atexit(exit_handler);
 
-  next_inst = &forth_main;
-  int exit_loop = 0;
-  while (exit_loop != -1) { // 'next' trampoline
-    exit_loop = unpack_and_execute_instruction(*next_inst++);
+  for (int i = 0; i < arguments.input_count; ++i)
+  {
+    char *input = arguments.inputs[i];
+    FILE *f = fopen(input, "r");
+    if (f == NULL) {
+      err(1, "Failed to open input file %s", input);
+    }
+    // set input stream to f;
+    next_inst = &forth_compile;
+    int exit_loop = 0;
+    while (exit_loop != -1) { // 'next' trampoline
+      exit_loop = unpack_and_execute_instruction(*next_inst++);
+    }
+    fclose(f);
   }
+  scell *compiled_input_end = HERE_LOC;
+
+  if (!arguments.no_input) {
+    next_inst = &forth_main;
+    int exit_loop = 0;
+    while (exit_loop != -1) { // 'next' trampoline
+      exit_loop = unpack_and_execute_instruction(*next_inst++);
+    }
+  }
+
+  if (arguments.output != NULL) {
+    FILE *output = fopen(arguments.output, "w");
+    if (output == NULL) {
+      err(2, "Failed to open output file %s", arguments.output);
+    }
+    switch (arguments.target_word_size << 1 | arguments.target_le)
+    {
+  #define be_value 0
+  #define le_value 1
+  #define mk_switch_case(bits,endian)                                    \
+      case ((bits<<1)|endian##_value):                                   \
+        for (ucell *word = heap_bottom; word < (ucell*)HERE_LOC; ++word) \
+        { uint##bits##_t data = hto##endian##bits(*word);                \
+          data += arguments.offset;                                      \
+          fwrite(&data, sizeof(uint##bits##_t), 1, output);              \
+        }                                                                \
+        break;
+  mk_switch_case(32, le);
+  mk_switch_case(32, be);
+  mk_switch_case(16, le);
+  mk_switch_case(16, be);
+  #undef mk_switch_case
+  #undef be_value
+  #undef le_value
+      default:
+        errx(3, "Unsupported target word-size & endianness: %d %s",
+             arguments.target_word_size, arguments.target_le==0?"be":"le");
+    }
+    fclose(output);
+  }
+
   exit(0);
 }

@@ -224,6 +224,7 @@ fw 2f-3f ; 3:.ascii "\name" ; 2: .byte 0
 {{{cmid}}}
 #+BEGIN_SRC forth
 : CREATE ( "<spaces>name" -- )
+  align
   here latest @ , latest !
   0 C, 0 C, align \ flags
   here cell-size allot
@@ -448,34 +449,36 @@ entry "ALIGN", ALIGN
 {{{cmid}}}
 #+BEGIN_SRC forth
 : ALIGN
-  HERE 3 + 3 invert and
+  HERE cell-size 1- + cell-size 1-  invert and
   HERE_VAR ! ;
 #+END_SRC
 {{{cend}}}
 
 {{{cstart}}}
 #+BEGIN_SRC asm :tangle stage0.s
+TODO: standardify
 entry "CREATE", CREATE
   fw forth_interpreter
+  fw ALIGN
   fw HERE, LATEST, FETCH
   fw COMMA, LATEST, STORE
-  fw LIT, 0, C_COMMA, LIT, 0, C_COMMA
-  fw ALIGN, HERE, CELL_SIZE, ALLOT
-  fw BL, WORD_NEW, NIP
-  fw TWO_DUP, SWAP, STORE
-  fw NIP, LIT, 1, ADD, ALLOT
-  fw ALIGN
-  fw LATEST, FETCH, COMMA, EXIT
+  fw LIT, 0, C_COMMA, LIT, 0, C_COMMA, ALIGN
+  fw BL, WORD
+  fw CELL_SIZE, ALLOT
+  fw FETCH, CHARS, ALLOT
+  fw LIT, 0, C_COMMA
+  fw EXIT
 #+END_SRC
 {{{cmid}}}
 #+BEGIN_SRC forth
 : CREATE ( "<spaces>name" -- )
+  align
   here latest @ , latest !
   0 C, 0 C, align \ flags
-  here cell-size allot
-  bl word' \ addr start len
-  nip 2dup swap ! \ addr len
-  nip 1 + allot
+  bl word \ c-str
+  cell-size allot \ allot space for len
+  @ chars allot \ allot len characters
+  0 C, \ For C string compatibility
   align ; \ padding
 #+END_SRC
 {{{cend}}}
@@ -736,6 +739,26 @@ WORD_CONT:
     then
     key
   again ;
+#+END_SRC
+{{{cend}}}
+
+{{{cstart}}}
+#+BEGIN_SRC asm :tangle stage0.s
+entry "WORD", WORD
+  fw forth_interpreter
+  fw HERE, SWAP, CELL_SIZE, ALLOT,
+  fw WORD_NEW, ROT, STORE
+  fw CELL_SIZE, NEGATE, ALLOT
+  fw CELL_SIZE, SUB, EXIT
+#+END_SRC
+{{{cmid}}}
+#+BEGIN_SRC forth
+: WORD ( char "<chars>ccc<char>" -- c-addr u )
+  here swap cell-size allot
+  word' rot \ c-addr u1 len-pos
+  ! \ c-addr
+  cell-size negate allot \ deallocate len
+  cell-size - ; \ make addr point to len
 #+END_SRC
 {{{cend}}}
 
