@@ -56,4 +56,15 @@
 - For @ and C@, used \x64 not \x40 (it is decimal 64)
 - For ['] for some reason it ended up as [93 (93 is the hex code for ] so gnu as bug?)
 - Didn't change ENTRY-XT when removing back-pointer
-TODO: swap >r >r
+- In EXECUTE, had "pop {r0}" because of .fasm1, and also as a statement after .fasm1
+- For subroutine threading, EXIT popped its own PC off the return stack
+- LIT and ZBRANCH didn't actually affect the LR, as it is saved and popped
+- What is that BL 4 in the disassembly? Both .cellw and .fw recurred
+- Didn't save LR in .fasm1 definitions -- turns out I shouldn't
+- KEY did "pop {pc}", but the macro then should have done before "push
+  {r0}" which thus didn't happen
+- Accidentally made ALL conditional branch into unconditional
+- In subroutine threaded mode, next inst was PC This makes (BRANCH)
+  not work. This was because previously LR was saved in machine
+  instructions such as LIT and (Z)BRANCH, so I erroneously thought I
+  should change the PC
