@@ -68,3 +68,5 @@
   not work. This was because previously LR was saved in machine
   instructions such as LIT and (Z)BRANCH, so I erroneously thought I
   should change the PC
+- Tried to use tail-recursion in "EMIT" assembly word (used "b
+  uart_putc" instead of "push {lr}, bl uart_putc, pop {lr}")
