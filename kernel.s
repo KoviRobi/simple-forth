@@ -13,13 +13,12 @@ ldr next_inst, =MAIN
 .next
 
 MAIN:
-//.fw RELOAD
 //.fw test
 //.fw OK
 //.fw LIT, L,OK, EXECUTE
-//.fw LIT, L,'O', EMIT
-//.fw LIT, L,'k', EMIT
-//.fw LIT, L,'\n', EMIT
+.fw LIT, L,'H', EMIT
+.fw LIT, L,'i', EMIT
+.fw LIT, L,'\n', EMIT
 //.fw OK
 //.fw LIT, L,'B', EMIT
 //.fw LIT, L,'y', EMIT
