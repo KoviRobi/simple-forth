@@ -1,7 +1,11 @@
+\#*\#
 *~
 *.o
 *.html
 a.out
+*.elf
+*.img
 *.png
-x86/simple-c-forth
 /unix-c-forth/unix-c-forth
+output
+decoded
