@@ -13,8 +13,11 @@ struct arguments
   uint64_t heap_size;
   char *output;
   uint64_t offset;
-  uint64_t target_word_size;
   char **inputs;
+  unsigned input_count;
+  short no_input;
+  short target_word_size;
+  short target_le;
 };
 
 void

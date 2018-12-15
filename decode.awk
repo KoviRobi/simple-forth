@@ -7,7 +7,7 @@ BEGIN {
 }
 
 {
-  addr = strtonum($0);
+  addr = strtonum($(NF));
   lastlabel = 0;
   name = "";
   offset = 0;

@@ -1,41 +1,51 @@
-.macro fw word:req, rest:vararg
-  .4byte \word /* FWSIZE */
+.macro .fw word:req, rest:vararg
+  .ifnc "\word","L"
+    .4byte \word /* FWSIZE */
+  .endif
   .ifnb \rest
-      fw \rest
+    .fw \rest
   .endif
 .endm
 
+.macro .cell init=0
+  .4byte \init
+.endm
+
 .set previous_entry, 0
-.macro entry name:req, label, imm=0, hid=0
-.ifc _,\label
-    entry \name, \name, \imm, \hid
-.else
+.macro .entry name:req, label, imm=0, hid=0
+  .ifc _,\label
+    .entry \name, \name, \imm, \hid
+  .else
     .balign 4 /* Align to power of 2 */
     .globl FHDR_\label
     FHDR_\label :
-    1:fw previous_entry
+    1:.cell previous_entry
     .set previous_entry, 1b
     .byte \hid, \imm
     .balign 4
-    fw 2f-3f
+    .cell 2f-3f
     3:.ascii "\name"
     2:.byte 0
     .balign 4 /* Align to power of 2 */
     .globl \label
     \label :
-.endif
+  .endif
+.endm
+
+.macro .forth_interpreter
+  .cell forth_interpreter
 .endm
 
 .macro fromC name, label, rest:vararg
-.ifc _,\label
+  .ifc _,\label
     fromC \name, \name
-.else
-    entry \name, \label
-    fw F\label, 0
-.endif
-.ifnb \rest
+  .else
+    .entry \name, \label
+    .fw F\label, 0
+  .endif
+  .ifnb \rest
     fromC \rest
-.endif
+  .endif
 .endm
 
 fromC KEY, _, EMIT, _
@@ -55,6 +65,8 @@ fromC "R@", R_FETCH, "R>", R_FROM, ">R", TO_R
 
 fromC BRANCH, _, "?BRANCH", ZBRANCH;
 
-entry "<FORTH_MAIN>", forth_main, 0, -1
-fw QUIT
-fw BYE
+.entry "<FORTH_MAIN>", forth_main, 0, -1
+.globl forth_compile
+forth_compile:
+.fw QUIT
+.fw BYE
