@@ -1,7 +1,7 @@
 #include <stdio.h>
 #include <stdint.h>
 
-#include "simple-forth.h"
+#include "unix-c-forth.h"
 
 #define true ((scell)-1)
 #define false ((scell)0)

@@ -1,4 +1,4 @@
-SRCS := simple-forth.c c-words.c arguments.c
+SRCS := unix-c-forth.c c-words.c arguments.c
 OBJS := $(patsubst %.c,%.o,$(SRCS)) words.o
 
 CFLAGS := -g -rdynamic $(CFLAGS)

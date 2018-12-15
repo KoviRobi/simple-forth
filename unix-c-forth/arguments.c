@@ -17,6 +17,11 @@ static char args_doc[] = "[Input files]";
 
 /* The options we understand. */
 static struct argp_option options[] = {
+  {"little-endian",    'l', 0,          0,
+    "Target is a little-endian system" },
+  {"el",               'l', 0,          OPTION_ALIAS },
+  {"no-input",         'n', 0,          0,
+    "Don't open a REPL on the standard input" },
   {"value-stack",      'v', "elements", 0,
     "Size of the value stack (in elements)" },
   {"value-stack-size", 'v', "elements", OPTION_ALIAS },
@@ -29,7 +34,8 @@ static struct argp_option options[] = {
   {"output",           'o', "file",     0,
     "Output dump of compiling input files" },
   {"offset",           'O', "bytes",    0,
-    "Offset for output file (default is zero, i.e. first compiled word is at 0)" },
+    "Offset for output file (default is zero, i.e. first"
+    " compiled word is at 0)" },
   // TODO: builtin words
   {"word",             'w', "bits",     0,
     "Size of a forth word for output file (in bits)" },
@@ -45,15 +51,18 @@ parse_opt (int key, char *arg, struct argp_state *state)
 
   switch (key)
   {
-    case 'v': arguments->values_size      = atoi(arg); break;
-    case 'f': arguments->frames_size      = atoi(arg); break;
-    case 'H': arguments->heap_size        = atoi(arg); break;
-    case 'o': arguments->output           = arg;       break;
-    case 'O': arguments->offset           = atoi(arg); break;
-    case 'w': arguments->target_word_size = atoi(arg); break;
+    case 'l': arguments->target_le         = 1;         break;
+    case 'n': arguments->no_input          = 1;         break;
+    case 'v': arguments->values_size       = atoi(arg); break;
+    case 'f': arguments->frames_size       = atoi(arg); break;
+    case 'H': arguments->heap_size         = atoi(arg); break;
+    case 'o': arguments->output            = arg;       break;
+    case 'O': arguments->offset            = atoi(arg); break;
+    case 'w': arguments->target_word_size  = atoi(arg); break;
 
     case ARGP_KEY_ARG:
       arguments->inputs = &state->argv[state->next-1];
+      arguments->input_count = state->argc - (state->next - 1);
       state->next = state->argc; // Stop parsing
       break;
 
