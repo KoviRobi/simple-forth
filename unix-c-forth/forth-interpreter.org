@@ -12,12 +12,11 @@
 #+PROPERTY: header-args:C :noweb tangle
 
 * High-level overview
-#+CAPTION: *simple-forth.c*
-#+NAME: simple-forth.c
-#+BEGIN_SRC C :tangle simple-forth.c
+#+CAPTION: *unix-c-forth.c*
+#+NAME: unix-c-forth.c
+#+BEGIN_SRC C :tangle unix-c-forth.c
 <<includes>>
-
-#include "simple-forth.h"
+#include "unix-c-forth.h"
 
 extern forth_instruction forth_main;
 extern int level;
@@ -104,9 +103,9 @@ scell *HERE_LOC, *heap_bottom, *heap_top;
 The conversion from ~forth_instruction~ to ~forth_instruction_decoded~
 is by offsetting it from the base of the heap. This involves some
 complicated casting, so it has been broken up into several variables.
-#+CAPTION: *simple-forth.h*
-#+NAME: simple-forth.h
-#+BEGIN_SRC C :tangle simple-forth.h :noweb tangle
+#+CAPTION: *unix-c-forth.h*
+#+NAME: unix-c-forth.h
+#+BEGIN_SRC C :tangle unix-c-forth.h :noweb tangle
 #ifndef _UNIX_C_FORTH_SIMPLE_FORTH_H_
 #define _UNIX_C_FORTH_SIMPLE_FORTH_H_
 
@@ -139,7 +138,7 @@ unpack_and_execute_instruction(forth_instruction inst)
 #+CAPTION: *Makefile*
 #+NAME: Makefile
 #+BEGIN_SRC Makefile :tangle Makefile
-SRCS := simple-forth.c c-words.c arguments.c
+SRCS := unix-c-forth.c c-words.c arguments.c
 OBJS := $(patsubst %.c,%.o,$(SRCS)) words.o
 
 CFLAGS := -g -rdynamic $(CFLAGS)
@@ -461,7 +460,7 @@ print_next_inst() {
 #include <stdio.h>
 #include <stdint.h>
 
-#include "simple-forth.h"
+#include "unix-c-forth.h"
 
 #define true ((scell)-1)
 #define false ((scell)0)
