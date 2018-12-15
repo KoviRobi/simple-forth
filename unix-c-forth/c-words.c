@@ -1,6 +1,3 @@
-#include <stdio.h>
-#include <stdint.h>
-
 #include "unix-c-forth.h"
 
 #define true ((scell)-1)
@@ -105,14 +102,16 @@ int FFALSE (forth_instruction *_) {
 int FEMIT (forth_instruction *_) {
   pop(ucell a, value_stack);
   int s = EOF;
-  while (((s = putchar(a)) == EOF) && (!feof(stdout))) { }
-  return feof(stdout)?-1:0;
+  while (((s = putc(a, output_stream)) == EOF) &&
+         (!feof(output_stream))) { }
+  return feof(output_stream)?-1:0;
 }
 
 int FKEY (forth_instruction *_) {
   int c = EOF;
-  while (((c = getchar()) == EOF) && (!feof(stdin))) { }
-  if (feof(stdin)) return -1;
+  while (((c = getc(input_stream)) == EOF) &&
+         (!feof(input_stream))) { }
+  if (feof(input_stream)) return -1;
   push(c, value_stack);
   return 0;
 }

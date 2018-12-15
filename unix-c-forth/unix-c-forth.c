@@ -1,16 +1,16 @@
 #include "arguments.h"
 #include <signal.h>
 #include <dlfcn.h>
-#include <stdio.h>
 #include <stdlib.h>
 #include <err.h>
 #include <endian.h>
 #include "unix-c-forth.h"
 
 extern forth_instruction forth_main;
-extern forth_instruction forth_compile;
 extern int level;
 forth_instruction *next_inst;
+FILE *input_stream;
+FILE *output_stream;
 forth_instruction **frame_stack, **frame_stack_bottom, **frame_stack_top;
 scell *value_stack, *value_stack_bottom, *value_stack_top;
 scell *HERE_LOC, *heap_bottom, *heap_top;
@@ -146,19 +146,21 @@ main(int argc, char **argv) {
   arguments.offset           = 0;
   arguments.inputs           = 0;
   arguments.input_count      = 0;
-  arguments.no_input         = 0;
+  arguments.no_repl          = 0;
   arguments.target_word_size = 32;
   arguments.target_le        = 0;
   parse_arguments(argc, argv, &arguments);
-    frame_stack = allocate(arguments.frames_size, sizeof(forth_instruction*));
-    frame_stack_bottom = frame_stack;
-    frame_stack_top = frame_stack_bottom + arguments.frames_size;
-    value_stack = allocate(arguments.values_size, sizeof(scell));
-    value_stack_bottom = value_stack;
-    value_stack_top = value_stack_bottom + arguments.values_size;
-    HERE_LOC = allocate(arguments.heap_size, sizeof(scell));
-    heap_bottom = HERE_LOC;
-    heap_top = heap_bottom + arguments.heap_size;
+  input_stream = stdin;
+  output_stream = stdout;
+  frame_stack = allocate(arguments.frames_size, sizeof(forth_instruction*));
+  frame_stack_bottom = frame_stack;
+  frame_stack_top = frame_stack_bottom + arguments.frames_size;
+  value_stack = allocate(arguments.values_size, sizeof(scell));
+  value_stack_bottom = value_stack;
+  value_stack_top = value_stack_bottom + arguments.values_size;
+  HERE_LOC = allocate(arguments.heap_size, sizeof(scell));
+  heap_bottom = HERE_LOC;
+  heap_top = heap_bottom + arguments.heap_size;
   atexit(exit_handler);
 
   for (int i = 0; i < arguments.input_count; ++i)
@@ -169,7 +171,8 @@ main(int argc, char **argv) {
       err(1, "Failed to open input file %s", input);
     }
     // set input stream to f;
-    next_inst = &forth_compile;
+    input_stream = f;
+    next_inst = &forth_main;
     int exit_loop = 0;
     while (exit_loop != -1) { // 'next' trampoline
       exit_loop = unpack_and_execute_instruction(*next_inst++);
@@ -177,8 +180,9 @@ main(int argc, char **argv) {
     fclose(f);
   }
   scell *compiled_input_end = HERE_LOC;
+  input_stream = stdin;
 
-  if (!arguments.no_input) {
+  if (!arguments.no_repl) {
     next_inst = &forth_main;
     int exit_loop = 0;
     while (exit_loop != -1) { // 'next' trampoline

@@ -15,7 +15,7 @@ struct arguments
   uint64_t offset;
   char **inputs;
   unsigned input_count;
-  short no_input;
+  short no_repl;
   short target_word_size;
   short target_le;
 };

@@ -2,6 +2,7 @@
 #define _UNIX_C_FORTH_TYPES_H_
 
 #include <stdint.h>
+#include <stdio.h>
 
 typedef uint32_t forth_instruction;
 typedef int  (*forth_instruction_decoded)(forth_instruction*);
@@ -9,6 +10,8 @@ typedef int  (*forth_instruction_decoded)(forth_instruction*);
 typedef int32_t  scell;
 typedef uint32_t ucell;
 
+extern FILE *input_stream;
+extern FILE *output_stream;
 extern forth_instruction forth_main;
 extern forth_instruction *next_inst;
 extern forth_instruction **frame_stack, **frame_stack_bottom, **frame_stack_top;

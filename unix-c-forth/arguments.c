@@ -20,7 +20,7 @@ static struct argp_option options[] = {
   {"little-endian",    'l', 0,          0,
     "Target is a little-endian system" },
   {"el",               'l', 0,          OPTION_ALIAS },
-  {"no-input",         'n', 0,          0,
+  {"no-repl",         'n', 0,          0,
     "Don't open a REPL on the standard input" },
   {"value-stack",      'v', "elements", 0,
     "Size of the value stack (in elements)" },
@@ -52,7 +52,7 @@ parse_opt (int key, char *arg, struct argp_state *state)
   switch (key)
   {
     case 'l': arguments->target_le         = 1;         break;
-    case 'n': arguments->no_input          = 1;         break;
+    case 'n': arguments->no_repl           = 1;         break;
     case 'v': arguments->values_size       = atoi(arg); break;
     case 'f': arguments->frames_size       = atoi(arg); break;
     case 'H': arguments->heap_size         = atoi(arg); break;
