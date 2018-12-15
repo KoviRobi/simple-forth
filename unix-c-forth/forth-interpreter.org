@@ -27,14 +27,9 @@ forth_instruction *next_inst;
 <<before main>>
 
 void
-print_stacks_and_heap() {
+print_state() {
   print_frame_stack();
-  char *name = addr2name(next_inst);
-  char *name_end = name + ((ucell*)name)[-1] + 1; // name len + null byte
-  uintptr_t offset = (uintptr_t)name_end;
-  offset = (offset+3) & (~3); // 4-byte align
-  printf("next inst:\n%8p\t%s+%lu\n", next_inst, name,
-          ((uintptr_t)next_inst)-offset);
+  print_next_inst();
   print_value_stack();
   print_heap();
   fflush(stdout);
@@ -42,7 +37,7 @@ print_stacks_and_heap() {
 
 void
 exit_handler() {
-  print_stacks_and_heap();
+  print_state();
   <<exit clean-up>>
 }
 
@@ -438,6 +433,22 @@ print_frame_stack() {
   for (forth_instruction **i = frame_stack_bottom; i < frame_stack; ++i) {
     char *name = addr2name(*i);
     printf("%8p\t%s\n", *i, name!=NULL?name:"Cannot translate");
+  }
+}
+#+END_SRC
+
+#+CAPTION: ~<<before main>>~
+#+NAME: before main
+#+BEGIN_SRC C
+void
+print_next_inst() {
+  if (next_inst != NULL) {
+    char *name = addr2name(next_inst);
+    char *name_end = name + ((ucell*)name)[-1] + 1; // name len + null byte
+    uintptr_t offset = (uintptr_t)name_end;
+    offset = (offset+3) & (~3); // 4-byte align
+    printf("next inst:\n%8p\t%s+%lu\n", next_inst, name,
+           ((uintptr_t)next_inst)-offset);
   }
 }
 #+END_SRC
