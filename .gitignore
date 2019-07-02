@@ -6,6 +6,6 @@ a.out
 *.elf
 *.img
 *.png
-/unix-c-forth/unix-c-forth
+/stage0-vm-unix-c-forth/unix-c-forth
 output
 decoded

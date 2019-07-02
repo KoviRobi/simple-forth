@@ -1,0 +1,5 @@
+* Gadgets/simple test cases
+* Tracing via 'next'
+- Put ~bl puthex~ as the first thing in ~next~
+- Also had it after loading next_inst, and dereferencing its
+  interpreter, just to be sure (debug paranoia?)
