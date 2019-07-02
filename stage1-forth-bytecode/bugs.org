@@ -1,0 +1,72 @@
+- Had previous_entry point to the label/interpreter, not the "next entry" pointer
+- MEMCMP loop didn't pop loop-variables off return stack
+- Used "LIT, FALSE", not just "FALSE"
+- Used "<char1> <char2> = if unloop false exit then" and not "<char1> <char2> = invert if unloop false exit then" in memcmp
+- Used MEMCMP (and thus equal), and not STRCMP
+- In MEMCMP, forgot to drop "a" and "b", thus returning "a b (true|false)"
+- In FIND, forgot to skip back-pointer
+- In entry->xt used 1 instead of 4 (forgot to take cell size into account)
+- In entry->xt forgot to add the offset of string-len after fetching it (i.e. "dup 8 + @" not "dup 8 + @ + 12 +")
+- In entry->xt didn't account for final zero byte after string, before doing alignment
+- In WORD_NEW, forgot to drop the characters being skipped
+- In char->digit, forgot LIT before 35
+- Forgot to chall char->digit on character
+- Didn't drop number partially parsed by >number
+- Had an off-by-one error, accepting 'a' in base 10 in >number
+- Didn't keep forth and 'assembly' in sync
+- Had trouble with BASE and BASE_VAR, some places used "LIT, BASE" still, and BASE recursed, instead of doing "LIT, BASE_VAR"
+- Didn't have 2drop in the right places in char=
+- Subtracted, not added 32 in ~lower~
+- In ~char=~, used ~dup 33 < over 33 <~ not ~over 33 < over 33 <~
+- Turns out "CHAR" reads the next character (using WORD), not gives the size of a char
+  - So made CHAR-SIZE and CHAR-ADD, but forgot to add with CHAR-ADD
+- Used signed comparison against base
+- Had flags in fdef macro which didn't match up with entry macro (and I didn't use them)
+- Problem of implementing 2R>, etc, in Forth, using R>, is that you get the address of 2R> pushed to r-stack, which you then move to the value stack. Got problems with 2R@ etc too
+- Copy&paste error with FALSE returning -1 (TRUE)
+- Not using FETCH after ENTRY_NEXT
+- Not using link-script.ld to ensure Forth gets loaded to 0x8000
+- Didn't have the start method at 0x8000 (used .init not .text.init section)
+- Didn't pop {r0} in EMIT or push {r0} in KEY
+- Used 'b' instead of 'bl' in puthex
+- Used 'sub' instead of 'subs' in puthex_loop
+- Had the jump target for a loop include the initialization (i = 0), so i was reset each time (in test.s, testing puthex)
+- Used "ror r0, #4" not "ror r0, #28" in puthex
+- For tracing (in next), printed r0, not next_inst
+- Used "BAR" not "(BAR-.)" in BRANCH target in a test gadget
+- For some reason, the EMIT/putc is interfering(!?) Perhaps forgot to disable interrupts?
+  - Using a single uart_putc seems to have fixed it
+- In puthex, r1 was overwritten by uart_putc
+- ARM BRANCH only loaded the offset, didn't add it to next_inst
+- Commented out label 1: when debugging uart_getc
+- Only loading a byte from the UART meant the FIFO never got cleared (perhaps similar with storing)
+- Used HERE_VAR without LIT before it (I swear I made this mistake a couple of other times already)
+  - Yes, but then made HERE_VAR push the location, not be the location (with the simple-forth)
+  - Then had HERE_LOC be HERE_VAR
+- DROP did "sub sp, #4" not "add sp, #4"
+- Didn't have 'LIT' before 'HERE_VAR' in "fdef HERE" definition
+- arm NIP behaved as DROP
+- EXECUTE did dereference twice
+- INCR had a copy&paste error, so did DECR
+- R_FROM (and TO_R) didn't update rsp, and didn't have direction (used stm not stmdb)
+- Had pre- and post- decrement/increment mixed up in forth_interpreter/exit
+  - This might have meant we overwrote 0x8000?
+- Broke >NUMBER with a 'debug' "R_FROM, HEX_PRINT" (should be "R_FETCH, HEX_PRINT")
+- When using macro fasm1 I didn't pop {r0}
+- For @ and C@, used \x64 not \x40 (it is decimal 64)
+- For ['] for some reason it ended up as [93 (93 is the hex code for ] so gnu as bug?)
+- Didn't change ENTRY-XT when removing back-pointer
+- In EXECUTE, had "pop {r0}" because of .fasm1, and also as a statement after .fasm1
+- For subroutine threading, EXIT popped its own PC off the return stack
+- LIT and ZBRANCH didn't actually affect the LR, as it is saved and popped
+- What is that BL 4 in the disassembly? Both .cellw and .fw recurred
+- Didn't save LR in .fasm1 definitions -- turns out I shouldn't
+- KEY did "pop {pc}", but the macro then should have done before "push
+  {r0}" which thus didn't happen
+- Accidentally made ALL conditional branch into unconditional
+- In subroutine threaded mode, next inst was PC This makes (BRANCH)
+  not work. This was because previously LR was saved in machine
+  instructions such as LIT and (Z)BRANCH, so I erroneously thought I
+  should change the PC
+- Tried to use tail-recursion in "EMIT" assembly word (used "b
+  uart_putc" instead of "push {lr}, bl uart_putc, pop {lr}")

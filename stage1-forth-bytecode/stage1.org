@@ -1,0 +1,645 @@
+#+TITLE: Raspberry Pi Baremetal Language Bootstrapping
+#+AUTHOR: Robert Kovacsics (rmk35)
+
+#+HTML_HEAD: <link rel="stylesheet" type="text/css" href="https://fniessen.github.io/org-html-themes/styles/readtheorg/css/htmlize.css"/>
+#+HTML_HEAD: <link rel="stylesheet" type="text/css" href="https://fniessen.github.io/org-html-themes/styles/readtheorg/css/readtheorg.css"/>
+
+#+HTML_HEAD: <script src="https://ajax.googleapis.com/ajax/libs/jquery/2.1.3/jquery.min.js"></script>
+#+HTML_HEAD: <script src="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.4/js/bootstrap.min.js"></script>
+#+HTML_HEAD: <script type="text/javascript" src="https://fniessen.github.io/org-html-themes/styles/lib/js/jquery.stickytableheaders.min.js"></script>
+#+HTML_HEAD: <script type="text/javascript" src="https://fniessen.github.io/org-html-themes/styles/readtheorg/js/readtheorg.js"></script>
+
+#+MACRO: cstart #+HTML:<table class="harmonica-table"><thead><tr><td>Assembly</td><td>Forth</td></tr></thead><tbody><tr><td>
+#+MACRO: cmid #+HTML: </td><td>
+#+MACRO: cend #+HTML: </td></tr></tbody></table>
+
+#+PROPERTY: header-args:forth :eval no
+#+OPTIONS: H:4
+
+* COMMENT Prelude
+#+BEGIN_SRC elisp
+(setq asm-comment-char ?\@)
+#+END_SRC
+
+* TODO Forth
+** TODO Input
+*** Words
+TODO: backspace (or perhaps with a modified key?)
+
+{{{cstart}}}
+#+BEGIN_SRC asm :tangle stage0.s asm :tangle stage0.s
+.fdef "LOWER", _
+  .fw DUP, LIT, L,'A', U_LESS_THAN
+  .fw OVER, LIT, L,'Z', U_GREATER_THAN
+  .fw OR, INVERT, ZBRANCH, L,(1f-.)
+  .fw LIT, L,32, ADD
+1:.fw EXIT
+#+END_SRC
+{{{cmid}}}
+#+BEGIN_SRC forth
+: LOWER ( char -- char )
+  dup char A U< over char Z U>
+  or invert if 32 + then ;
+#+END_SRC
+{{{cend}}}
+
+{{{cstart}}}
+#+BEGIN_SRC asm :tangle stage0.s
+.fdef "CHAR\x3d", CHAR_EQUAL
+  .fw TWO_DUP, EQUAL, ZBRANCH, L,(1f-.)
+  .fw TWO_DROP, TRUE, EXIT
+1:.fw OVER, LIT, L,33, U_LESS_THAN
+  .fw OVER, LIT, L,33, U_LESS_THAN
+  .fw AND, ZBRANCH, L,(2f-.)
+  .fw TWO_DROP, TRUE, EXIT
+2:.fw LOWER, SWAP, LOWER, EQUAL
+  .fw ZBRANCH, L,(3f-.)
+  .fw TRUE, EXIT
+3:.fw FALSE, EXIT
+#+END_SRC
+{{{cmid}}}
+#+BEGIN_SRC forth
+: CHAR=' ( char char -- -1|0 )
+  2dup = if 2drop true exit then
+  over 33 U< over 33 U< and if 2drop true exit then
+  lower swap lower = if true exit then
+  false ;
+#+END_SRC
+{{{cend}}}
+
+TODO: transient region
+
+{{{cstart}}}
+#+BEGIN_SRC asm :tangle stage0.s
+.fdef "WORD\x27", WORD_NEW
+  .fw HERE, SWAP, LIT, L,0
+WORD_SKIP:
+  .fw DROP, KEY, TWO_DUP, CHAR_EQUAL
+  .fw INVERT, ZBRANCH, L,(WORD_SKIP-.)
+WORD_LOOP:
+  .fw DUP, C_COMMA, OVER, CHAR_EQUAL
+  .fw ZBRANCH, L,(WORD_CONT-.)
+  .fw DROP, CHAR_SIZE, NEGATE, ALLOT
+  .fw HERE, OVER, SUB, LIT, L,0, C_COMMA
+  .fw LIT, L,-1, OVER, SUB, ALLOT, EXIT
+WORD_CONT:
+  .fw KEY, BRANCH, L,(WORD_LOOP-.)
+#+END_SRC
+{{{cmid}}}
+#+BEGIN_SRC forth
+: WORD' ( char "<chars>ccc<char>" -- c-addr u )
+  here swap
+  0 begin drop key 2dup char= until
+  begin \ start char key
+    dup C,
+    over char= if \ start char
+      drop char-size negate allot
+      here over - 0 C,
+      -1 over - allot exit
+    then
+    key
+  again ;
+#+END_SRC
+{{{cend}}}
+
+{{{cstart}}}
+#+BEGIN_SRC asm :tangle stage0.s
+.fdef "WORD", WORD
+  .fw HERE, SWAP, CELL_SIZE, ALLOT,
+  .fw WORD_NEW, ROT, STORE
+  .fw CELL_SIZE, NEGATE, ALLOT
+  .fw CELL_SIZE, SUB, EXIT
+#+END_SRC
+{{{cmid}}}
+#+BEGIN_SRC forth
+: WORD ( char "<chars>ccc<char>" -- c-addr u )
+  here swap cell-size allot
+  word' rot \ c-addr u1 len-pos
+  ! \ c-addr
+  cell-size negate allot \ deallocate len
+  cell-size - ; \ make addr point to len
+#+END_SRC
+{{{cend}}}
+
+*** Numbers
+If the character is less than '0', or between '9' and 'A' (or 'Z' and
+'a'), then it underflows, and will end up being greater than BASE.
+
+{{{cstart}}}
+#+BEGIN_SRC asm :tangle stage0.s
+.fdef "CHAR->DIGIT", CHAR_TO_DIGIT
+  .fw LIT, L,'0', SUB
+  .fw DUP, LIT, L,9, U_GREATER_THAN, ZBRANCH, L,(C_TO_D_END-.)
+  .fw LIT, L,('A'-'9'-1), SUB
+  .fw DUP, LIT, L,10, U_LESS_THAN, ZBRANCH, L,(C_TO_D_A-.)
+  .fw LIT, L,10, SUB
+C_TO_D_A:
+  .fw DUP, LIT, L,35, U_GREATER_THAN, ZBRANCH, L,(C_TO_D_END-.)
+  .fw LIT, L,32, SUB
+  .fw DUP, LIT, L,10, U_LESS_THAN, ZBRANCH, L,(C_TO_D_END-.)
+  .fw LIT, L,10, SUB
+C_TO_D_END:
+  .fw EXIT
+#+END_SRC
+{{{cmid}}}
+#+BEGIN_SRC forth
+: CHAR->DIGIT ( char -- digit )
+  char 0 -
+  dup 9 U> if
+    7 - \ 9 : ; < = > ? @ A
+    dup 10 U< if 10 - then
+    dup 35 U> if
+      32 - \ A-Z [ \ ] ^ _ ` a-z
+      dup 10 U< if 10 - then
+    then
+  then ;
+#+END_SRC
+{{{cend}}}
+
+{{{cstart}}}
+#+BEGIN_SRC asm :tangle stage0.s
+.data
+BASE_LOC: .cell 10
+.text
+.fdef "BASE", BASE
+  .fw LIT, L,BASE_LOC, EXIT
+.fdef "DECIMAL", DECIMAL
+  .fw LIT, L,10, BASE, STORE, EXIT
+.fdef ">NUMBER", TO_NUMBER
+  .fw OVER, ADD, DUP, TO_R, SWAP
+  .fw TWO_TO_R
+TO_NUM_LOOP:
+  .fw R_FETCH, C_FETCH, CHAR_TO_DIGIT, DUP
+  .fw BASE, FETCH, U_LESS_THAN
+  .fw ZBRANCH, L,(TO_NUM_ELSE-.)
+  .fw SWAP, BASE, FETCH, STAR, ADD
+  .fw BRANCH, L,(TO_NUM_NEXT-.)
+TO_NUM_ELSE:
+  .fw DROP, R_FETCH, TWO_R_DROP, R_FROM
+  .fw OVER, SUB,  EXIT
+TO_NUM_NEXT:
+  .fw R_FROM, LIT, L,1, ADD, TO_R
+  .fw TWO_R_FETCH, EQUAL
+  .fw ZBRANCH, L,(TO_NUM_LOOP-.)
+  .fw TWO_R_DROP
+  .fw R_FROM, LIT, L,0
+  .fw EXIT
+#+END_SRC
+{{{cmid}}}
+#+BEGIN_SRC forth
+variable BASE 10 BASE !
+: >NUMBER ( ud1 c-addr1 u1 -- ud2 c-addr2 u2 )
+  over + dup >R swap \ ud1 c-addr1+u1 c-addr1; R: c-addr1+u1
+  do \ ud1; loops with  c-addr1 <= I < c-addr1+u1
+    I C@ char->digit dup BASE @ U< if \ ud1 digit
+      swap BASE @ * +
+    else \ ud2 digit
+      drop I unloop R> over - exit \ ud2 c-addr2 u2
+    then
+  loop
+  R> 0 ;
+#+END_SRC
+{{{cend}}}
+
+(We also need a way of converting signed numbers, and numbers in other
+bases too, according to §3.4.1.3.
+
+#+BEGIN_SRC forth
+: NUMBER ( ud1 c-addr u1 -- number c-addr u2 )
+  BASE @ >R
+  over @ ''' = if parse-char then
+  over @ case
+    '#' of 1 + decimal endof
+    '$' of 1 + hex endof
+    '%' of 1 + binary endof
+  endcase
+  dup 0 = if 1+ swap 1- exit ( to indicate that we failed to parse ) then
+  over @ '-' = >R
+  R@ if 1+ then
+  dup 0 = if 1+ swap -1 exit ( to indicate that we failed to parse ) then
+  >number
+  rot R> if negate then -rot
+  R> BASE !
+  ;
+
+: PARSE-CHAR ( ud1 c-addr u1 -- ud2 c-addr u2 )
+  dup 3 = if
+    drop 1+ dup C@ rot + swap 2 + 0
+  then
+  ;
+#+END_SRC
+
+** TODO Compiling
+See §3.4 of the [[https://www.taygeta.com/forth/dpans3.htm#3.4][ANSI Forth manual]].
+
+{{{cstart}}}
+#+BEGIN_SRC asm :tangle stage0.s
+.fdef "BL", BL
+  .fw LIT, L,' ', EXIT
+#+END_SRC
+{{{cmid}}}
+#+BEGIN_SRC forth
+: BL ( -- char ) 32 ;
+#+END_SRC
+{{{cend}}}
+
+{{{cstart}}}
+#+BEGIN_SRC asm :tangle stage0.s
+.fdef "\x27", TICK
+  .fw BL, WORD_NEW, FIND_NEW, DROP, EXIT
+#+END_SRC
+{{{cmid}}}
+#+BEGIN_SRC forth
+: TICK ( "<spaces>name" -- xt )
+  bl word' find' drop ;
+#+END_SRC
+{{{cend}}}
+
+{{{cstart}}}
+#+BEGIN_SRC asm :tangle stage0.s
+.fdef "OK", OK
+  .fw LIT, L,'O', EMIT, LIT, L,'k'
+  .fw EMIT, BL, EMIT, EXIT
+#+END_SRC
+{{{cmid}}}
+#+BEGIN_SRC forth
+: OK
+  bl emit char O emit char k emit bl emit ;
+#+END_SRC
+{{{cend}}}
+
+{{{cstart}}}
+#+BEGIN_SRC asm :tangle stage0.s
+.fdef "ERROR", ERROR
+  .fw LIT, L,'E', EMIT, LIT, L,'r', EMIT
+  .fw LIT, L,'r', EMIT, BL, EMIT, EXIT
+#+END_SRC
+{{{cmid}}}
+#+BEGIN_SRC forth
+: ERROR
+  char E emit char r emit char r emit bl emit ;
+#+END_SRC
+{{{cend}}}
+
+** TODO REPL
+{{{cstart}}}
+#+BEGIN_SRC asm :tangle stage0.s
+// TODO: Different interpretation modes
+.fdef "COMPILE\x2c", COMPILE_COMMA
+  .fw COMMA, EXIT
+#+END_SRC
+{{{cmid}}}
+#+BEGIN_SRC forth
+TODO
+#+END_SRC
+{{{cend}}}
+
+{{{cstart}}}
+#+BEGIN_SRC asm :tangle stage0.s
+.fdef "QUIT-FOUND", QUIT_FOUND
+  .fw NIP, LIT, L,-1, EQUAL, STATE
+  .fw FETCH, AND, ZBRANCH, L,(Q_F_EX-.)
+  .fw COMPILE_COMMA, BRANCH, L,(Q_F_END-.)
+Q_F_EX:
+  .fw EXECUTE
+Q_F_END:
+  .fw OK, EXIT
+#+END_SRC
+{{{cmid}}}
+#+BEGIN_SRC forth
+: QUIT_FOUND ( xt u -1|1 -- )
+  nip -1 = state @ and if \ Compiling
+    compiling, else execute then
+  ok ;
+#+END_SRC
+{{{cend}}}
+
+{{{cstart}}}
+#+BEGIN_SRC asm :tangle stage0.s
+.fdef1 "LITERAL", LITERAL, -1 /* immediate */
+  .fw LIT, LIT, COMMA
+  .fw COMMA, EXIT
+#+END_SRC
+{{{cmid}}}
+#+BEGIN_SRC forth
+: LITERAL ( x -- )
+  ' lit compiling, , ; \ TODO
+: LITERAL ['] lit , ; IMMEDIATE
+#+END_SRC
+{{{cend}}}
+
+{{{cstart}}}
+#+BEGIN_SRC asm :tangle stage0.s
+.fdef "QUIT-NOT-FOUND", QUIT_NOT_FOUND
+  .fw NROT, TO_NUMBER, LIT, L,0 // TODO: http://forth-standard.org/standard/usage#subsection.3.4.1.3
+  .fw EQUAL, ZBRANCH, L,(Q_N_F_ELSE-.)
+  .fw DROP, STATE, FETCH, ZBRANCH, L,(Q_N_F_END-.)
+  .fw LITERAL
+  .fw BRANCH, L,(Q_N_F_END-.)
+Q_N_F_ELSE:
+  .fw TWO_DROP, ERROR, EXIT
+Q_N_F_END:
+  .fw OK, EXIT
+#+END_SRC
+{{{cmid}}}
+#+BEGIN_SRC forth
+: QUIT_NOT_FOUND ( c-addr u 0 -- )
+  rot rot >number 0 = if \ TODO negative numbers
+    drop state @ if \ Compiling
+      literal
+    then
+  else
+    2drop error exit
+  then
+  ok ;
+#+END_SRC
+{{{cend}}}
+
+{{{cstart}}}
+#+BEGIN_SRC asm :tangle stage0.s
+.fdef "QUIT", QUIT
+QUIT_LOOP:
+  .fw BL, WORD_NEW, DUP, NROT
+  .fw FIND_NEW, ROT, SWAP
+  .fw DUP, ZBRANCH, L,(QUIT_N_F-.)
+  .fw QUIT_FOUND, BRANCH, L,(QUIT_LOOP-.)
+QUIT_N_F:
+  .fw QUIT_NOT_FOUND, BRANCH, L,(QUIT_LOOP-.)
+  .fw EXIT
+#+END_SRC
+{{{cmid}}}
+#+BEGIN_SRC forth
+: QUIT ( -- )
+  \ TODO: Set up value and return stacks
+  begin
+    bl word' dup rot rot \ u c-addr u
+    find' rot swap \ c-addr u -1|0|1
+    dup if quit_found else
+          quit_not_found then
+    ok
+  again ;
+#+END_SRC
+{{{cend}}}
+
+** TODO DOES>
+** TODO Brave New Words
+{{{cstart}}}
+#+BEGIN_SRC asm :tangle stage0.s
+.fdef1 "[", LBRAC,-1 /* immediate */
+  .fw LIT, L,0, STATE, STORE, EXIT
+#+END_SRC
+{{{cmid}}}
+#+BEGIN_SRC forth
+: [ false state ! IMMEDIATE
+#+END_SRC
+{{{cend}}}
+
+{{{cstart}}}
+#+BEGIN_SRC asm :tangle stage0.s
+.fdef "]", RBRAC
+  .fw LIT, L,-1, STATE, STORE, EXIT
+#+END_SRC
+{{{cmid}}}
+#+BEGIN_SRC forth
+: ] true state !
+#+END_SRC
+{{{cend}}}
+
+{{{cstart}}}
+#+BEGIN_SRC asm :tangle stage0.s
+// TODO: SUBROUTINE .fdef "\x3a", COLON
+// TODO: SUBROUTINE   .fw CREATE
+// TODO: SUBROUTINE   .fw LIT, forth_interpreter, COMMA
+// TODO: SUBROUTINE   .fw LATEST, FETCH, HIDE
+// TODO: SUBROUTINE   .fw RBRAC, EXIT
+.fdef "\x3a", COLON
+  .fw CREATE
+  .fw LATEST, FETCH, HIDE
+  .fw RBRAC, EXIT
+  # TODO
+#+END_SRC
+{{{cmid}}}
+#+BEGIN_SRC forth
+#+END_SRC
+{{{cend}}}
+
+{{{cstart}}}
+#+BEGIN_SRC asm :tangle stage0.s
+.fdef1 "\x3b", SEMICOLON, -1 /* immediate */
+  .fw LIT, L,EXIT, COMMA
+  .fw LATEST, FETCH, HIDE, LBRAC, EXIT
+#+END_SRC
+{{{cmid}}}
+#+BEGIN_SRC forth
+TODO
+#+END_SRC
+{{{cend}}}
+
+** TODO Control Words
+TODO explain, especially as we don't have comments yet
+- Note, not using compile, for [']
+- Note, literal defined previously
+  - But ['] and LITERAL are very similar
+    - Can we use LIT as ['], it only needs compilation semantics?
+      - Not quite, it doesn't push XT, it pushes entry->interpreter
+        - Perhaps swap the meaning of XT back?
+#+BEGIN_SRC forth
+: POSTPONE ' compile, ; IMMEDIATE \ Can place elsewhere TODO
+#+END_SRC
+
+#+BEGIN_SRC forth
+: ['] lit lit , ' , ; IMMEDIATE
+: IF
+  ['] BRANCH, compile,
+  HERE 0 , ; IMMEDIATE
+: THEN
+  HERE over - swap ! ; IMMEDIATE
+: ELSE
+  [']BRANCH, compile,
+  HERE swap 0 ,
+  HERE over - swap ! ; IMMEDIATE
+#+END_SRC
+
+#+BEGIN_SRC forth
+TODO TO TEST
+
+: BEGIN
+  HERE ; IMMEDIATE
+: AGAIN
+  [']BRANCH, compile,
+  HERE - , ; IMMEDIATE
+: UNTIL
+  ['] BRANCH, compile,
+  HERE - , ; IMMEDIATE
+: WHILE
+  ['] BRANCH, compile,
+  HERE swap 0 , ; IMMEDIATE
+: REPEAT
+  [']BRANCH, ,
+  HERE swap - ,
+  HERE over swap - swap ! ; IMMEDIATE
+#+END_SRC
+
+#+BEGIN_SRC forth
+: DO
+  2>R ; IMMEDIATE
+: ?DO
+  2dup <> ['] BRANCH, compile, HERE
+  2>R ; IMMEDIATE
+: LOOP
+  ;
+: +LOOP
+  ;
+: LEAVE
+  TODO ; IMMEDIATE
+#+END_SRC
+
+** TODO Comments
+#+BEGIN_SRC forth
+: CHAR word' drop C@ ;
+: [CHAR] char literal ; IMMEDIATE
+#+END_SRC
+
+#+BEGIN_SRC forth
+: \ begin key 10 = until ;
+: ( begin key [char] ) = until ;
+#+END_SRC
+
+* TODO Change
+http://forth-standard.org/standard/doc
+- Have a 'non-standard' but simpler Forth?
+- Forth requires max 31 chars for defn names, so we can simplify the dict
+- Document sec 4.1
+- Exns for ambiguous conds?
+* TODO Testing
+- ~SOURCE-ID~
+* TODO After REPL
+
+* TODO Forth Assembler
+** ;CODE
+* TODO Ideas
+- Server and client :: Have the C implementation be a REPL server,
+     with separate messages, errors, and stack buffers?
+  - Support for up/downloading 'images' (the dictionary?), and
+    perhaps replace raspbootin?
+- DMA Forth :: Do [[cite:runDMA][run-DMA] TODO this link
+- [[Naming][Naming]] :: All the stack manipulation could be simplified by having
+            names.
+- [[PRF][Partial Recursive Functions (PRF)]] :: Perhaps could take inspiration
+     from the way composition is implemented there, in order to avoid
+     all the stack manipulation? This could be more in the Forth
+     spirit than [[Naming][naming]].
+- Dereference-count :: When a pointer gets dereferenced a lot, move
+     its pointee closer to that pointer (when doing mark&move GC)? To
+     make it more likely to be in the cache (akin to
+     simulated-annealing in the connection machine).
+- Simple JIT :: Inline all the non-recursive calls?
+- Debugger :: Breakpoints and tracing?
+- Exception aspects :: To decouple the 'textbook algorithm' from exception handling?
+- SD Card read/store :: So that we can compile to/read from disk, and don't have to
+- Memory management :: Simple bump allocator + GC? Might have to
+     modify @ and ! for GC?
+
+* TODO Naming
+Plan is to extend forth to do naming, to make programs easier to
+understand.
+
+Doing this naively will probably result in a dynamic environment.
+
+Something like
+#+BEGIN_SRC forth
+:fun REV-SUB ARG1 ARG2 => ARG2 ARG1 - ;
+#+END_SRC
+which could get turned into the equivalent of
+#+BEGIN_SRC forth
+: REV-SUB
+  2 PUSH-STACK-FRAME
+  2 FROM-FRAME
+  1 FROM-FRAME
+  -
+  POP-FRAME
+  ;
+#+END_SRC
+Also, I wonder if we need to redefine EXIT, for premature exits, or
+perhaps have a trampoline take care of the push&pop, like so:
+#+BEGIN_SRC asm
+.fw SETUP
+.fw P
+.fw TEARDOWN
+.fw EXIT
+P:.fw BODY, ...
+#+END_SRC
+
+This might even lead to optimisations, e.g. to
+#+BEGIN_SRC forth
+: REV-SUB
+  SWAP -
+  ;
+#+END_SRC
+
+And arg-count checking, possibly only at runtime first, to make sure
+we don't return multiple values or get too few arguments. Possibly
+static-checking too?
+
+* TODO Partial Recursive Functions (PRF) <<PRF>>
+Perhaps turn something like
+#+BEGIN_SRC forth
+\ FOO ( A B C -- V W )
+\ BAR ( E F -- X )
+\ BAZ ( V W X -- M N O )
+{ FOO , , BAR } BAZ
+#+END_SRC
+into
+#+BEGIN_SRC forth
+FOO >R
+>R \ from the empty
+BAR >R
+R> R> R>
+BAZ
+#+END_SRC
+* TODO Terminal on host with simple-forth.c?
+First, define a protocol
+- 0 n char0 ... charn ( send n chars )
+- ?
+* COMMENT Table column
+#+BEGIN_EXPORT html
+<script type="text/javascript">
+  function openTab(event) {
+    let open_index = 0;
+    for (let el of event.target.parentElement.children) {
+      if (el === event.target)
+        break;
+      ++open_index;
+    }
+    let table = event.target.
+        parentElement.parentElement.parentElement;
+    for (let tbody of table.getElementsByTagName("tbody")) {
+      for (let row of tbody.children) {
+        let index = 0;
+        for (let data of row.children) {
+          if (index == open_index) {
+            for (element of data.children)
+              element.style.display =
+                  element.style.display === "none" ?
+                  "block" : "none";
+          }
+          ++index;
+        }
+      }
+    }
+  }
+
+  for (let element of document.getElementsByClassName("harmonica-table")) {
+    for (let theads of element.getElementsByTagName("thead")) {
+      for (let row of theads.children) {
+        let index = 0;
+        for (let data of row.children) {
+          data.addEventListener(
+            "click", openTab);
+        }
+        ++index;
+      }
+    }
+  }
+</script>
+#+END_EXPORT
