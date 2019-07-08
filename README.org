@@ -1,0 +1,107 @@
+This project will probably take a lifetime, but might be an
+interesting hobby -- which is the point, to fill up time in an
+interesting manner, rather than be a feasible project.
+
+The reason Forth was chosen because I wanted to get interactive as
+soon as possible.
+
+This project is split into the following stages, and tracks A through
+to H; where each track represents an optional feature of the full
+system. The optimisation is a soft-dependency, in that each track has
+optimisations, but you don't need to select all tracks to have
+optimisations, if you select a subset then only the optimisations for
+that track get compiled.
+
+- Portability layer :: A 'virtual machine' which assembles a stream of
+     instructions using GNU as (assembler), e.g.
+   #+begin_src as/* TODO: Use this more liberally */
+// .fdef NAME, MNEMONIC, INSTRUCTIONS...
+.fdef "1-", DECR, LIT, L,1, SUB, EXIT
+.fdef "1+", INCR, LIT, L,1, ADD, EXIT
+.fdef "2DUP", TWO_DUP, OVER, OVER, EXIT
+   #+end_src
+- REPL :: A REPL which compiles text onto said virtual machine. This
+          outputs assembly code to be assembled with portability
+          layer.
+- Data-types :: Data-types? Algebraic?
+- Local names :: Extensions to the REPL to make it more like C, e.g.
+     #+begin_src forth
+:c swap { arg1 arg2 -- ret1 ret2 }
+   ret1 := arg2 ;;
+   ret2 := arg1 ;;
+   ;c
+     #+end_src
+     and loops
+     #+begin_src forth
+:c sum-n { n -- 0+...+n }
+   do i 0 ;; n ;; ( i from 0 [incl] to [excl] n )
+      0+...+n := 0+...+n i + ;;
+      loop
+   0+...+n := 0+...+n n + ;;
+   ;c
+     #+end_src
+
+     Works by having l- and r- value dictionaries? Written on top of stage1
+- Dynamic Libraries :: Not sure where they fit in, possibly require
+     position-independent portability layer?
+- malloc :: Memory allocation, manual?
+- GC :: Memory allocation, GC?
+- OO :: Object-orientation? Possibly one that also works with GC? On
+        top of data-types?
+- Syntax :: Parser? Variable fixity? Macros like in Isabelle?
+- Threads :: Multi-threading (single address-space)?  Sharing or not
+             sharing state (like Erlang's "green threads")?
+- Processes :: Multiple processes (multiple address-space)?
+- Actors :: Actor model (message-passing)? Scheduling?
+- Relational :: Relational programming?
+- Build-system :: Based on relational programming?
+- Static types :: Static type-system? Type-classes?
+- Store :: Persistent store? Databases?
+- Swap :: Paging datastructures in and out? Virt Mem?  Hibernate?
+- Filesystems :: Filesystems as objects on the persistent store?
+                 Journalling?
+- Arrays :: APL-like arrays?
+- Optimisations :: Optimiser, track granularity?  I.e. a soft
+                   dependency on the previous stages, so that only the
+                   optimisations for the selected tracks get compiled.
+
+With an ordering like
+#+begin_src dot :file stage-dependencies.png :exports results
+digraph {
+    node [shape=none];
+    subgraph cluster0 { ordering=out;rank=same; vm [label="Portability layer"]; nv [label="+ Non-volatile"]; int [label="+ Interrupt controller\nNon real-time"]; vmem [label="+ Virtual Memory"]; };
+    subgraph cluster1 { rank=same; REPL; };
+    subgraph cluster2 { rank=same; names [label="Local names"]; };
+    subgraph cluster3 { rank=same; datatypes [label="Data-types"]; };
+    subgraph cluster4 { rank=same; malloc; Threads; Relational; Store; Arrays; };
+    subgraph cluster5 { rank=same; GC; OO; Syntax; Processes; Actors; buildSys [label="Build system"]; types [label="Static types"]; Swap; };
+    subgraph cluster6 { rank=same; Filesystems; };
+    subgraph cluster7 { rank=same; Optimisations; };
+
+    vm -> REPL -> datatypes -> names;
+    names  -> malloc    -> GC;
+    malloc -> OO;
+    malloc -> Syntax;
+    names  -> Threads    -> Processes;
+              Threads    -> Actors;
+    names  -> Relational -> buildSys;
+              Relational -> types;
+    names  -> Store      -> Swap      -> Filesystems;
+    names  -> Arrays;
+
+    edge [style=dashed];
+    vmem -> Processes;
+    nv -> Store;
+    int -> Threads [label="Pre-emptive only"];
+
+    Filesystems -> Optimisations [style=invis];
+    // { GC; OO; Syntax; Processes; Actors; types; Filesystems; } -> Optimisations [style=dashed];
+}
+#+end_src
+
+#+RESULTS:
+[[file:stage-dependencies.png]]
+
+Perhaps being able to pick&mix for target application? E.g. for micros
+without virtual memory we don't want the multiple-address space
+processes.
