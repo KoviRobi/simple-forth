@@ -1,0 +1,9 @@
+Extensions to the REPL to make it more like C, e.g.
+#+begin_src forth
+:c sum-n { n -- 0+...+n }
+   do i 0 n ( i from 0 to [excl] n )
+      0+...+n := 0+...+n i +
+      loop
+   0+...+n := 0+...+n n +
+   ;c
+#+end_src
