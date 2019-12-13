@@ -1,0 +1,62 @@
+\ Perhaps these could just be
+\ indirect into a table?
+\ Would make find easy
+\ That could be stage0
+\ But how would stage0 pick up
+\ new words?
+\ We make :stage0 define a constant!
+\
+\ Does depend on byte size being 1 (byte addressing)
+\
+\ dup rot
+\ @ + word+
+\ byte@ byte,
+\ find execute compile
+
+10 CONSTANT max-imms
+
+: advance-str ( str -- one-past-str )
+  dup @ + word+ ;
+
+: raw-mode ( input-str -- input-str+ )
+  dup advance-str dup rot \ str+ str+ str
+  do
+    i char@ char,
+    loop
+  ; immediate
+
+input-start
+loop \ invariant: tos: input-str
+  dup find
+  if   execute      \ immediate
+  else compile then \ compile
+
+  advance-str \ end not raw-mode
+  dup until
+
+\\\\ input-start: ////
+ \\\\            ////
+  \\\\          ////
+   \\\\        ////
+    \\\\      ////
+     \\\\    ////
+      \\\\  ////
+       \\\\////
+        \\\///
+         \\//
+          \/
+VARIABLE imms     1 imms ! \ raw-mode already there
+VARIABLE non-imms max-imms non-imms !
+
+\ stage0 works like a constant, but the constant it 
+: :stage0
+  non-imms @ CONSTANT
+  1 non-imms +!
+  ;
+
+:stage0 1+ 1 + ;
+
+[ raw dictionary entry for
+  word, with flags ]
+[ contents of word
+; quit
