@@ -1,5 +1,8 @@
+# Editor files
 \#*\#
 *~
+
+# Intermediate files
 *.o
 *.html
 a.out
@@ -8,3 +11,6 @@ a.out
 /stage0-vm-unix-c-forth/unix-c-forth
 output
 decoded
+
+# Direnv
+.envrc

@@ -69,7 +69,7 @@ is. It is decoded to be a function pointer before executing the
 interpreter it points to. The return stack contains pointers to the
 next encoded instruction to execute.
 #+CAPTION: *types.h*
-#+NAME: types.h
+#+NAME: types.h 1
 #+BEGIN_SRC C :tangle types.h
 #ifndef _UNIX_C_FORTH_TYPES_H_
 #define _UNIX_C_FORTH_TYPES_H_
@@ -82,8 +82,8 @@ typedef int  (*forth_instruction_decoded)(forth_instruction*);
 #+END_SRC
 
 #+CAPTION: ~<<globals>>~
-#+NAME: globals
-#+BEGIN_SRC C
+#+NAME: globals 1
+#+BEGIN_SRC C :noweb-ref globals
 FILE *input_stream;
 FILE *output_stream;
 forth_instruction **frame_stack, **frame_stack_bottom, **frame_stack_top;
@@ -92,7 +92,7 @@ forth_instruction **frame_stack, **frame_stack_bottom, **frame_stack_top;
 We also have types for a cell, which is a standard unit on the value
 stack, and on the heap.
 #+CAPTION: *types.h*
-#+NAME: types.h
+#+NAME: types.h 2
 #+BEGIN_SRC C :tangle types.h
 typedef int32_t  scell;
 typedef uint32_t ucell;
@@ -107,8 +107,8 @@ extern scell *HERE_LOC, *heap_bottom, *heap_top;
 #+END_SRC
 
 #+CAPTION: ~<<globals>>~
-#+NAME: globals
-#+BEGIN_SRC C
+#+NAME: globals 2
+#+BEGIN_SRC C :noweb-ref globals
 scell *value_stack, *value_stack_bottom, *value_stack_top;
 scell *HERE_LOC, *heap_bottom, *heap_top;
 #+END_SRC
@@ -129,8 +129,8 @@ int unpack_and_execute_instruction(forth_instruction inst);
 #+END_SRC
 
 #+CAPTION: ~<<before main>>~
-#+NAME: before main
-#+BEGIN_SRC C
+#+NAME: before main 1
+#+BEGIN_SRC C :noweb-ref "before main"
 int
 unpack_and_execute_instruction(forth_instruction inst)
 {
@@ -152,6 +152,7 @@ unpack_and_execute_instruction(forth_instruction inst)
 #+CAPTION: *Makefile*
 #+NAME: Makefile
 #+BEGIN_SRC Makefile :tangle Makefile
+BUILDDIR := ../build
 SRCS := unix-c-forth.c c-words.c arguments.c
 OBJS := $(patsubst %.c,%.o,$(SRCS)) words.o
 
@@ -164,7 +165,7 @@ all: unix-c-forth
 unix-c-forth: $(OBJS)
 	cc $(CFLAGS) $^ -o $@ $(LIBS)
 
-words.o: c-words.s ../stage0.s vars.s
+words.o: c-words.s $(BUILDDIR)/stage0.s $(BUILDDIR)/stage1.s vars.s
 	as -g $^ -o $@
 
 .PHONY: clean
@@ -182,8 +183,8 @@ LATEST_LOC:   .cell previous_entry
 #+END_SRC
 * Command-line arguments
 #+CAPTION: ~<<includes>>~
-#+NAME: includes
-#+BEGIN_SRC C
+#+NAME: includes 1
+#+BEGIN_SRC C :noweb-ref includes
 #include "arguments.h"
 #+END_SRC
 
@@ -323,8 +324,8 @@ parse_arguments(argc, argv, &arguments);
 #+END_SRC
 ** Allocating stacks and heap
 #+CAPTION: ~<<before main>>~
-#+NAME: before main
-#+BEGIN_SRC C
+#+NAME: before main 2
+#+BEGIN_SRC C :noweb-ref "before main"
 void *allocate(unsigned int count, unsigned int size) {
   void *rtn = calloc(count, size);
   if ((void *)rtn == NULL) perror("Failed to allocate");
@@ -349,8 +350,8 @@ heap_top = heap_bottom + arguments.heap_size;
 #+END_SRC
 * Unix-signal handling (to print stacks)
 #+CAPTION: ~<<includes>>~
-#+NAME: includes
-#+BEGIN_SRC C
+#+NAME: includes 2
+#+BEGIN_SRC C :noweb-ref includes
 #include <signal.h>
 #+END_SRC
 #+CAPTION: ~<<set up signal handling>>~
@@ -370,8 +371,8 @@ if (old_action.sa_handler != SIG_IGN)
 #+END_SRC
 * Printing stacks and heaps
 #+CAPTION: ~<<before main>>~
-#+NAME: before main
-#+BEGIN_SRC C
+#+NAME: before main 3
+#+BEGIN_SRC C :noweb-ref "before main"
 void
 print_value_stack() {
   printf("Values (bottom first)\n");
@@ -381,8 +382,8 @@ print_value_stack() {
 #+END_SRC
 
 #+CAPTION: ~<<before main>>~
-#+NAME: before main
-#+BEGIN_SRC C
+#+NAME: before main 4
+#+BEGIN_SRC C :noweb-ref "before main"
 char
 char_disp(char *p) {
   char c = *p;
@@ -418,8 +419,8 @@ print_heap() {
 
 ** Mapping addresses to names
 #+CAPTION: ~<<includes>>~
-#+NAME: includes
-#+BEGIN_SRC C
+#+NAME: includes 3
+#+BEGIN_SRC C :noweb-ref includes
 #include <dlfcn.h>
 #include <stdlib.h>
 #+END_SRC
@@ -432,13 +433,13 @@ char *addr2name(void *addr);
 #+END_SRC
 
 #+CAPTION: ~<<globals>>~
-#+NAME: globals
-#+BEGIN_SRC C
+#+NAME: globals 3
+#+BEGIN_SRC C :noweb-ref globals
 extern scell LATEST_LOC;
 #+END_SRC
 #+CAPTION: ~<<before main>>~
-#+NAME: before main
-#+BEGIN_SRC C
+#+NAME: before main 5
+#+BEGIN_SRC C :noweb-ref "before main"
 typedef struct dict_entry {
   ucell prev;
   ucell flags;
@@ -467,8 +468,8 @@ print_frame_stack() {
 #+END_SRC
 
 #+CAPTION: ~<<before main>>~
-#+NAME: before main
-#+BEGIN_SRC C
+#+NAME: before main 6
+#+BEGIN_SRC C :noweb-ref "before main"
 void
 print_next_inst() {
   if (next_inst != NULL) {
@@ -484,8 +485,8 @@ print_next_inst() {
 
 * Compiling input files
 #+CAPTION: ~<<includes>>~
-#+NAME: includes
-#+BEGIN_SRC C
+#+NAME: includes 4
+#+BEGIN_SRC C :noweb-ref includes
 #include <err.h>
 #+END_SRC
 
@@ -514,8 +515,8 @@ input_stream = stdin;
 
 * Outputting compiled heap
 #+CAPTION: ~<<includes>>~
-#+NAME: includes
-#+BEGIN_SRC C
+#+NAME: includes 5
+#+BEGIN_SRC C :noweb-ref includes
 #include <endian.h>
 #+END_SRC
 

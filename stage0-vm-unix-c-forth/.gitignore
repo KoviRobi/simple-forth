@@ -1,0 +1,9 @@
+# Generated from forth-interpreter.org
+Makefile
+arguments.c
+arguments.h
+c-words.c
+c-words.s
+unix-c-forth.c
+unix-c-forth.h
+vars.s

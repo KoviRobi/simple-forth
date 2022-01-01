@@ -23,7 +23,23 @@
 
 * TODO Forth
 Do .weak?
+** Assumptions
+** Notation
+   From https://forth-standard.org/standard/usage
+   - ~c-addr~ is a character aligned address
+   - ~c-addr u~ refers to a string
 ** TODO Dictionary-list
+*** TODO FDEF
+#+BEGIN_SRC asm :tangle stage0.s
+.macro .fdef1 name:req, label, imm, hidden, rest:vararg
+  .entry \name, \label, \imm, \hidden
+  .forth_interpreter
+  .ifnb \rest ; .fw \rest ; .endif
+.endm
+.macro .fdef name:req, label, rest:vararg
+  .fdef1 \name, \label, 0, 0, \rest
+.endm
+#+END_SRC
 *** TODO Simple helper words<<sec:forth-assembly>>
 #+BEGIN_SRC asm :tangle stage0.s
 .fdef "1-", DECR, LIT, L,1, SUB, EXIT
@@ -272,7 +288,7 @@ MEMCMP_NEXT:
 : MEMCMP ( len a b -- true | false )
   rot 0 do
     2dup i + C@ swap i + C@
-    = invert if unloop 2drop false exit then
+    char= invert if unloop 2drop false exit then
   loop
   2drop true ;
 #+END_SRC

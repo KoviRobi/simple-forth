@@ -27,7 +27,7 @@
 TODO: backspace (or perhaps with a modified key?)
 
 {{{cstart}}}
-#+BEGIN_SRC asm :tangle stage0.s asm :tangle stage0.s
+#+BEGIN_SRC asm :tangle stage1.s
 .fdef "LOWER", _
   .fw DUP, LIT, L,'A', U_LESS_THAN
   .fw OVER, LIT, L,'Z', U_GREATER_THAN
@@ -44,7 +44,7 @@ TODO: backspace (or perhaps with a modified key?)
 {{{cend}}}
 
 {{{cstart}}}
-#+BEGIN_SRC asm :tangle stage0.s
+#+BEGIN_SRC asm :tangle stage1.s
 .fdef "CHAR\x3d", CHAR_EQUAL
   .fw TWO_DUP, EQUAL, ZBRANCH, L,(1f-.)
   .fw TWO_DROP, TRUE, EXIT
@@ -70,7 +70,7 @@ TODO: backspace (or perhaps with a modified key?)
 TODO: transient region
 
 {{{cstart}}}
-#+BEGIN_SRC asm :tangle stage0.s
+#+BEGIN_SRC asm :tangle stage1.s
 .fdef "WORD\x27", WORD_NEW
   .fw HERE, SWAP, LIT, L,0
 WORD_SKIP:
@@ -103,7 +103,7 @@ WORD_CONT:
 {{{cend}}}
 
 {{{cstart}}}
-#+BEGIN_SRC asm :tangle stage0.s
+#+BEGIN_SRC asm :tangle stage1.s
 .fdef "WORD", WORD
   .fw HERE, SWAP, CELL_SIZE, ALLOT,
   .fw WORD_NEW, ROT, STORE
@@ -126,7 +126,7 @@ If the character is less than '0', or between '9' and 'A' (or 'Z' and
 'a'), then it underflows, and will end up being greater than BASE.
 
 {{{cstart}}}
-#+BEGIN_SRC asm :tangle stage0.s
+#+BEGIN_SRC asm :tangle stage1.s
 .fdef "CHAR->DIGIT", CHAR_TO_DIGIT
   .fw LIT, L,'0', SUB
   .fw DUP, LIT, L,9, U_GREATER_THAN, ZBRANCH, L,(C_TO_D_END-.)
@@ -157,7 +157,7 @@ C_TO_D_END:
 {{{cend}}}
 
 {{{cstart}}}
-#+BEGIN_SRC asm :tangle stage0.s
+#+BEGIN_SRC asm :tangle stage1.s
 .data
 BASE_LOC: .cell 10
 .text
@@ -233,7 +233,7 @@ bases too, according to §3.4.1.3.
 See §3.4 of the [[https://www.taygeta.com/forth/dpans3.htm#3.4][ANSI Forth manual]].
 
 {{{cstart}}}
-#+BEGIN_SRC asm :tangle stage0.s
+#+BEGIN_SRC asm :tangle stage1.s
 .fdef "BL", BL
   .fw LIT, L,' ', EXIT
 #+END_SRC
@@ -244,7 +244,7 @@ See §3.4 of the [[https://www.taygeta.com/forth/dpans3.htm#3.4][ANSI Forth manu
 {{{cend}}}
 
 {{{cstart}}}
-#+BEGIN_SRC asm :tangle stage0.s
+#+BEGIN_SRC asm :tangle stage1.s
 .fdef "\x27", TICK
   .fw BL, WORD_NEW, FIND_NEW, DROP, EXIT
 #+END_SRC
@@ -256,7 +256,7 @@ See §3.4 of the [[https://www.taygeta.com/forth/dpans3.htm#3.4][ANSI Forth manu
 {{{cend}}}
 
 {{{cstart}}}
-#+BEGIN_SRC asm :tangle stage0.s
+#+BEGIN_SRC asm :tangle stage1.s
 .fdef "OK", OK
   .fw LIT, L,'O', EMIT, LIT, L,'k'
   .fw EMIT, BL, EMIT, EXIT
@@ -269,7 +269,7 @@ See §3.4 of the [[https://www.taygeta.com/forth/dpans3.htm#3.4][ANSI Forth manu
 {{{cend}}}
 
 {{{cstart}}}
-#+BEGIN_SRC asm :tangle stage0.s
+#+BEGIN_SRC asm :tangle stage1.s
 .fdef "ERROR", ERROR
   .fw LIT, L,'E', EMIT, LIT, L,'r', EMIT
   .fw LIT, L,'r', EMIT, BL, EMIT, EXIT
@@ -283,7 +283,7 @@ See §3.4 of the [[https://www.taygeta.com/forth/dpans3.htm#3.4][ANSI Forth manu
 
 ** TODO REPL
 {{{cstart}}}
-#+BEGIN_SRC asm :tangle stage0.s
+#+BEGIN_SRC asm :tangle stage1.s
 // TODO: Different interpretation modes
 .fdef "COMPILE\x2c", COMPILE_COMMA
   .fw COMMA, EXIT
@@ -295,7 +295,7 @@ TODO
 {{{cend}}}
 
 {{{cstart}}}
-#+BEGIN_SRC asm :tangle stage0.s
+#+BEGIN_SRC asm :tangle stage1.s
 .fdef "QUIT-FOUND", QUIT_FOUND
   .fw NIP, LIT, L,-1, EQUAL, STATE
   .fw FETCH, AND, ZBRANCH, L,(Q_F_EX-.)
@@ -315,7 +315,7 @@ Q_F_END:
 {{{cend}}}
 
 {{{cstart}}}
-#+BEGIN_SRC asm :tangle stage0.s
+#+BEGIN_SRC asm :tangle stage1.s
 .fdef1 "LITERAL", LITERAL, -1 /* immediate */
   .fw LIT, LIT, COMMA
   .fw COMMA, EXIT
@@ -329,9 +329,9 @@ Q_F_END:
 {{{cend}}}
 
 {{{cstart}}}
-#+BEGIN_SRC asm :tangle stage0.s
+#+BEGIN_SRC asm :tangle stage1.s
 .fdef "QUIT-NOT-FOUND", QUIT_NOT_FOUND
-  .fw NROT, TO_NUMBER, LIT, L,0 // TODO: http://forth-standard.org/standard/usage#subsection.3.4.1.3
+  .fw NROT, TO_NUMBER, LIT, L,0 /* TODO: http://forth-standard.org/standard/usage#subsection.3.4.1.3 */
   .fw EQUAL, ZBRANCH, L,(Q_N_F_ELSE-.)
   .fw DROP, STATE, FETCH, ZBRANCH, L,(Q_N_F_END-.)
   .fw LITERAL
@@ -356,7 +356,7 @@ Q_N_F_END:
 {{{cend}}}
 
 {{{cstart}}}
-#+BEGIN_SRC asm :tangle stage0.s
+#+BEGIN_SRC asm :tangle stage1.s
 .fdef "QUIT", QUIT
 QUIT_LOOP:
   .fw BL, WORD_NEW, DUP, NROT
@@ -384,7 +384,7 @@ QUIT_N_F:
 ** TODO DOES>
 ** TODO Brave New Words
 {{{cstart}}}
-#+BEGIN_SRC asm :tangle stage0.s
+#+BEGIN_SRC asm :tangle stage1.s
 .fdef1 "[", LBRAC,-1 /* immediate */
   .fw LIT, L,0, STATE, STORE, EXIT
 #+END_SRC
@@ -395,7 +395,7 @@ QUIT_N_F:
 {{{cend}}}
 
 {{{cstart}}}
-#+BEGIN_SRC asm :tangle stage0.s
+#+BEGIN_SRC asm :tangle stage1.s
 .fdef "]", RBRAC
   .fw LIT, L,-1, STATE, STORE, EXIT
 #+END_SRC
@@ -406,7 +406,7 @@ QUIT_N_F:
 {{{cend}}}
 
 {{{cstart}}}
-#+BEGIN_SRC asm :tangle stage0.s
+#+BEGIN_SRC asm :tangle stage1.s
 // TODO: SUBROUTINE .fdef "\x3a", COLON
 // TODO: SUBROUTINE   .fw CREATE
 // TODO: SUBROUTINE   .fw LIT, forth_interpreter, COMMA
@@ -424,7 +424,7 @@ QUIT_N_F:
 {{{cend}}}
 
 {{{cstart}}}
-#+BEGIN_SRC asm :tangle stage0.s
+#+BEGIN_SRC asm :tangle stage1.s
 .fdef1 "\x3b", SEMICOLON, -1 /* immediate */
   .fw LIT, L,EXIT, COMMA
   .fw LATEST, FETCH, HIDE, LBRAC, EXIT
