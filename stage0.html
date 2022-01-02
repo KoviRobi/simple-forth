@@ -3,7 +3,7 @@
 "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
 <html xmlns="http://www.w3.org/1999/xhtml" lang="en" xml:lang="en">
 <head>
-<!-- 2022-01-02 Sun 00:49 -->
+<!-- 2022-01-02 Sun 00:55 -->
 <meta http-equiv="Content-Type" content="text/html;charset=utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
 <title>Raspberry Pi Baremetal Language Bootstrapping</title>
@@ -193,12 +193,12 @@
     { background-color: #ffff00; color: #000000; font-weight: bold; }
   .org-svg { width: 90%; }
 </style>
-<link rel="stylesheet" type="text/css" href="/org-html-themes/src/readtheorg_theme/css/htmlize.css"/>
-<link rel="stylesheet" type="text/css" href="/org-html-themes/src/readtheorg_theme/css/readtheorg.css"/>
+<link rel="stylesheet" type="text/css" href="org-html-themes/src/readtheorg_theme/css/htmlize.css"/>
+<link rel="stylesheet" type="text/css" href="org-html-themes/src/readtheorg_theme/css/readtheorg.css"/>
 <script src="https://ajax.googleapis.com/ajax/libs/jquery/2.1.3/jquery.min.js"></script>
 <script src="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.4/js/bootstrap.min.js"></script>
-<script type="text/javascript" src="/org-html-themes/styles/lib/js/jquery.stickytableheaders.min.js"></script>
-<script type="text/javascript" src="/org-html-themes/src/readtheorg_theme/js/readtheorg.js"></script>
+<script type="text/javascript" src="org-html-themes/styles/lib/js/jquery.stickytableheaders.min.js"></script>
+<script type="text/javascript" src="org-html-themes/src/readtheorg_theme/js/readtheorg.js"></script>
 </head>
 <body>
 <div id="content" class="content">
@@ -207,38 +207,38 @@
 <h2>Table of Contents</h2>
 <div id="text-table-of-contents" role="doc-toc">
 <ul>
-<li><a href="#org7a57572">1. <span class="todo TODO">TODO</span> Forth</a>
+<li><a href="#orge7fa337">1. <span class="todo TODO">TODO</span> Forth</a>
 <ul>
-<li><a href="#org4965462">1.1. Assumptions</a></li>
-<li><a href="#org49034ac">1.2. Notation</a></li>
-<li><a href="#org28e3880">1.3. <span class="todo TODO">TODO</span> Dictionary-list</a>
+<li><a href="#org2445b06">1.1. Assumptions</a></li>
+<li><a href="#org3b4c6e8">1.2. Notation</a></li>
+<li><a href="#org711c3eb">1.3. <span class="todo TODO">TODO</span> Dictionary-list</a>
 <ul>
-<li><a href="#orgd5b745b">1.3.1. <span class="todo TODO">TODO</span> FDEF</a></li>
-<li><a href="#org99e24ba">1.3.2. <span class="todo TODO">TODO</span> Simple helper words</a></li>
-<li><a href="#org395899b">1.3.3. <span class="todo TODO">TODO</span> Creation</a></li>
-<li><a href="#org81a7e0e">1.3.4. <span class="todo TODO">TODO</span> Lookup</a></li>
-<li><a href="#orgac9de8d">1.3.5. <span class="todo TODO">TODO</span> Memory comparison</a></li>
+<li><a href="#org7003345">1.3.1. <span class="todo TODO">TODO</span> FDEF</a></li>
+<li><a href="#orgfe299dc">1.3.2. <span class="todo TODO">TODO</span> Simple helper words</a></li>
+<li><a href="#org867f3d3">1.3.3. <span class="todo TODO">TODO</span> Creation</a></li>
+<li><a href="#org007706e">1.3.4. <span class="todo TODO">TODO</span> Lookup</a></li>
+<li><a href="#orgfa6bb6e">1.3.5. <span class="todo TODO">TODO</span> Memory comparison</a></li>
 </ul>
 </li>
 </ul>
 </li>
-<li><a href="#orgfd1ac8b">2. <span class="todo TODO">TODO</span> Testing</a></li>
+<li><a href="#org2c11bf7">2. <span class="todo TODO">TODO</span> Testing</a></li>
 </ul>
 </div>
 </div>
 
-<div id="outline-container-org7a57572" class="outline-2">
-<h2 id="org7a57572"><span class="section-number-2">1.</span> <span class="todo TODO">TODO</span> Forth</h2>
+<div id="outline-container-orge7fa337" class="outline-2">
+<h2 id="orge7fa337"><span class="section-number-2">1.</span> <span class="todo TODO">TODO</span> Forth</h2>
 <div class="outline-text-2" id="text-1">
 <p>
 Do .weak?
 </p>
 </div>
-<div id="outline-container-org4965462" class="outline-3">
-<h3 id="org4965462"><span class="section-number-3">1.1.</span> Assumptions</h3>
+<div id="outline-container-org2445b06" class="outline-3">
+<h3 id="org2445b06"><span class="section-number-3">1.1.</span> Assumptions</h3>
 </div>
-<div id="outline-container-org49034ac" class="outline-3">
-<h3 id="org49034ac"><span class="section-number-3">1.2.</span> Notation</h3>
+<div id="outline-container-org3b4c6e8" class="outline-3">
+<h3 id="org3b4c6e8"><span class="section-number-3">1.2.</span> Notation</h3>
 <div class="outline-text-3" id="text-1-2">
 <p>
 From <a href="https://forth-standard.org/standard/usage">https://forth-standard.org/standard/usage</a>
@@ -249,12 +249,12 @@ From <a href="https://forth-standard.org/standard/usage">https://forth-standard.
 </ul>
 </div>
 </div>
-<div id="outline-container-org28e3880" class="outline-3">
-<h3 id="org28e3880"><span class="section-number-3">1.3.</span> <span class="todo TODO">TODO</span> Dictionary-list</h3>
+<div id="outline-container-org711c3eb" class="outline-3">
+<h3 id="org711c3eb"><span class="section-number-3">1.3.</span> <span class="todo TODO">TODO</span> Dictionary-list</h3>
 <div class="outline-text-3" id="text-1-3">
 </div>
-<div id="outline-container-orgd5b745b" class="outline-4">
-<h4 id="orgd5b745b"><span class="section-number-4">1.3.1.</span> <span class="todo TODO">TODO</span> FDEF</h4>
+<div id="outline-container-org7003345" class="outline-4">
+<h4 id="org7003345"><span class="section-number-4">1.3.1.</span> <span class="todo TODO">TODO</span> FDEF</h4>
 <div class="outline-text-4" id="text-1-3-1">
 <div class="org-src-container">
 <pre class="src src-asm"><span style="font-weight: bold;">.macro</span> .fdef1 name:req, label, imm, hidden, rest:vararg
@@ -269,8 +269,8 @@ From <a href="https://forth-standard.org/standard/usage">https://forth-standard.
 </div>
 </div>
 </div>
-<div id="outline-container-org99e24ba" class="outline-4">
-<h4 id="org99e24ba"><span class="section-number-4">1.3.2.</span> <span class="todo TODO">TODO</span> Simple helper words<a id="org3daef9f"></a></h4>
+<div id="outline-container-orgfe299dc" class="outline-4">
+<h4 id="orgfe299dc"><span class="section-number-4">1.3.2.</span> <span class="todo TODO">TODO</span> Simple helper words<a id="orgf48925d"></a></h4>
 <div class="outline-text-4" id="text-1-3-2">
 <div class="org-src-container">
 <pre class="src src-asm"><span style="font-weight: bold;">.fdef</span> <span style="font-style: italic;">"1-"</span>, DECR, LIT, L,1, SUB, EXIT
@@ -306,8 +306,8 @@ From <a href="https://forth-standard.org/standard/usage">https://forth-standard.
 </div>
 </div>
 
-<div id="outline-container-org395899b" class="outline-4">
-<h4 id="org395899b"><span class="section-number-4">1.3.3.</span> <span class="todo TODO">TODO</span> Creation</h4>
+<div id="outline-container-org867f3d3" class="outline-4">
+<h4 id="org867f3d3"><span class="section-number-4">1.3.3.</span> <span class="todo TODO">TODO</span> Creation</h4>
 <div class="outline-text-4" id="text-1-3-3">
 <table class="harmonica-table"><thead><tr><td>Assembly</td><td>Forth</td></tr></thead><tbody><tr><td>
 <div class="org-src-container">
@@ -457,8 +457,8 @@ Toggles hidden status of a given xt
 </div>
 </div>
 
-<div id="outline-container-org81a7e0e" class="outline-4">
-<h4 id="org81a7e0e"><span class="section-number-4">1.3.4.</span> <span class="todo TODO">TODO</span> Lookup</h4>
+<div id="outline-container-org007706e" class="outline-4">
+<h4 id="org007706e"><span class="section-number-4">1.3.4.</span> <span class="todo TODO">TODO</span> Lookup</h4>
 <div class="outline-text-4" id="text-1-3-4">
 <dl class="org-dl">
 <dt>TODO</dt><dd>Explain "c-addr u" and fwsize</dd>
@@ -529,8 +529,8 @@ for the flags.
 </div>
 </div>
 
-<div id="outline-container-orgac9de8d" class="outline-4">
-<h4 id="orgac9de8d"><span class="section-number-4">1.3.5.</span> <span class="todo TODO">TODO</span> Memory comparison</h4>
+<div id="outline-container-orgfa6bb6e" class="outline-4">
+<h4 id="orgfa6bb6e"><span class="section-number-4">1.3.5.</span> <span class="todo TODO">TODO</span> Memory comparison</h4>
 <div class="outline-text-4" id="text-1-3-5">
 <table class="harmonica-table"><thead><tr><td>Assembly</td><td>Forth</td></tr></thead><tbody><tr><td>
 <div class="org-src-container">
@@ -569,8 +569,8 @@ for the flags.
 </div>
 
 
-<div id="outline-container-orgfd1ac8b" class="outline-2">
-<h2 id="orgfd1ac8b"><span class="section-number-2">2.</span> <span class="todo TODO">TODO</span> Testing</h2>
+<div id="outline-container-org2c11bf7" class="outline-2">
+<h2 id="org2c11bf7"><span class="section-number-2">2.</span> <span class="todo TODO">TODO</span> Testing</h2>
 <div class="outline-text-2" id="text-2">
 <ul class="org-ul">
 <li><code>SOURCE-ID</code></li>
@@ -580,7 +580,7 @@ for the flags.
 </div>
 <div id="postamble" class="status">
 <p class="author">Author: Robert Kovacsics (rmk35)</p>
-<p class="date">Created: 2022-01-02 Sun 00:49</p>
+<p class="date">Created: 2022-01-02 Sun 00:55</p>
 <p class="validation"><a href="https://validator.w3.org/check?uri=referer">Validate</a></p>
 </div>
 </body>

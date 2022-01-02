@@ -3,7 +3,7 @@
 "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
 <html xmlns="http://www.w3.org/1999/xhtml" lang="en" xml:lang="en">
 <head>
-<!-- 2022-01-02 Sun 00:49 -->
+<!-- 2022-01-02 Sun 00:55 -->
 <meta http-equiv="Content-Type" content="text/html;charset=utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
 <title>Simple Forth interpreter in C</title>
@@ -193,12 +193,12 @@
     { background-color: #ffff00; color: #000000; font-weight: bold; }
   .org-svg { width: 90%; }
 </style>
-<link rel="stylesheet" type="text/css" href="/org-html-themes/src/readtheorg_theme/css/htmlize.css"/>
-<link rel="stylesheet" type="text/css" href="/org-html-themes/src/readtheorg_theme/css/readtheorg.css"/>
+<link rel="stylesheet" type="text/css" href="org-html-themes/src/readtheorg_theme/css/htmlize.css"/>
+<link rel="stylesheet" type="text/css" href="org-html-themes/src/readtheorg_theme/css/readtheorg.css"/>
 <script src="https://ajax.googleapis.com/ajax/libs/jquery/2.1.3/jquery.min.js"></script>
 <script src="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.4/js/bootstrap.min.js"></script>
-<script type="text/javascript" src="/org-html-themes/styles/lib/js/jquery.stickytableheaders.min.js"></script>
-<script type="text/javascript" src="/org-html-themes/src/readtheorg_theme/js/readtheorg.js"></script>
+<script type="text/javascript" src="org-html-themes/styles/lib/js/jquery.stickytableheaders.min.js"></script>
+<script type="text/javascript" src="org-html-themes/src/readtheorg_theme/js/readtheorg.js"></script>
 </head>
 <body>
 <div id="content" class="content">
@@ -207,32 +207,32 @@
 <h2>Table of Contents</h2>
 <div id="text-table-of-contents" role="doc-toc">
 <ul>
-<li><a href="#org582e92d">1. High-level overview</a></li>
-<li><a href="#org0cd76c6">2. Putting it together</a></li>
-<li><a href="#org121c157">3. Command-line arguments</a>
+<li><a href="#org1dd8043">1. High-level overview</a></li>
+<li><a href="#org05a7f6b">2. Putting it together</a></li>
+<li><a href="#orged5e065">3. Command-line arguments</a>
 <ul>
-<li><a href="#org9a837b6">3.1. Allocating stacks and heap</a></li>
+<li><a href="#org4623dfe">3.1. Allocating stacks and heap</a></li>
 </ul>
 </li>
-<li><a href="#org504c8f6">4. Unix-signal handling (to print stacks)</a></li>
-<li><a href="#orgf15ed63">5. Printing stacks and heaps</a>
+<li><a href="#org3b4b6a9">4. Unix-signal handling (to print stacks)</a></li>
+<li><a href="#org30bab69">5. Printing stacks and heaps</a>
 <ul>
-<li><a href="#org87e3109">5.1. Mapping addresses to names</a></li>
+<li><a href="#org6aa2068">5.1. Mapping addresses to names</a></li>
 </ul>
 </li>
-<li><a href="#orgbbac51a">6. Compiling input files</a></li>
-<li><a href="#org8d2d6f6">7. Outputting compiled heap</a></li>
-<li><a href="#org59e7325">8. Basic words</a>
+<li><a href="#org8e51c5f">6. Compiling input files</a></li>
+<li><a href="#org349fc64">7. Outputting compiled heap</a></li>
+<li><a href="#org48c69ec">8. Basic words</a>
 <ul>
-<li><a href="#orga4a67f4">8.1. C implementation</a></li>
-<li><a href="#org7ed3f29">8.2. Mapping to dictionary entries</a></li>
+<li><a href="#orgf2bfc5b">8.1. C implementation</a></li>
+<li><a href="#org9571215">8.2. Mapping to dictionary entries</a></li>
 </ul>
 </li>
-<li><a href="#orgfdbe113">9. <code>[0/1]</code> Tasks</a>
+<li><a href="#org66a2c21">9. <code>[0/1]</code> Tasks</a>
 <ul>
-<li><a href="#org4f70f72">9.1. <span class="todo TODO">TODO</span> Linker</a>
+<li><a href="#org5a4b9bb">9.1. <span class="todo TODO">TODO</span> Linker</a>
 <ul>
-<li><a href="#org8be526d">9.1.1. Dynamic linking</a></li>
+<li><a href="#org17db93c">9.1.1. Dynamic linking</a></li>
 </ul>
 </li>
 </ul>
@@ -241,11 +241,11 @@
 </div>
 </div>
 
-<div id="outline-container-org582e92d" class="outline-2">
-<h2 id="org582e92d"><span class="section-number-2">1.</span> High-level overview</h2>
+<div id="outline-container-org1dd8043" class="outline-2">
+<h2 id="org1dd8043"><span class="section-number-2">1.</span> High-level overview</h2>
 <div class="outline-text-2" id="text-1">
 <div class="org-src-container">
-<label class="org-src-name"><span class="listing-number">Listing 1: </span><b>unix-c-forth.c</b></label><pre class="src src-C" id="org5129790">&lt;&lt;includes&gt;&gt;
+<label class="org-src-name"><span class="listing-number">Listing 1: </span><b>unix-c-forth.c</b></label><pre class="src src-C" id="org93f3319">&lt;&lt;includes&gt;&gt;
 <span style="font-weight: bold;">#include</span> <span style="font-style: italic;">"unix-c-forth.h"</span>
 
 <span style="font-weight: bold;">extern</span> forth_instruction forth_main;
@@ -302,7 +302,7 @@ interpreter it points to. The return stack contains pointers to the
 next encoded instruction to execute.
 </p>
 <div class="org-src-container">
-<label class="org-src-name"><span class="listing-number">Listing 2: </span><b>types.h</b></label><pre class="src src-C" id="org4c9bcec"><span style="font-weight: bold;">#if</span><span style="font-weight: bold;">n</span><span style="font-weight: bold;">def</span> _UNIX_C_FORTH_TYPES_H_
+<label class="org-src-name"><span class="listing-number">Listing 2: </span><b>types.h</b></label><pre class="src src-C" id="org35cc5ad"><span style="font-weight: bold;">#if</span><span style="font-weight: bold;">n</span><span style="font-weight: bold;">def</span> _UNIX_C_FORTH_TYPES_H_
 <span style="font-weight: bold;">#define</span> <span style="font-weight: bold; font-style: italic;">_UNIX_C_FORTH_TYPES_H_</span>
 
 <span style="font-weight: bold;">#include</span> <span style="font-style: italic;">&lt;stdint.h&gt;</span>
@@ -314,7 +314,7 @@ next encoded instruction to execute.
 </div>
 
 <div class="org-src-container">
-<label class="org-src-name"><span class="listing-number">Listing 3: </span><code>&lt;&lt;globals&gt;&gt;</code></label><pre class="src src-C" id="org198f1db"><span style="font-weight: bold; text-decoration: underline;">FILE</span> *<span style="font-weight: bold; font-style: italic;">input_stream</span>;
+<label class="org-src-name"><span class="listing-number">Listing 3: </span><code>&lt;&lt;globals&gt;&gt;</code></label><pre class="src src-C" id="orgd8490bb"><span style="font-weight: bold; text-decoration: underline;">FILE</span> *<span style="font-weight: bold; font-style: italic;">input_stream</span>;
 <span style="font-weight: bold; text-decoration: underline;">FILE</span> *<span style="font-weight: bold; font-style: italic;">output_stream</span>;
 <span style="font-weight: bold; text-decoration: underline;">forth_instruction</span> **<span style="font-weight: bold; font-style: italic;">frame_stack</span>, **<span style="font-weight: bold; font-style: italic;">frame_stack_bottom</span>, **<span style="font-weight: bold; font-style: italic;">frame_stack_top</span>;
 </pre>
@@ -325,7 +325,7 @@ We also have types for a cell, which is a standard unit on the value
 stack, and on the heap.
 </p>
 <div class="org-src-container">
-<label class="org-src-name"><span class="listing-number">Listing 4: </span><b>types.h</b></label><pre class="src src-C" id="org67c5e32"><span style="font-weight: bold;">typedef</span> <span style="font-weight: bold; text-decoration: underline;">int32_t</span>  <span style="font-weight: bold; text-decoration: underline;">scell</span>;
+<label class="org-src-name"><span class="listing-number">Listing 4: </span><b>types.h</b></label><pre class="src src-C" id="orgbbbb798"><span style="font-weight: bold;">typedef</span> <span style="font-weight: bold; text-decoration: underline;">int32_t</span>  <span style="font-weight: bold; text-decoration: underline;">scell</span>;
 <span style="font-weight: bold;">typedef</span> <span style="font-weight: bold; text-decoration: underline;">uint32_t</span> <span style="font-weight: bold; text-decoration: underline;">ucell</span>;
 
 <span style="font-weight: bold;">extern</span> <span style="font-weight: bold; text-decoration: underline;">FILE</span> *<span style="font-weight: bold; font-style: italic;">input_stream</span>;
@@ -339,7 +339,7 @@ stack, and on the heap.
 </div>
 
 <div class="org-src-container">
-<label class="org-src-name"><span class="listing-number">Listing 5: </span><code>&lt;&lt;globals&gt;&gt;</code></label><pre class="src src-C" id="orge714ca7"><span style="font-weight: bold; text-decoration: underline;">scell</span> *<span style="font-weight: bold; font-style: italic;">value_stack</span>, *<span style="font-weight: bold; font-style: italic;">value_stack_bottom</span>, *<span style="font-weight: bold; font-style: italic;">value_stack_top</span>;
+<label class="org-src-name"><span class="listing-number">Listing 5: </span><code>&lt;&lt;globals&gt;&gt;</code></label><pre class="src src-C" id="orga3fe6c7"><span style="font-weight: bold; text-decoration: underline;">scell</span> *<span style="font-weight: bold; font-style: italic;">value_stack</span>, *<span style="font-weight: bold; font-style: italic;">value_stack_bottom</span>, *<span style="font-weight: bold; font-style: italic;">value_stack_top</span>;
 <span style="font-weight: bold; text-decoration: underline;">scell</span> *<span style="font-weight: bold; font-style: italic;">HERE_LOC</span>, *<span style="font-weight: bold; font-style: italic;">heap_bottom</span>, *<span style="font-weight: bold; font-style: italic;">heap_top</span>;
 </pre>
 </div>
@@ -350,7 +350,7 @@ is by offsetting it from the base of the heap. This involves some
 complicated casting, so it has been broken up into several variables.
 </p>
 <div class="org-src-container">
-<label class="org-src-name"><span class="listing-number">Listing 6: </span><b>unix-c-forth.h</b></label><pre class="src src-C" id="orgdcaf6ba"><span style="font-weight: bold;">#if</span><span style="font-weight: bold;">n</span><span style="font-weight: bold;">def</span> _UNIX_C_FORTH_SIMPLE_FORTH_H_
+<label class="org-src-name"><span class="listing-number">Listing 6: </span><b>unix-c-forth.h</b></label><pre class="src src-C" id="orgf9f93a7"><span style="font-weight: bold;">#if</span><span style="font-weight: bold;">n</span><span style="font-weight: bold;">def</span> _UNIX_C_FORTH_SIMPLE_FORTH_H_
 <span style="font-weight: bold;">#define</span> <span style="font-weight: bold; font-style: italic;">_UNIX_C_FORTH_SIMPLE_FORTH_H_</span>
 
 <span style="font-weight: bold;">#include</span> <span style="font-style: italic;">"types.h"</span>
@@ -361,7 +361,7 @@ complicated casting, so it has been broken up into several variables.
 </div>
 
 <div class="org-src-container">
-<label class="org-src-name"><span class="listing-number">Listing 7: </span><code>&lt;&lt;before main&gt;&gt;</code></label><pre class="src src-C" id="org306b84f"><span style="font-weight: bold; text-decoration: underline;">int</span>
+<label class="org-src-name"><span class="listing-number">Listing 7: </span><code>&lt;&lt;before main&gt;&gt;</code></label><pre class="src src-C" id="org08759df"><span style="font-weight: bold; text-decoration: underline;">int</span>
 <span style="font-weight: bold;">unpack_and_execute_instruction</span>(<span style="font-weight: bold; text-decoration: underline;">forth_instruction</span> <span style="font-weight: bold; font-style: italic;">inst</span>)
 {
   <span style="font-weight: bold;">typedef</span> <span style="font-weight: bold; text-decoration: underline;">forth_instruction_decoded</span> <span style="font-weight: bold; text-decoration: underline;">decoded</span>;
@@ -381,11 +381,11 @@ complicated casting, so it has been broken up into several variables.
 </div>
 </div>
 
-<div id="outline-container-org0cd76c6" class="outline-2">
-<h2 id="org0cd76c6"><span class="section-number-2">2.</span> Putting it together</h2>
+<div id="outline-container-org05a7f6b" class="outline-2">
+<h2 id="org05a7f6b"><span class="section-number-2">2.</span> Putting it together</h2>
 <div class="outline-text-2" id="text-2">
 <div class="org-src-container">
-<label class="org-src-name"><span class="listing-number">Listing 8: </span><b>Makefile</b></label><pre class="src src-Makefile" id="org0dc7256">BUILDDIR := ../build
+<label class="org-src-name"><span class="listing-number">Listing 8: </span><b>Makefile</b></label><pre class="src src-Makefile" id="org67da85d">BUILDDIR := ../build
 SRCS := unix-c-forth.c c-words.c arguments.c
 OBJS := $(patsubst %.c,%.o,$(SRCS)) words.o
 
@@ -408,7 +408,7 @@ clean:
 </div>
 
 <div class="org-src-container">
-<label class="org-src-name"><span class="listing-number">Listing 9: </span><b>vars.s</b></label><pre class="src src-asm" id="org52d3711"><span style="font-weight: bold;">.data</span>
+<label class="org-src-name"><span class="listing-number">Listing 9: </span><b>vars.s</b></label><pre class="src src-asm" id="org55b8adc"><span style="font-weight: bold;">.data</span>
 <span style="font-weight: bold;">.balign</span> 4
 <span style="font-weight: bold;">.globl</span> previous_entry, LATEST_LOC
 <span style="font-weight: bold;">LATEST_LOC</span>:   .cell previous_entry
@@ -416,16 +416,16 @@ clean:
 </div>
 </div>
 </div>
-<div id="outline-container-org121c157" class="outline-2">
-<h2 id="org121c157"><span class="section-number-2">3.</span> Command-line arguments</h2>
+<div id="outline-container-orged5e065" class="outline-2">
+<h2 id="orged5e065"><span class="section-number-2">3.</span> Command-line arguments</h2>
 <div class="outline-text-2" id="text-3">
 <div class="org-src-container">
-<label class="org-src-name"><span class="listing-number">Listing 10: </span><code>&lt;&lt;includes&gt;&gt;</code></label><pre class="src src-C" id="org0d921e8"><span style="font-weight: bold;">#include</span> <span style="font-style: italic;">"arguments.h"</span>
+<label class="org-src-name"><span class="listing-number">Listing 10: </span><code>&lt;&lt;includes&gt;&gt;</code></label><pre class="src src-C" id="org2fc73af"><span style="font-weight: bold;">#include</span> <span style="font-style: italic;">"arguments.h"</span>
 </pre>
 </div>
 
 <div class="org-src-container">
-<label class="org-src-name"><span class="listing-number">Listing 11: </span><b>arguments.h</b></label><pre class="src src-C" id="orga802e36"><span style="font-weight: bold;">#if</span><span style="font-weight: bold;">n</span><span style="font-weight: bold;">def</span> _UNIX_C_FORTH_ARGUMENTS_H_
+<label class="org-src-name"><span class="listing-number">Listing 11: </span><b>arguments.h</b></label><pre class="src src-C" id="org80070aa"><span style="font-weight: bold;">#if</span><span style="font-weight: bold;">n</span><span style="font-weight: bold;">def</span> _UNIX_C_FORTH_ARGUMENTS_H_
 <span style="font-weight: bold;">#define</span> <span style="font-weight: bold; font-style: italic;">_UNIX_C_FORTH_ARGUMENTS_H_</span>
 
 <span style="font-weight: bold;">#include</span> <span style="font-style: italic;">&lt;argp.h&gt;</span>
@@ -455,7 +455,7 @@ clean:
 </div>
 
 <div class="org-src-container">
-<label class="org-src-name"><span class="listing-number">Listing 12: </span><b>arguments.c</b></label><pre class="src src-C" id="orgdf9403b"><span style="font-weight: bold;">#include</span> <span style="font-style: italic;">&lt;stdlib.h&gt;</span>
+<label class="org-src-name"><span class="listing-number">Listing 12: </span><b>arguments.c</b></label><pre class="src src-C" id="org1c5bea5"><span style="font-weight: bold;">#include</span> <span style="font-style: italic;">&lt;stdlib.h&gt;</span>
 
 <span style="font-weight: bold;">#include</span> <span style="font-style: italic;">"arguments.h"</span>
 
@@ -541,7 +541,7 @@ clean:
 </div>
 
 <div class="org-src-container">
-<label class="org-src-name"><span class="listing-number">Listing 13: </span><code>&lt;&lt;parse arguments&gt;&gt;</code></label><pre class="src src-C" id="org0352633"><span style="font-weight: bold;">struct</span> <span style="font-weight: bold; text-decoration: underline;">arguments</span> <span style="font-weight: bold; font-style: italic;">arguments</span>;
+<label class="org-src-name"><span class="listing-number">Listing 13: </span><code>&lt;&lt;parse arguments&gt;&gt;</code></label><pre class="src src-C" id="orgfd6c7ae"><span style="font-weight: bold;">struct</span> <span style="font-weight: bold; text-decoration: underline;">arguments</span> <span style="font-weight: bold; font-style: italic;">arguments</span>;
 arguments.values_size      = 1024;
 arguments.frames_size      = 1024;
 arguments.heap_size        = 4096;
@@ -556,11 +556,11 @@ arguments.target_le        = 0;
 </pre>
 </div>
 </div>
-<div id="outline-container-org9a837b6" class="outline-3">
-<h3 id="org9a837b6"><span class="section-number-3">3.1.</span> Allocating stacks and heap</h3>
+<div id="outline-container-org4623dfe" class="outline-3">
+<h3 id="org4623dfe"><span class="section-number-3">3.1.</span> Allocating stacks and heap</h3>
 <div class="outline-text-3" id="text-3-1">
 <div class="org-src-container">
-<label class="org-src-name"><span class="listing-number">Listing 14: </span><code>&lt;&lt;before main&gt;&gt;</code></label><pre class="src src-C" id="org146a688"><span style="font-weight: bold; text-decoration: underline;">void</span> *<span style="font-weight: bold;">allocate</span>(<span style="font-weight: bold; text-decoration: underline;">unsigned</span> <span style="font-weight: bold; text-decoration: underline;">int</span> <span style="font-weight: bold; font-style: italic;">count</span>, <span style="font-weight: bold; text-decoration: underline;">unsigned</span> <span style="font-weight: bold; text-decoration: underline;">int</span> <span style="font-weight: bold; font-style: italic;">size</span>) {
+<label class="org-src-name"><span class="listing-number">Listing 14: </span><code>&lt;&lt;before main&gt;&gt;</code></label><pre class="src src-C" id="orgf0fc6ab"><span style="font-weight: bold; text-decoration: underline;">void</span> *<span style="font-weight: bold;">allocate</span>(<span style="font-weight: bold; text-decoration: underline;">unsigned</span> <span style="font-weight: bold; text-decoration: underline;">int</span> <span style="font-weight: bold; font-style: italic;">count</span>, <span style="font-weight: bold; text-decoration: underline;">unsigned</span> <span style="font-weight: bold; text-decoration: underline;">int</span> <span style="font-weight: bold; font-style: italic;">size</span>) {
   <span style="font-weight: bold; text-decoration: underline;">void</span> *<span style="font-weight: bold; font-style: italic;">rtn</span> = calloc(count, size);
   <span style="font-weight: bold;">if</span> ((<span style="font-weight: bold; text-decoration: underline;">void</span> *)rtn == <span style="font-weight: bold; text-decoration: underline;">NULL</span>) perror(<span style="font-style: italic;">"Failed to allocate"</span>);
   <span style="font-weight: bold;">return</span> rtn;
@@ -569,7 +569,7 @@ arguments.target_le        = 0;
 </div>
 
 <div class="org-src-container">
-<label class="org-src-name"><span class="listing-number">Listing 15: </span><code>&lt;&lt;initialize variables&gt;&gt;</code></label><pre class="src src-C" id="orgeea9fae">input_stream = stdin;
+<label class="org-src-name"><span class="listing-number">Listing 15: </span><code>&lt;&lt;initialize variables&gt;&gt;</code></label><pre class="src src-C" id="org19ab5a5">input_stream = stdin;
 output_stream = stdout;
 frame_stack = allocate(arguments.frames_size, <span style="font-weight: bold;">sizeof</span>(<span style="font-weight: bold; text-decoration: underline;">forth_instruction</span>*));
 frame_stack_bottom = frame_stack;
@@ -585,15 +585,15 @@ heap_top = heap_bottom + arguments.heap_size;
 </div>
 </div>
 </div>
-<div id="outline-container-org504c8f6" class="outline-2">
-<h2 id="org504c8f6"><span class="section-number-2">4.</span> Unix-signal handling (to print stacks)</h2>
+<div id="outline-container-org3b4b6a9" class="outline-2">
+<h2 id="org3b4b6a9"><span class="section-number-2">4.</span> Unix-signal handling (to print stacks)</h2>
 <div class="outline-text-2" id="text-4">
 <div class="org-src-container">
-<label class="org-src-name"><span class="listing-number">Listing 16: </span><code>&lt;&lt;includes&gt;&gt;</code></label><pre class="src src-C" id="org5797003"><span style="font-weight: bold;">#include</span> <span style="font-style: italic;">&lt;signal.h&gt;</span>
+<label class="org-src-name"><span class="listing-number">Listing 16: </span><code>&lt;&lt;includes&gt;&gt;</code></label><pre class="src src-C" id="org8e7a042"><span style="font-weight: bold;">#include</span> <span style="font-style: italic;">&lt;signal.h&gt;</span>
 </pre>
 </div>
 <div class="org-src-container">
-<label class="org-src-name"><span class="listing-number">Listing 17: </span><code>&lt;&lt;set up signal handling&gt;&gt;</code></label><pre class="src src-C" id="orgfc4b70a"><span style="font-weight: bold;">struct</span> <span style="font-weight: bold; text-decoration: underline;">sigaction</span> <span style="font-weight: bold; font-style: italic;">new_action</span>, <span style="font-weight: bold; font-style: italic;">old_action</span>;
+<label class="org-src-name"><span class="listing-number">Listing 17: </span><code>&lt;&lt;set up signal handling&gt;&gt;</code></label><pre class="src src-C" id="org5e61b22"><span style="font-weight: bold;">struct</span> <span style="font-weight: bold; text-decoration: underline;">sigaction</span> <span style="font-weight: bold; font-style: italic;">new_action</span>, <span style="font-weight: bold; font-style: italic;">old_action</span>;
 new_action.sa_handler = exit;
 sigemptyset (&amp;new_action.sa_mask);
 new_action.sa_flags = 0;
@@ -608,11 +608,11 @@ new_action.sa_handler = print_state;
 </div>
 </div>
 </div>
-<div id="outline-container-orgf15ed63" class="outline-2">
-<h2 id="orgf15ed63"><span class="section-number-2">5.</span> Printing stacks and heaps</h2>
+<div id="outline-container-org30bab69" class="outline-2">
+<h2 id="org30bab69"><span class="section-number-2">5.</span> Printing stacks and heaps</h2>
 <div class="outline-text-2" id="text-5">
 <div class="org-src-container">
-<label class="org-src-name"><span class="listing-number">Listing 18: </span><code>&lt;&lt;before main&gt;&gt;</code></label><pre class="src src-C" id="org82843a9"><span style="font-weight: bold; text-decoration: underline;">void</span>
+<label class="org-src-name"><span class="listing-number">Listing 18: </span><code>&lt;&lt;before main&gt;&gt;</code></label><pre class="src src-C" id="orgb16b6d9"><span style="font-weight: bold; text-decoration: underline;">void</span>
 <span style="font-weight: bold;">print_value_stack</span>() {
   printf(<span style="font-style: italic;">"Values (bottom first)\n"</span>);
   <span style="font-weight: bold;">for</span> (<span style="font-weight: bold; text-decoration: underline;">scell</span> *<span style="font-weight: bold; font-style: italic;">i</span> = value_stack_bottom; i &lt; value_stack; ++i)
@@ -622,7 +622,7 @@ new_action.sa_handler = print_state;
 </div>
 
 <div class="org-src-container">
-<label class="org-src-name"><span class="listing-number">Listing 19: </span><code>&lt;&lt;before main&gt;&gt;</code></label><pre class="src src-C" id="org0c4c000"><span style="font-weight: bold; text-decoration: underline;">char</span>
+<label class="org-src-name"><span class="listing-number">Listing 19: </span><code>&lt;&lt;before main&gt;&gt;</code></label><pre class="src src-C" id="orgd5c8d92"><span style="font-weight: bold; text-decoration: underline;">char</span>
 <span style="font-weight: bold;">char_disp</span>(<span style="font-weight: bold; text-decoration: underline;">char</span> *<span style="font-weight: bold; font-style: italic;">p</span>) {
   <span style="font-weight: bold; text-decoration: underline;">char</span> <span style="font-weight: bold; font-style: italic;">c</span> = *p;
   <span style="font-weight: bold;">if</span> (c &lt; 32 || c &gt; 126) <span style="font-weight: bold;">return</span> <span style="font-style: italic;">' '</span>;
@@ -657,27 +657,27 @@ new_action.sa_handler = print_state;
 </div>
 </div>
 
-<div id="outline-container-org87e3109" class="outline-3">
-<h3 id="org87e3109"><span class="section-number-3">5.1.</span> Mapping addresses to names</h3>
+<div id="outline-container-org6aa2068" class="outline-3">
+<h3 id="org6aa2068"><span class="section-number-3">5.1.</span> Mapping addresses to names</h3>
 <div class="outline-text-3" id="text-5-1">
 <div class="org-src-container">
-<label class="org-src-name"><span class="listing-number">Listing 20: </span><code>&lt;&lt;includes&gt;&gt;</code></label><pre class="src src-C" id="org52fc988"><span style="font-weight: bold;">#include</span> <span style="font-style: italic;">&lt;dlfcn.h&gt;</span>
+<label class="org-src-name"><span class="listing-number">Listing 20: </span><code>&lt;&lt;includes&gt;&gt;</code></label><pre class="src src-C" id="org7e5cf43"><span style="font-weight: bold;">#include</span> <span style="font-style: italic;">&lt;dlfcn.h&gt;</span>
 <span style="font-weight: bold;">#include</span> <span style="font-style: italic;">&lt;stdlib.h&gt;</span>
 </pre>
 </div>
 
 <div class="org-src-container">
-<label class="org-src-name"><span class="listing-number">Listing 21: </span><b>types.h</b></label><pre class="src src-C" id="orgc83f7b2"><span style="font-weight: bold; text-decoration: underline;">char</span> *<span style="font-weight: bold;">addr2name</span>(<span style="font-weight: bold; text-decoration: underline;">void</span> *<span style="font-weight: bold; font-style: italic;">addr</span>);
+<label class="org-src-name"><span class="listing-number">Listing 21: </span><b>types.h</b></label><pre class="src src-C" id="org68b6b69"><span style="font-weight: bold; text-decoration: underline;">char</span> *<span style="font-weight: bold;">addr2name</span>(<span style="font-weight: bold; text-decoration: underline;">void</span> *<span style="font-weight: bold; font-style: italic;">addr</span>);
 <span style="font-weight: bold;">#endif</span> <span style="font-weight: bold; font-style: italic;">// </span><span style="font-weight: bold; font-style: italic;">_UNIX_C_FORTH_TYPES_H_</span>
 </pre>
 </div>
 
 <div class="org-src-container">
-<label class="org-src-name"><span class="listing-number">Listing 22: </span><code>&lt;&lt;globals&gt;&gt;</code></label><pre class="src src-C" id="orgbd673bb"><span style="font-weight: bold;">extern</span> <span style="font-weight: bold; text-decoration: underline;">scell</span> <span style="font-weight: bold; font-style: italic;">LATEST_LOC</span>;
+<label class="org-src-name"><span class="listing-number">Listing 22: </span><code>&lt;&lt;globals&gt;&gt;</code></label><pre class="src src-C" id="orgd91bf0a"><span style="font-weight: bold;">extern</span> <span style="font-weight: bold; text-decoration: underline;">scell</span> <span style="font-weight: bold; font-style: italic;">LATEST_LOC</span>;
 </pre>
 </div>
 <div class="org-src-container">
-<label class="org-src-name"><span class="listing-number">Listing 23: </span><code>&lt;&lt;before main&gt;&gt;</code></label><pre class="src src-C" id="orgbc199d9"><span style="font-weight: bold;">typedef</span> <span style="font-weight: bold;">struct</span> <span style="font-weight: bold; text-decoration: underline;">dict_entry</span> {
+<label class="org-src-name"><span class="listing-number">Listing 23: </span><code>&lt;&lt;before main&gt;&gt;</code></label><pre class="src src-C" id="org074f832"><span style="font-weight: bold;">typedef</span> <span style="font-weight: bold;">struct</span> <span style="font-weight: bold; text-decoration: underline;">dict_entry</span> {
   <span style="font-weight: bold; text-decoration: underline;">ucell</span> <span style="font-weight: bold; font-style: italic;">prev</span>;
   <span style="font-weight: bold; text-decoration: underline;">ucell</span> <span style="font-weight: bold; font-style: italic;">flags</span>;
   <span style="font-weight: bold; text-decoration: underline;">ucell</span> <span style="font-weight: bold; font-style: italic;">name_len</span>;
@@ -706,7 +706,7 @@ new_action.sa_handler = print_state;
 </div>
 
 <div class="org-src-container">
-<label class="org-src-name"><span class="listing-number">Listing 24: </span><code>&lt;&lt;before main&gt;&gt;</code></label><pre class="src src-C" id="orgc38dceb"><span style="font-weight: bold; text-decoration: underline;">void</span>
+<label class="org-src-name"><span class="listing-number">Listing 24: </span><code>&lt;&lt;before main&gt;&gt;</code></label><pre class="src src-C" id="org56cb262"><span style="font-weight: bold; text-decoration: underline;">void</span>
 <span style="font-weight: bold;">print_next_inst</span>() {
   <span style="font-weight: bold;">if</span> (next_inst != <span style="font-weight: bold; text-decoration: underline;">NULL</span>) {
     <span style="font-weight: bold; text-decoration: underline;">char</span> *<span style="font-weight: bold; font-style: italic;">name</span> = addr2name(next_inst);
@@ -723,16 +723,16 @@ new_action.sa_handler = print_state;
 </div>
 </div>
 
-<div id="outline-container-orgbbac51a" class="outline-2">
-<h2 id="orgbbac51a"><span class="section-number-2">6.</span> Compiling input files</h2>
+<div id="outline-container-org8e51c5f" class="outline-2">
+<h2 id="org8e51c5f"><span class="section-number-2">6.</span> Compiling input files</h2>
 <div class="outline-text-2" id="text-6">
 <div class="org-src-container">
-<label class="org-src-name"><span class="listing-number">Listing 25: </span><code>&lt;&lt;includes&gt;&gt;</code></label><pre class="src src-C" id="orgf2005b3"><span style="font-weight: bold;">#include</span> <span style="font-style: italic;">&lt;err.h&gt;</span>
+<label class="org-src-name"><span class="listing-number">Listing 25: </span><code>&lt;&lt;includes&gt;&gt;</code></label><pre class="src src-C" id="org8f9e821"><span style="font-weight: bold;">#include</span> <span style="font-style: italic;">&lt;err.h&gt;</span>
 </pre>
 </div>
 
 <div class="org-src-container">
-<label class="org-src-name"><span class="listing-number">Listing 26: </span><code>&lt;&lt;compile input files&gt;&gt;</code></label><pre class="src src-C" id="org3b0ddaa"><span style="font-weight: bold;">for</span> (<span style="font-weight: bold; text-decoration: underline;">int</span> <span style="font-weight: bold; font-style: italic;">i</span> = 0; i &lt; arguments.input_count; ++i)
+<label class="org-src-name"><span class="listing-number">Listing 26: </span><code>&lt;&lt;compile input files&gt;&gt;</code></label><pre class="src src-C" id="orga871e0c"><span style="font-weight: bold;">for</span> (<span style="font-weight: bold; text-decoration: underline;">int</span> <span style="font-weight: bold; font-style: italic;">i</span> = 0; i &lt; arguments.input_count; ++i)
 {
   <span style="font-weight: bold; text-decoration: underline;">char</span> *<span style="font-weight: bold; font-style: italic;">input</span> = arguments.inputs[i];
   <span style="font-weight: bold; text-decoration: underline;">FILE</span> *<span style="font-weight: bold; font-style: italic;">f</span> = fopen(input, <span style="font-style: italic;">"r"</span>);
@@ -755,11 +755,11 @@ input_stream = stdin;
 </div>
 </div>
 
-<div id="outline-container-org8d2d6f6" class="outline-2">
-<h2 id="org8d2d6f6"><span class="section-number-2">7.</span> Outputting compiled heap</h2>
+<div id="outline-container-org349fc64" class="outline-2">
+<h2 id="org349fc64"><span class="section-number-2">7.</span> Outputting compiled heap</h2>
 <div class="outline-text-2" id="text-7">
 <div class="org-src-container">
-<label class="org-src-name"><span class="listing-number">Listing 27: </span><code>&lt;&lt;includes&gt;&gt;</code></label><pre class="src src-C" id="org8fdb4f8"><span style="font-weight: bold;">#include</span> <span style="font-style: italic;">&lt;endian.h&gt;</span>
+<label class="org-src-name"><span class="listing-number">Listing 27: </span><code>&lt;&lt;includes&gt;&gt;</code></label><pre class="src src-C" id="org9fae254"><span style="font-weight: bold;">#include</span> <span style="font-style: italic;">&lt;endian.h&gt;</span>
 </pre>
 </div>
 
@@ -769,7 +769,7 @@ and drop/byte swap them
 </p>
 
 <div class="org-src-container">
-<label class="org-src-name"><span class="listing-number">Listing 28: </span><code>&lt;&lt;output compiled heap&gt;&gt;</code></label><pre class="src src-C" id="org2028fae"><span style="font-weight: bold;">if</span> (arguments.output != <span style="font-weight: bold; text-decoration: underline;">NULL</span>) {
+<label class="org-src-name"><span class="listing-number">Listing 28: </span><code>&lt;&lt;output compiled heap&gt;&gt;</code></label><pre class="src src-C" id="org21355f3"><span style="font-weight: bold;">if</span> (arguments.output != <span style="font-weight: bold; text-decoration: underline;">NULL</span>) {
   <span style="font-weight: bold; text-decoration: underline;">FILE</span> *<span style="font-weight: bold; font-style: italic;">output</span> = fopen(arguments.output, <span style="font-style: italic;">"w"</span>);
   <span style="font-weight: bold;">if</span> (output == <span style="font-weight: bold; text-decoration: underline;">NULL</span>) {
     err(2, <span style="font-style: italic;">"Failed to open output file %s"</span>, arguments.output);
@@ -804,15 +804,15 @@ mk_switch_case(16, be);
 </div>
 </div>
 
-<div id="outline-container-org59e7325" class="outline-2">
-<h2 id="org59e7325"><span class="section-number-2">8.</span> Basic words</h2>
+<div id="outline-container-org48c69ec" class="outline-2">
+<h2 id="org48c69ec"><span class="section-number-2">8.</span> Basic words</h2>
 <div class="outline-text-2" id="text-8">
 </div>
-<div id="outline-container-orga4a67f4" class="outline-3">
-<h3 id="orga4a67f4"><span class="section-number-3">8.1.</span> C implementation</h3>
+<div id="outline-container-orgf2bfc5b" class="outline-3">
+<h3 id="orgf2bfc5b"><span class="section-number-3">8.1.</span> C implementation</h3>
 <div class="outline-text-3" id="text-8-1">
 <div class="org-src-container">
-<label class="org-src-name"><span class="listing-number">Listing 29: </span><b>c-words.c</b></label><pre class="src src-C" id="org6da9342"><span style="font-weight: bold;">#include</span> <span style="font-style: italic;">"unix-c-forth.h"</span>
+<label class="org-src-name"><span class="listing-number">Listing 29: </span><b>c-words.c</b></label><pre class="src src-C" id="orge8d7943"><span style="font-weight: bold;">#include</span> <span style="font-style: italic;">"unix-c-forth.h"</span>
 
 <span style="font-weight: bold;">#define</span> <span style="font-weight: bold; font-style: italic;">true</span> ((<span style="font-weight: bold; text-decoration: underline;">scell</span>)-1)
 <span style="font-weight: bold;">#define</span> <span style="font-weight: bold; font-style: italic;">false</span> ((<span style="font-weight: bold; text-decoration: underline;">scell</span>)0)
@@ -866,7 +866,7 @@ mk_switch_case(16, be);
 </div>
 
 <div class="org-src-container">
-<label class="org-src-name"><span class="listing-number">Listing 30: </span><b>c-words.c</b></label><pre class="src src-C" id="orgd8aab6e"><span style="font-weight: bold;">#define</span> <span style="font-weight: bold;">binop</span>(<span style="font-weight: bold; font-style: italic;">type</span>, <span style="font-weight: bold; font-style: italic;">name</span>, <span style="font-weight: bold; font-style: italic;">op</span>) <span style="font-weight: bold; text-decoration: underline;">int</span> <span style="font-weight: bold;">F</span>##name(<span style="font-weight: bold; text-decoration: underline;">forth_instruction</span> *<span style="font-weight: bold; font-style: italic;">_</span>) { \
+<label class="org-src-name"><span class="listing-number">Listing 30: </span><b>c-words.c</b></label><pre class="src src-C" id="orgcda18e3"><span style="font-weight: bold;">#define</span> <span style="font-weight: bold;">binop</span>(<span style="font-weight: bold; font-style: italic;">type</span>, <span style="font-weight: bold; font-style: italic;">name</span>, <span style="font-weight: bold; font-style: italic;">op</span>) <span style="font-weight: bold; text-decoration: underline;">int</span> <span style="font-weight: bold;">F</span>##name(<span style="font-weight: bold; text-decoration: underline;">forth_instruction</span> *<span style="font-weight: bold; font-style: italic;">_</span>) { \
     pop(<span style="font-weight: bold; text-decoration: underline;">type</span> <span style="font-weight: bold; font-style: italic;">b</span>, value_stack);                               \
     pop(<span style="font-weight: bold; text-decoration: underline;">type</span> <span style="font-weight: bold; font-style: italic;">a</span>, value_stack);                               \
     push(op, value_stack);                                  \
@@ -900,7 +900,7 @@ mk_switch_case(16, be);
 </div>
 
 <div class="org-src-container">
-<label class="org-src-name"><span class="listing-number">Listing 31: </span><b>c-words.c</b></label><pre class="src src-C" id="org84a82b3">&#12; <span style="font-weight: bold; font-style: italic;">// </span><span style="font-weight: bold; font-style: italic;">Boolean</span>
+<label class="org-src-name"><span class="listing-number">Listing 31: </span><b>c-words.c</b></label><pre class="src src-C" id="org3b9e1c4">&#12; <span style="font-weight: bold; font-style: italic;">// </span><span style="font-weight: bold; font-style: italic;">Boolean</span>
 
 <span style="font-weight: bold; text-decoration: underline;">int</span> <span style="font-weight: bold;">FINVERT</span> (<span style="font-weight: bold; text-decoration: underline;">forth_instruction</span> *<span style="font-weight: bold; font-style: italic;">_</span>) {
   pop(<span style="font-weight: bold; text-decoration: underline;">scell</span> <span style="font-weight: bold; font-style: italic;">a</span>, value_stack);
@@ -921,7 +921,7 @@ mk_switch_case(16, be);
 </div>
 
 <div class="org-src-container">
-<label class="org-src-name"><span class="listing-number">Listing 32: </span><b>c-words.c</b></label><pre class="src src-C" id="orgf5a26d2"><span style="font-weight: bold; font-style: italic;">// </span><span style="font-weight: bold; font-style: italic;">TODO: categorize</span>
+<label class="org-src-name"><span class="listing-number">Listing 32: </span><b>c-words.c</b></label><pre class="src src-C" id="orgbc76875"><span style="font-weight: bold; font-style: italic;">// </span><span style="font-weight: bold; font-style: italic;">TODO: categorize</span>
 <span style="font-weight: bold; text-decoration: underline;">int</span> <span style="font-weight: bold;">FEMIT</span> (<span style="font-weight: bold; text-decoration: underline;">forth_instruction</span> *<span style="font-weight: bold; font-style: italic;">_</span>) {
   pop(<span style="font-weight: bold; text-decoration: underline;">ucell</span> <span style="font-weight: bold; font-style: italic;">a</span>, value_stack);
   <span style="font-weight: bold; text-decoration: underline;">int</span> <span style="font-weight: bold; font-style: italic;">s</span> = EOF;
@@ -966,7 +966,7 @@ mk_switch_case(16, be);
 </div>
 
 <div class="org-src-container">
-<label class="org-src-name"><span class="listing-number">Listing 33: </span><b>c-words.c</b></label><pre class="src src-C" id="orgd9b3fb8">&#12; <span style="font-weight: bold; font-style: italic;">// </span><span style="font-weight: bold; font-style: italic;">Memory</span>
+<label class="org-src-name"><span class="listing-number">Listing 33: </span><b>c-words.c</b></label><pre class="src src-C" id="orgd7cb31f">&#12; <span style="font-weight: bold; font-style: italic;">// </span><span style="font-weight: bold; font-style: italic;">Memory</span>
 <span style="font-weight: bold; text-decoration: underline;">int</span> <span style="font-weight: bold;">FC_STORE</span> (<span style="font-weight: bold; text-decoration: underline;">forth_instruction</span> *<span style="font-weight: bold; font-style: italic;">_</span>) {
   pop(<span style="font-weight: bold; text-decoration: underline;">ucell</span> <span style="font-weight: bold; font-style: italic;">addr</span>, value_stack);
   pop(<span style="font-weight: bold; text-decoration: underline;">ucell</span> <span style="font-weight: bold; font-style: italic;">value</span>, value_stack);
@@ -996,7 +996,7 @@ mk_switch_case(16, be);
 </div>
 
 <div class="org-src-container">
-<label class="org-src-name"><span class="listing-number">Listing 34: </span><b>c-words.c</b></label><pre class="src src-C" id="org226facd">&#12; <span style="font-weight: bold; font-style: italic;">// </span><span style="font-weight: bold; font-style: italic;">Stack</span>
+<label class="org-src-name"><span class="listing-number">Listing 34: </span><b>c-words.c</b></label><pre class="src src-C" id="orgbd3818e">&#12; <span style="font-weight: bold; font-style: italic;">// </span><span style="font-weight: bold; font-style: italic;">Stack</span>
 
 <span style="font-weight: bold; text-decoration: underline;">int</span> <span style="font-weight: bold;">FDUP</span> (<span style="font-weight: bold; text-decoration: underline;">forth_instruction</span> *<span style="font-weight: bold; font-style: italic;">_</span>) {
   pop(<span style="font-weight: bold; text-decoration: underline;">scell</span> <span style="font-weight: bold; font-style: italic;">a</span>, value_stack);
@@ -1051,7 +1051,7 @@ mk_switch_case(16, be);
 </div>
 
 <div class="org-src-container">
-<label class="org-src-name"><span class="listing-number">Listing 35: </span><b>c-words.c</b></label><pre class="src src-C" id="org27b6d11">&#12; <span style="font-weight: bold; font-style: italic;">// </span><span style="font-weight: bold; font-style: italic;">Return stack</span>
+<label class="org-src-name"><span class="listing-number">Listing 35: </span><b>c-words.c</b></label><pre class="src src-C" id="org7e859b3">&#12; <span style="font-weight: bold; font-style: italic;">// </span><span style="font-weight: bold; font-style: italic;">Return stack</span>
 
 <span style="font-weight: bold; text-decoration: underline;">int</span> <span style="font-weight: bold;">FR_FETCH</span> (<span style="font-weight: bold; text-decoration: underline;">forth_instruction</span> *<span style="font-weight: bold; font-style: italic;">_</span>) {
   <span style="font-weight: bold; text-decoration: underline;">scell</span> <span style="font-weight: bold; font-style: italic;">value</span> = *(<span style="font-weight: bold; text-decoration: underline;">scell</span>*)(frame_stack-1);
@@ -1076,7 +1076,7 @@ mk_switch_case(16, be);
 </div>
 
 <div class="org-src-container">
-<label class="org-src-name"><span class="listing-number">Listing 36: </span><b>c-words.c</b></label><pre class="src src-C" id="org7d5bb3f">&#12; <span style="font-weight: bold; font-style: italic;">// </span><span style="font-weight: bold; font-style: italic;">Branches</span>
+<label class="org-src-name"><span class="listing-number">Listing 36: </span><b>c-words.c</b></label><pre class="src src-C" id="orgd5af2d9">&#12; <span style="font-weight: bold; font-style: italic;">// </span><span style="font-weight: bold; font-style: italic;">Branches</span>
 
 <span style="font-weight: bold; text-decoration: underline;">int</span> <span style="font-weight: bold;">FBRANCH</span> (<span style="font-weight: bold; text-decoration: underline;">forth_instruction</span> *<span style="font-weight: bold; font-style: italic;">_</span>) {
   next_inst += (*(<span style="font-weight: bold; text-decoration: underline;">scell</span> *)next_inst)/<span style="font-weight: bold;">sizeof</span>(*next_inst);
@@ -1093,11 +1093,11 @@ mk_switch_case(16, be);
 </div>
 </div>
 </div>
-<div id="outline-container-org7ed3f29" class="outline-3">
-<h3 id="org7ed3f29"><span class="section-number-3">8.2.</span> Mapping to dictionary entries</h3>
+<div id="outline-container-org9571215" class="outline-3">
+<h3 id="org9571215"><span class="section-number-3">8.2.</span> Mapping to dictionary entries</h3>
 <div class="outline-text-3" id="text-8-2">
 <div class="org-src-container">
-<label class="org-src-name"><span class="listing-number">Listing 37: </span><b>c-words.s</b></label><pre class="src src-asm" id="org791a98f"><span style="font-weight: bold;">.macro</span> .fw word:req, rest:vararg
+<label class="org-src-name"><span class="listing-number">Listing 37: </span><b>c-words.s</b></label><pre class="src src-asm" id="org1a665ad"><span style="font-weight: bold;">.macro</span> .fw word:req, rest:vararg
   <span style="font-weight: bold;">.ifnc</span> <span style="font-style: italic;">"\word"</span>,<span style="font-style: italic;">"L"</span>
     <span style="font-weight: bold;">.4byte</span> \word <span style="font-weight: bold; font-style: italic;">/* </span><span style="font-weight: bold; font-style: italic;">FWSIZE */</span>
   <span style="font-weight: bold;">.endif</span>
@@ -1173,12 +1173,12 @@ mk_switch_case(16, be);
 </div>
 </div>
 
-<div id="outline-container-orgfdbe113" class="outline-2">
-<h2 id="orgfdbe113"><span class="section-number-2">9.</span> <code>[0/1]</code> Tasks</h2>
+<div id="outline-container-org66a2c21" class="outline-2">
+<h2 id="org66a2c21"><span class="section-number-2">9.</span> <code>[0/1]</code> Tasks</h2>
 <div class="outline-text-2" id="text-9">
 </div>
-<div id="outline-container-org4f70f72" class="outline-3">
-<h3 id="org4f70f72"><span class="section-number-3">9.1.</span> <span class="todo TODO">TODO</span> Linker</h3>
+<div id="outline-container-org5a4b9bb" class="outline-3">
+<h3 id="org5a4b9bb"><span class="section-number-3">9.1.</span> <span class="todo TODO">TODO</span> Linker</h3>
 <div class="outline-text-3" id="text-9-1">
 <p>
 Have the <code>unix-c-forth</code> interpreter output a file containing
@@ -1187,8 +1187,8 @@ symbols; then have another program to re-link it to say the bare-metal
 raspberry pi
 </p>
 </div>
-<div id="outline-container-org8be526d" class="outline-4">
-<h4 id="org8be526d"><span class="section-number-4">9.1.1.</span> Dynamic linking</h4>
+<div id="outline-container-org17db93c" class="outline-4">
+<h4 id="org17db93c"><span class="section-number-4">9.1.1.</span> Dynamic linking</h4>
 <div class="outline-text-4" id="text-9-1-1">
 <p>
 The ideas of GOT/PLT, and a relocation register, changed when changing
@@ -1201,7 +1201,7 @@ libraries, should be applicable here too.
 </div>
 <div id="postamble" class="status">
 <p class="author">Author: Robert Kovacsics (rmk35)</p>
-<p class="date">Created: 2022-01-02 Sun 00:49</p>
+<p class="date">Created: 2022-01-02 Sun 00:55</p>
 <p class="validation"><a href="https://validator.w3.org/check?uri=referer">Validate</a></p>
 </div>
 </body>

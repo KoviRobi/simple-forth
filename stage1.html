@@ -3,7 +3,7 @@
 "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
 <html xmlns="http://www.w3.org/1999/xhtml" lang="en" xml:lang="en">
 <head>
-<!-- 2022-01-02 Sun 00:49 -->
+<!-- 2022-01-02 Sun 00:55 -->
 <meta http-equiv="Content-Type" content="text/html;charset=utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
 <title>Raspberry Pi Baremetal Language Bootstrapping</title>
@@ -193,12 +193,12 @@
     { background-color: #ffff00; color: #000000; font-weight: bold; }
   .org-svg { width: 90%; }
 </style>
-<link rel="stylesheet" type="text/css" href="/org-html-themes/src/readtheorg_theme/css/htmlize.css"/>
-<link rel="stylesheet" type="text/css" href="/org-html-themes/src/readtheorg_theme/css/readtheorg.css"/>
+<link rel="stylesheet" type="text/css" href="org-html-themes/src/readtheorg_theme/css/htmlize.css"/>
+<link rel="stylesheet" type="text/css" href="org-html-themes/src/readtheorg_theme/css/readtheorg.css"/>
 <script src="https://ajax.googleapis.com/ajax/libs/jquery/2.1.3/jquery.min.js"></script>
 <script src="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.4/js/bootstrap.min.js"></script>
-<script type="text/javascript" src="/org-html-themes/styles/lib/js/jquery.stickytableheaders.min.js"></script>
-<script type="text/javascript" src="/org-html-themes/src/readtheorg_theme/js/readtheorg.js"></script>
+<script type="text/javascript" src="org-html-themes/styles/lib/js/jquery.stickytableheaders.min.js"></script>
+<script type="text/javascript" src="org-html-themes/src/readtheorg_theme/js/readtheorg.js"></script>
 </head>
 <body>
 <div id="content" class="content">
@@ -207,48 +207,48 @@
 <h2>Table of Contents</h2>
 <div id="text-table-of-contents" role="doc-toc">
 <ul>
-<li><a href="#orgf396790">1. <span class="todo TODO">TODO</span> Forth</a>
+<li><a href="#org4a1dbee">1. <span class="todo TODO">TODO</span> Forth</a>
 <ul>
-<li><a href="#org7271f7e">1.1. <span class="todo TODO">TODO</span> Input</a>
+<li><a href="#orgca4d426">1.1. <span class="todo TODO">TODO</span> Input</a>
 <ul>
-<li><a href="#org6f37b5d">1.1.1. Words</a></li>
-<li><a href="#org0239297">1.1.2. Numbers</a></li>
+<li><a href="#orgb12c85f">1.1.1. Words</a></li>
+<li><a href="#orgd816d95">1.1.2. Numbers</a></li>
 </ul>
 </li>
-<li><a href="#org56b0260">1.2. <span class="todo TODO">TODO</span> Compiling</a></li>
-<li><a href="#orgfcba0d4">1.3. <span class="todo TODO">TODO</span> REPL</a></li>
-<li><a href="#org7b43ee0">1.4. <span class="todo TODO">TODO</span> DOES&gt;</a></li>
-<li><a href="#org6feee83">1.5. <span class="todo TODO">TODO</span> Brave New Words</a></li>
-<li><a href="#orgdb8870b">1.6. <span class="todo TODO">TODO</span> Control Words</a></li>
-<li><a href="#org8a99a2f">1.7. <span class="todo TODO">TODO</span> Comments</a></li>
+<li><a href="#orgc0cc363">1.2. <span class="todo TODO">TODO</span> Compiling</a></li>
+<li><a href="#org96b3315">1.3. <span class="todo TODO">TODO</span> REPL</a></li>
+<li><a href="#org5262114">1.4. <span class="todo TODO">TODO</span> DOES&gt;</a></li>
+<li><a href="#org38bfb81">1.5. <span class="todo TODO">TODO</span> Brave New Words</a></li>
+<li><a href="#orgc2edfec">1.6. <span class="todo TODO">TODO</span> Control Words</a></li>
+<li><a href="#org9b173dc">1.7. <span class="todo TODO">TODO</span> Comments</a></li>
 </ul>
 </li>
-<li><a href="#orgac6e129">2. <span class="todo TODO">TODO</span> Change</a></li>
-<li><a href="#orged5a656">3. <span class="todo TODO">TODO</span> Testing</a></li>
-<li><a href="#org964a495">4. <span class="todo TODO">TODO</span> After REPL</a></li>
-<li><a href="#orgf20d8c7">5. <span class="todo TODO">TODO</span> Forth Assembler</a>
+<li><a href="#orgb022577">2. <span class="todo TODO">TODO</span> Change</a></li>
+<li><a href="#orgacc4863">3. <span class="todo TODO">TODO</span> Testing</a></li>
+<li><a href="#org1d05ade">4. <span class="todo TODO">TODO</span> After REPL</a></li>
+<li><a href="#org8e57871">5. <span class="todo TODO">TODO</span> Forth Assembler</a>
 <ul>
-<li><a href="#orge49a045">5.1. ;CODE</a></li>
+<li><a href="#org5884a1f">5.1. ;CODE</a></li>
 </ul>
 </li>
-<li><a href="#orgf8ac8a9">6. <span class="todo TODO">TODO</span> Ideas</a></li>
-<li><a href="#org1633686">7. <span class="todo TODO">TODO</span> Naming</a></li>
-<li><a href="#org9c1eab0">8. <span class="todo TODO">TODO</span> Partial Recursive Functions (PRF) </a></li>
-<li><a href="#org8d2f383">9. <span class="todo TODO">TODO</span> Terminal on host with simple-forth.c?</a></li>
+<li><a href="#orgce0c421">6. <span class="todo TODO">TODO</span> Ideas</a></li>
+<li><a href="#org4531ee0">7. <span class="todo TODO">TODO</span> Naming</a></li>
+<li><a href="#org6102707">8. <span class="todo TODO">TODO</span> Partial Recursive Functions (PRF) </a></li>
+<li><a href="#org21ca00c">9. <span class="todo TODO">TODO</span> Terminal on host with simple-forth.c?</a></li>
 </ul>
 </div>
 </div>
 
-<div id="outline-container-orgf396790" class="outline-2">
-<h2 id="orgf396790"><span class="section-number-2">1.</span> <span class="todo TODO">TODO</span> Forth</h2>
+<div id="outline-container-org4a1dbee" class="outline-2">
+<h2 id="org4a1dbee"><span class="section-number-2">1.</span> <span class="todo TODO">TODO</span> Forth</h2>
 <div class="outline-text-2" id="text-1">
 </div>
-<div id="outline-container-org7271f7e" class="outline-3">
-<h3 id="org7271f7e"><span class="section-number-3">1.1.</span> <span class="todo TODO">TODO</span> Input</h3>
+<div id="outline-container-orgca4d426" class="outline-3">
+<h3 id="orgca4d426"><span class="section-number-3">1.1.</span> <span class="todo TODO">TODO</span> Input</h3>
 <div class="outline-text-3" id="text-1-1">
 </div>
-<div id="outline-container-org6f37b5d" class="outline-4">
-<h4 id="org6f37b5d"><span class="section-number-4">1.1.1.</span> Words</h4>
+<div id="outline-container-orgb12c85f" class="outline-4">
+<h4 id="orgb12c85f"><span class="section-number-4">1.1.1.</span> Words</h4>
 <div class="outline-text-4" id="text-1-1-1">
 <p>
 TODO: backspace (or perhaps with a modified key?)
@@ -361,8 +361,8 @@ TODO: transient region
 </div>
 </div>
 
-<div id="outline-container-org0239297" class="outline-4">
-<h4 id="org0239297"><span class="section-number-4">1.1.2.</span> Numbers</h4>
+<div id="outline-container-orgd816d95" class="outline-4">
+<h4 id="orgd816d95"><span class="section-number-4">1.1.2.</span> Numbers</h4>
 <div class="outline-text-4" id="text-1-1-2">
 <p>
 If the character is less than '0', or between '9' and 'A' (or 'Z' and
@@ -483,8 +483,8 @@ bases too, according to §3.4.1.3.
 </div>
 </div>
 
-<div id="outline-container-org56b0260" class="outline-3">
-<h3 id="org56b0260"><span class="section-number-3">1.2.</span> <span class="todo TODO">TODO</span> Compiling</h3>
+<div id="outline-container-orgc0cc363" class="outline-3">
+<h3 id="orgc0cc363"><span class="section-number-3">1.2.</span> <span class="todo TODO">TODO</span> Compiling</h3>
 <div class="outline-text-3" id="text-1-2">
 <p>
 See §3.4 of the <a href="https://www.taygeta.com/forth/dpans3.htm#3.4">ANSI Forth manual</a>.
@@ -549,8 +549,8 @@ See §3.4 of the <a href="https://www.taygeta.com/forth/dpans3.htm#3.4">ANSI For
 </div>
 </div>
 
-<div id="outline-container-orgfcba0d4" class="outline-3">
-<h3 id="orgfcba0d4"><span class="section-number-3">1.3.</span> <span class="todo TODO">TODO</span> REPL</h3>
+<div id="outline-container-org96b3315" class="outline-3">
+<h3 id="org96b3315"><span class="section-number-3">1.3.</span> <span class="todo TODO">TODO</span> REPL</h3>
 <div class="outline-text-3" id="text-1-3">
 <table class="harmonica-table"><thead><tr><td>Assembly</td><td>Forth</td></tr></thead><tbody><tr><td>
 <div class="org-src-container">
@@ -663,11 +663,11 @@ See §3.4 of the <a href="https://www.taygeta.com/forth/dpans3.htm#3.4">ANSI For
 </div>
 </div>
 
-<div id="outline-container-org7b43ee0" class="outline-3">
-<h3 id="org7b43ee0"><span class="section-number-3">1.4.</span> <span class="todo TODO">TODO</span> DOES&gt;</h3>
+<div id="outline-container-org5262114" class="outline-3">
+<h3 id="org5262114"><span class="section-number-3">1.4.</span> <span class="todo TODO">TODO</span> DOES&gt;</h3>
 </div>
-<div id="outline-container-org6feee83" class="outline-3">
-<h3 id="org6feee83"><span class="section-number-3">1.5.</span> <span class="todo TODO">TODO</span> Brave New Words</h3>
+<div id="outline-container-org38bfb81" class="outline-3">
+<h3 id="org38bfb81"><span class="section-number-3">1.5.</span> <span class="todo TODO">TODO</span> Brave New Words</h3>
 <div class="outline-text-3" id="text-1-5">
 <table class="harmonica-table"><thead><tr><td>Assembly</td><td>Forth</td></tr></thead><tbody><tr><td>
 <div class="org-src-container">
@@ -732,8 +732,8 @@ See §3.4 of the <a href="https://www.taygeta.com/forth/dpans3.htm#3.4">ANSI For
 </div>
 </div>
 
-<div id="outline-container-orgdb8870b" class="outline-3">
-<h3 id="orgdb8870b"><span class="section-number-3">1.6.</span> <span class="todo TODO">TODO</span> Control Words</h3>
+<div id="outline-container-orgc2edfec" class="outline-3">
+<h3 id="orgc2edfec"><span class="section-number-3">1.6.</span> <span class="todo TODO">TODO</span> Control Words</h3>
 <div class="outline-text-3" id="text-1-6">
 <p>
 TODO explain, especially as we don't have comments yet
@@ -811,8 +811,8 @@ TODO explain, especially as we don't have comments yet
 </div>
 </div>
 
-<div id="outline-container-org8a99a2f" class="outline-3">
-<h3 id="org8a99a2f"><span class="section-number-3">1.7.</span> <span class="todo TODO">TODO</span> Comments</h3>
+<div id="outline-container-org9b173dc" class="outline-3">
+<h3 id="org9b173dc"><span class="section-number-3">1.7.</span> <span class="todo TODO">TODO</span> Comments</h3>
 <div class="outline-text-3" id="text-1-7">
 <div class="org-src-container">
 <pre class="src src-forth">: CHAR word' drop C@ ;
@@ -829,8 +829,8 @@ TODO explain, especially as we don't have comments yet
 </div>
 </div>
 
-<div id="outline-container-orgac6e129" class="outline-2">
-<h2 id="orgac6e129"><span class="section-number-2">2.</span> <span class="todo TODO">TODO</span> Change</h2>
+<div id="outline-container-orgb022577" class="outline-2">
+<h2 id="orgb022577"><span class="section-number-2">2.</span> <span class="todo TODO">TODO</span> Change</h2>
 <div class="outline-text-2" id="text-2">
 <p>
 <a href="http://forth-standard.org/standard/doc">http://forth-standard.org/standard/doc</a>
@@ -843,28 +843,28 @@ TODO explain, especially as we don't have comments yet
 </ul>
 </div>
 </div>
-<div id="outline-container-orged5a656" class="outline-2">
-<h2 id="orged5a656"><span class="section-number-2">3.</span> <span class="todo TODO">TODO</span> Testing</h2>
+<div id="outline-container-orgacc4863" class="outline-2">
+<h2 id="orgacc4863"><span class="section-number-2">3.</span> <span class="todo TODO">TODO</span> Testing</h2>
 <div class="outline-text-2" id="text-3">
 <ul class="org-ul">
 <li><code>SOURCE-ID</code></li>
 </ul>
 </div>
 </div>
-<div id="outline-container-org964a495" class="outline-2">
-<h2 id="org964a495"><span class="section-number-2">4.</span> <span class="todo TODO">TODO</span> After REPL</h2>
+<div id="outline-container-org1d05ade" class="outline-2">
+<h2 id="org1d05ade"><span class="section-number-2">4.</span> <span class="todo TODO">TODO</span> After REPL</h2>
 </div>
 
-<div id="outline-container-orgf20d8c7" class="outline-2">
-<h2 id="orgf20d8c7"><span class="section-number-2">5.</span> <span class="todo TODO">TODO</span> Forth Assembler</h2>
+<div id="outline-container-org8e57871" class="outline-2">
+<h2 id="org8e57871"><span class="section-number-2">5.</span> <span class="todo TODO">TODO</span> Forth Assembler</h2>
 <div class="outline-text-2" id="text-5">
 </div>
-<div id="outline-container-orge49a045" class="outline-3">
-<h3 id="orge49a045"><span class="section-number-3">5.1.</span> ;CODE</h3>
+<div id="outline-container-org5884a1f" class="outline-3">
+<h3 id="org5884a1f"><span class="section-number-3">5.1.</span> ;CODE</h3>
 </div>
 </div>
-<div id="outline-container-orgf8ac8a9" class="outline-2">
-<h2 id="orgf8ac8a9"><span class="section-number-2">6.</span> <span class="todo TODO">TODO</span> Ideas</h2>
+<div id="outline-container-orgce0c421" class="outline-2">
+<h2 id="orgce0c421"><span class="section-number-2">6.</span> <span class="todo TODO">TODO</span> Ideas</h2>
 <div class="outline-text-2" id="text-6">
 <dl class="org-dl">
 <dt>Server and client</dt><dd>Have the C implementation be a REPL server,
@@ -874,12 +874,12 @@ with separate messages, errors, and stack buffers?
 perhaps replace raspbootin?</li>
 </ul></dd>
 <dt>DMA Forth</dt><dd>Do [[cite:runDMA][run-DMA] TODO this link</dd>
-<dt><a href="#org1633686">Naming</a></dt><dd>All the stack manipulation could be simplified by having
+<dt><a href="#org4531ee0">Naming</a></dt><dd>All the stack manipulation could be simplified by having
 names.</dd>
-<dt><a href="#org2890815">Partial Recursive Functions (PRF)</a></dt><dd>Perhaps could take inspiration
+<dt><a href="#org4d405c1">Partial Recursive Functions (PRF)</a></dt><dd>Perhaps could take inspiration
 from the way composition is implemented there, in order to avoid
 all the stack manipulation? This could be more in the Forth
-spirit than <a href="#org1633686">naming</a>.</dd>
+spirit than <a href="#org4531ee0">naming</a>.</dd>
 <dt>Dereference-count</dt><dd>When a pointer gets dereferenced a lot, move
 its pointee closer to that pointer (when doing mark&amp;move GC)? To
 make it more likely to be in the cache (akin to
@@ -894,8 +894,8 @@ modify @ and ! for GC?</dd>
 </div>
 </div>
 
-<div id="outline-container-org1633686" class="outline-2">
-<h2 id="org1633686"><span class="section-number-2">7.</span> <span class="todo TODO">TODO</span> Naming</h2>
+<div id="outline-container-org4531ee0" class="outline-2">
+<h2 id="org4531ee0"><span class="section-number-2">7.</span> <span class="todo TODO">TODO</span> Naming</h2>
 <div class="outline-text-2" id="text-7">
 <p>
 Plan is to extend forth to do naming, to make programs easier to
@@ -957,8 +957,8 @@ static-checking too?
 </div>
 </div>
 
-<div id="outline-container-org9c1eab0" class="outline-2">
-<h2 id="org9c1eab0"><span class="section-number-2">8.</span> <span class="todo TODO">TODO</span> Partial Recursive Functions (PRF) <a id="org2890815"></a></h2>
+<div id="outline-container-org6102707" class="outline-2">
+<h2 id="org6102707"><span class="section-number-2">8.</span> <span class="todo TODO">TODO</span> Partial Recursive Functions (PRF) <a id="org4d405c1"></a></h2>
 <div class="outline-text-2" id="text-8">
 <p>
 Perhaps turn something like
@@ -983,8 +983,8 @@ BAZ
 </div>
 </div>
 </div>
-<div id="outline-container-org8d2f383" class="outline-2">
-<h2 id="org8d2f383"><span class="section-number-2">9.</span> <span class="todo TODO">TODO</span> Terminal on host with simple-forth.c?</h2>
+<div id="outline-container-org21ca00c" class="outline-2">
+<h2 id="org21ca00c"><span class="section-number-2">9.</span> <span class="todo TODO">TODO</span> Terminal on host with simple-forth.c?</h2>
 <div class="outline-text-2" id="text-9">
 <p>
 First, define a protocol
@@ -998,7 +998,7 @@ First, define a protocol
 </div>
 <div id="postamble" class="status">
 <p class="author">Author: Robert Kovacsics (rmk35)</p>
-<p class="date">Created: 2022-01-02 Sun 00:49</p>
+<p class="date">Created: 2022-01-02 Sun 00:55</p>
 <p class="validation"><a href="https://validator.w3.org/check?uri=referer">Validate</a></p>
 </div>
 </body>
