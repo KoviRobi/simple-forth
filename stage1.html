@@ -1,0 +1,1005 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN"
+"http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml" lang="en" xml:lang="en">
+<head>
+<!-- 2022-01-02 Sun 00:41 -->
+<meta http-equiv="Content-Type" content="text/html;charset=utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Raspberry Pi Baremetal Language Bootstrapping</title>
+<meta name="author" content="Robert Kovacsics (rmk35)" />
+<meta name="generator" content="Org Mode" />
+<style>
+  #content { max-width: 60em; margin: auto; }
+  .title  { text-align: center;
+             margin-bottom: .2em; }
+  .subtitle { text-align: center;
+              font-size: medium;
+              font-weight: bold;
+              margin-top:0; }
+  .todo   { font-family: monospace; color: red; }
+  .done   { font-family: monospace; color: green; }
+  .priority { font-family: monospace; color: orange; }
+  .tag    { background-color: #eee; font-family: monospace;
+            padding: 2px; font-size: 80%; font-weight: normal; }
+  .timestamp { color: #bebebe; }
+  .timestamp-kwd { color: #5f9ea0; }
+  .org-right  { margin-left: auto; margin-right: 0px;  text-align: right; }
+  .org-left   { margin-left: 0px;  margin-right: auto; text-align: left; }
+  .org-center { margin-left: auto; margin-right: auto; text-align: center; }
+  .underline { text-decoration: underline; }
+  #postamble p, #preamble p { font-size: 90%; margin: .2em; }
+  p.verse { margin-left: 3%; }
+  pre {
+    border: 1px solid #e6e6e6;
+    border-radius: 3px;
+    background-color: #f2f2f2;
+    padding: 8pt;
+    font-family: monospace;
+    overflow: auto;
+    margin: 1.2em;
+  }
+  pre.src {
+    position: relative;
+    overflow: auto;
+  }
+  pre.src:before {
+    display: none;
+    position: absolute;
+    top: -8px;
+    right: 12px;
+    padding: 3px;
+    color: #555;
+    background-color: #f2f2f299;
+  }
+  pre.src:hover:before { display: inline; margin-top: 14px;}
+  /* Languages per Org manual */
+  pre.src-asymptote:before { content: 'Asymptote'; }
+  pre.src-awk:before { content: 'Awk'; }
+  pre.src-authinfo::before { content: 'Authinfo'; }
+  pre.src-C:before { content: 'C'; }
+  /* pre.src-C++ doesn't work in CSS */
+  pre.src-clojure:before { content: 'Clojure'; }
+  pre.src-css:before { content: 'CSS'; }
+  pre.src-D:before { content: 'D'; }
+  pre.src-ditaa:before { content: 'ditaa'; }
+  pre.src-dot:before { content: 'Graphviz'; }
+  pre.src-calc:before { content: 'Emacs Calc'; }
+  pre.src-emacs-lisp:before { content: 'Emacs Lisp'; }
+  pre.src-fortran:before { content: 'Fortran'; }
+  pre.src-gnuplot:before { content: 'gnuplot'; }
+  pre.src-haskell:before { content: 'Haskell'; }
+  pre.src-hledger:before { content: 'hledger'; }
+  pre.src-java:before { content: 'Java'; }
+  pre.src-js:before { content: 'Javascript'; }
+  pre.src-latex:before { content: 'LaTeX'; }
+  pre.src-ledger:before { content: 'Ledger'; }
+  pre.src-lisp:before { content: 'Lisp'; }
+  pre.src-lilypond:before { content: 'Lilypond'; }
+  pre.src-lua:before { content: 'Lua'; }
+  pre.src-matlab:before { content: 'MATLAB'; }
+  pre.src-mscgen:before { content: 'Mscgen'; }
+  pre.src-ocaml:before { content: 'Objective Caml'; }
+  pre.src-octave:before { content: 'Octave'; }
+  pre.src-org:before { content: 'Org mode'; }
+  pre.src-oz:before { content: 'OZ'; }
+  pre.src-plantuml:before { content: 'Plantuml'; }
+  pre.src-processing:before { content: 'Processing.js'; }
+  pre.src-python:before { content: 'Python'; }
+  pre.src-R:before { content: 'R'; }
+  pre.src-ruby:before { content: 'Ruby'; }
+  pre.src-sass:before { content: 'Sass'; }
+  pre.src-scheme:before { content: 'Scheme'; }
+  pre.src-screen:before { content: 'Gnu Screen'; }
+  pre.src-sed:before { content: 'Sed'; }
+  pre.src-sh:before { content: 'shell'; }
+  pre.src-sql:before { content: 'SQL'; }
+  pre.src-sqlite:before { content: 'SQLite'; }
+  /* additional languages in org.el's org-babel-load-languages alist */
+  pre.src-forth:before { content: 'Forth'; }
+  pre.src-io:before { content: 'IO'; }
+  pre.src-J:before { content: 'J'; }
+  pre.src-makefile:before { content: 'Makefile'; }
+  pre.src-maxima:before { content: 'Maxima'; }
+  pre.src-perl:before { content: 'Perl'; }
+  pre.src-picolisp:before { content: 'Pico Lisp'; }
+  pre.src-scala:before { content: 'Scala'; }
+  pre.src-shell:before { content: 'Shell Script'; }
+  pre.src-ebnf2ps:before { content: 'ebfn2ps'; }
+  /* additional language identifiers per "defun org-babel-execute"
+       in ob-*.el */
+  pre.src-cpp:before  { content: 'C++'; }
+  pre.src-abc:before  { content: 'ABC'; }
+  pre.src-coq:before  { content: 'Coq'; }
+  pre.src-groovy:before  { content: 'Groovy'; }
+  /* additional language identifiers from org-babel-shell-names in
+     ob-shell.el: ob-shell is the only babel language using a lambda to put
+     the execution function name together. */
+  pre.src-bash:before  { content: 'bash'; }
+  pre.src-csh:before  { content: 'csh'; }
+  pre.src-ash:before  { content: 'ash'; }
+  pre.src-dash:before  { content: 'dash'; }
+  pre.src-ksh:before  { content: 'ksh'; }
+  pre.src-mksh:before  { content: 'mksh'; }
+  pre.src-posh:before  { content: 'posh'; }
+  /* Additional Emacs modes also supported by the LaTeX listings package */
+  pre.src-ada:before { content: 'Ada'; }
+  pre.src-asm:before { content: 'Assembler'; }
+  pre.src-caml:before { content: 'Caml'; }
+  pre.src-delphi:before { content: 'Delphi'; }
+  pre.src-html:before { content: 'HTML'; }
+  pre.src-idl:before { content: 'IDL'; }
+  pre.src-mercury:before { content: 'Mercury'; }
+  pre.src-metapost:before { content: 'MetaPost'; }
+  pre.src-modula-2:before { content: 'Modula-2'; }
+  pre.src-pascal:before { content: 'Pascal'; }
+  pre.src-ps:before { content: 'PostScript'; }
+  pre.src-prolog:before { content: 'Prolog'; }
+  pre.src-simula:before { content: 'Simula'; }
+  pre.src-tcl:before { content: 'tcl'; }
+  pre.src-tex:before { content: 'TeX'; }
+  pre.src-plain-tex:before { content: 'Plain TeX'; }
+  pre.src-verilog:before { content: 'Verilog'; }
+  pre.src-vhdl:before { content: 'VHDL'; }
+  pre.src-xml:before { content: 'XML'; }
+  pre.src-nxml:before { content: 'XML'; }
+  /* add a generic configuration mode; LaTeX export needs an additional
+     (add-to-list 'org-latex-listings-langs '(conf " ")) in .emacs */
+  pre.src-conf:before { content: 'Configuration File'; }
+
+  table { border-collapse:collapse; }
+  caption.t-above { caption-side: top; }
+  caption.t-bottom { caption-side: bottom; }
+  td, th { vertical-align:top;  }
+  th.org-right  { text-align: center;  }
+  th.org-left   { text-align: center;   }
+  th.org-center { text-align: center; }
+  td.org-right  { text-align: right;  }
+  td.org-left   { text-align: left;   }
+  td.org-center { text-align: center; }
+  dt { font-weight: bold; }
+  .footpara { display: inline; }
+  .footdef  { margin-bottom: 1em; }
+  .figure { padding: 1em; }
+  .figure p { text-align: center; }
+  .equation-container {
+    display: table;
+    text-align: center;
+    width: 100%;
+  }
+  .equation {
+    vertical-align: middle;
+  }
+  .equation-label {
+    display: table-cell;
+    text-align: right;
+    vertical-align: middle;
+  }
+  .inlinetask {
+    padding: 10px;
+    border: 2px solid gray;
+    margin: 10px;
+    background: #ffffcc;
+  }
+  #org-div-home-and-up
+   { text-align: right; font-size: 70%; white-space: nowrap; }
+  textarea { overflow-x: auto; }
+  .linenr { font-size: smaller }
+  .code-highlighted { background-color: #ffff00; }
+  .org-info-js_info-navigation { border-style: none; }
+  #org-info-js_console-label
+    { font-size: 10px; font-weight: bold; white-space: nowrap; }
+  .org-info-js_search-highlight
+    { background-color: #ffff00; color: #000000; font-weight: bold; }
+  .org-svg { width: 90%; }
+</style>
+<link rel="stylesheet" type="text/css" href="/org-html-themes/src/readtheorg_theme/css/htmlize.css"/>
+<link rel="stylesheet" type="text/css" href="/org-html-themes/src/readtheorg_theme/css/readtheorg.css"/>
+<script src="https://ajax.googleapis.com/ajax/libs/jquery/2.1.3/jquery.min.js"></script>
+<script src="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.4/js/bootstrap.min.js"></script>
+<script type="text/javascript" src="/org-html-themes/styles/lib/js/jquery.stickytableheaders.min.js"></script>
+<script type="text/javascript" src="/org-html-themes/src/readtheorg_theme/js/readtheorg.js"></script>
+</head>
+<body>
+<div id="content" class="content">
+<h1 class="title">Raspberry Pi Baremetal Language Bootstrapping</h1>
+<div id="table-of-contents" role="doc-toc">
+<h2>Table of Contents</h2>
+<div id="text-table-of-contents" role="doc-toc">
+<ul>
+<li><a href="#orgfb59985">1. <span class="todo TODO">TODO</span> Forth</a>
+<ul>
+<li><a href="#orgeed0b4f">1.1. <span class="todo TODO">TODO</span> Input</a>
+<ul>
+<li><a href="#orgcd91c3c">1.1.1. Words</a></li>
+<li><a href="#org4b87f6b">1.1.2. Numbers</a></li>
+</ul>
+</li>
+<li><a href="#orgcfc07d8">1.2. <span class="todo TODO">TODO</span> Compiling</a></li>
+<li><a href="#org953b3a5">1.3. <span class="todo TODO">TODO</span> REPL</a></li>
+<li><a href="#org355b3d0">1.4. <span class="todo TODO">TODO</span> DOES&gt;</a></li>
+<li><a href="#org14eca83">1.5. <span class="todo TODO">TODO</span> Brave New Words</a></li>
+<li><a href="#orgf4868e9">1.6. <span class="todo TODO">TODO</span> Control Words</a></li>
+<li><a href="#org0162283">1.7. <span class="todo TODO">TODO</span> Comments</a></li>
+</ul>
+</li>
+<li><a href="#org681ca45">2. <span class="todo TODO">TODO</span> Change</a></li>
+<li><a href="#orga0a5598">3. <span class="todo TODO">TODO</span> Testing</a></li>
+<li><a href="#org2bf11f4">4. <span class="todo TODO">TODO</span> After REPL</a></li>
+<li><a href="#orgc3905d1">5. <span class="todo TODO">TODO</span> Forth Assembler</a>
+<ul>
+<li><a href="#org5825c0d">5.1. ;CODE</a></li>
+</ul>
+</li>
+<li><a href="#org3610d38">6. <span class="todo TODO">TODO</span> Ideas</a></li>
+<li><a href="#orgc14fc89">7. <span class="todo TODO">TODO</span> Naming</a></li>
+<li><a href="#orgafd4ca9">8. <span class="todo TODO">TODO</span> Partial Recursive Functions (PRF) </a></li>
+<li><a href="#orged39763">9. <span class="todo TODO">TODO</span> Terminal on host with simple-forth.c?</a></li>
+</ul>
+</div>
+</div>
+
+<div id="outline-container-orgfb59985" class="outline-2">
+<h2 id="orgfb59985"><span class="section-number-2">1.</span> <span class="todo TODO">TODO</span> Forth</h2>
+<div class="outline-text-2" id="text-1">
+</div>
+<div id="outline-container-orgeed0b4f" class="outline-3">
+<h3 id="orgeed0b4f"><span class="section-number-3">1.1.</span> <span class="todo TODO">TODO</span> Input</h3>
+<div class="outline-text-3" id="text-1-1">
+</div>
+<div id="outline-container-orgcd91c3c" class="outline-4">
+<h4 id="orgcd91c3c"><span class="section-number-4">1.1.1.</span> Words</h4>
+<div class="outline-text-4" id="text-1-1-1">
+<p>
+TODO: backspace (or perhaps with a modified key?)
+</p>
+
+<table class="harmonica-table"><thead><tr><td>Assembly</td><td>Forth</td></tr></thead><tbody><tr><td>
+<div class="org-src-container">
+<pre class="src src-asm"><span style="font-weight: bold;">.fdef</span> <span style="font-style: italic;">"LOWER"</span>, _
+  <span style="font-weight: bold;">.fw</span> DUP, LIT, L,'A', U_LESS_THAN
+  <span style="font-weight: bold;">.fw</span> OVER, LIT, L,'Z', U_GREATER_THAN
+  <span style="font-weight: bold;">.fw</span> OR, INVERT, ZBRANCH, L,(1f-.)
+  <span style="font-weight: bold;">.fw</span> LIT, L,32, ADD
+<span style="font-weight: bold;">1</span>:.fw EXIT
+</pre>
+</div>
+</td><td>
+<div class="org-src-container">
+<pre class="src src-forth">: LOWER ( char -- char )
+  dup char A U&lt; over char Z U&gt;
+  or invert if 32 + then ;
+</pre>
+</div>
+</td></tr></tbody></table>
+
+<table class="harmonica-table"><thead><tr><td>Assembly</td><td>Forth</td></tr></thead><tbody><tr><td>
+<div class="org-src-container">
+<pre class="src src-asm"><span style="font-weight: bold;">.fdef</span> <span style="font-style: italic;">"CHAR\x3d"</span>, CHAR_EQUAL
+  <span style="font-weight: bold;">.fw</span> TWO_DUP, EQUAL, ZBRANCH, L,(1f-.)
+  <span style="font-weight: bold;">.fw</span> TWO_DROP, TRUE, EXIT
+<span style="font-weight: bold;">1</span>:.fw OVER, LIT, L,33, U_LESS_THAN
+  <span style="font-weight: bold;">.fw</span> OVER, LIT, L,33, U_LESS_THAN
+  <span style="font-weight: bold;">.fw</span> AND, ZBRANCH, L,(2f-.)
+  <span style="font-weight: bold;">.fw</span> TWO_DROP, TRUE, EXIT
+<span style="font-weight: bold;">2</span>:.fw LOWER, SWAP, LOWER, EQUAL
+  <span style="font-weight: bold;">.fw</span> ZBRANCH, L,(3f-.)
+  <span style="font-weight: bold;">.fw</span> TRUE, EXIT
+<span style="font-weight: bold;">3</span>:.fw FALSE, EXIT
+</pre>
+</div>
+</td><td>
+<div class="org-src-container">
+<pre class="src src-forth">: CHAR=' ( char char -- -1|0 )
+  2dup = if 2drop true exit then
+  over 33 U&lt; over 33 U&lt; and if 2drop true exit then
+  lower swap lower = if true exit then
+  false ;
+</pre>
+</div>
+</td></tr></tbody></table>
+
+<p>
+TODO: transient region
+</p>
+
+<table class="harmonica-table"><thead><tr><td>Assembly</td><td>Forth</td></tr></thead><tbody><tr><td>
+<div class="org-src-container">
+<pre class="src src-asm"><span style="font-weight: bold;">.fdef</span> <span style="font-style: italic;">"WORD\x27"</span>, WORD_NEW
+  <span style="font-weight: bold;">.fw</span> HERE, SWAP, LIT, L,0
+<span style="font-weight: bold;">WORD_SKIP</span>:
+  <span style="font-weight: bold;">.fw</span> DROP, KEY, TWO_DUP, CHAR_EQUAL
+  <span style="font-weight: bold;">.fw</span> INVERT, ZBRANCH, L,(WORD_SKIP-.)
+<span style="font-weight: bold;">WORD_LOOP</span>:
+  <span style="font-weight: bold;">.fw</span> DUP, C_COMMA, OVER, CHAR_EQUAL
+  <span style="font-weight: bold;">.fw</span> ZBRANCH, L,(WORD_CONT-.)
+  <span style="font-weight: bold;">.fw</span> DROP, CHAR_SIZE, NEGATE, ALLOT
+  <span style="font-weight: bold;">.fw</span> HERE, OVER, SUB, LIT, L,0, C_COMMA
+  <span style="font-weight: bold;">.fw</span> LIT, L,-1, OVER, SUB, ALLOT, EXIT
+<span style="font-weight: bold;">WORD_CONT</span>:
+  <span style="font-weight: bold;">.fw</span> KEY, BRANCH, L,(WORD_LOOP-.)
+</pre>
+</div>
+</td><td>
+<div class="org-src-container">
+<pre class="src src-forth">: WORD' ( char "&lt;chars&gt;ccc&lt;char&gt;" -- c-addr u )
+  here swap
+  0 begin drop key 2dup char= until
+  begin \ start char key
+    dup C,
+    over char= if \ start char
+      drop char-size negate allot
+      here over - 0 C,
+      -1 over - allot exit
+    then
+    key
+  again ;
+</pre>
+</div>
+</td></tr></tbody></table>
+
+<table class="harmonica-table"><thead><tr><td>Assembly</td><td>Forth</td></tr></thead><tbody><tr><td>
+<div class="org-src-container">
+<pre class="src src-asm"><span style="font-weight: bold;">.fdef</span> <span style="font-style: italic;">"WORD"</span>, WORD
+  <span style="font-weight: bold;">.fw</span> HERE, SWAP, CELL_SIZE, ALLOT,
+  <span style="font-weight: bold;">.fw</span> WORD_NEW, ROT, STORE
+  <span style="font-weight: bold;">.fw</span> CELL_SIZE, NEGATE, ALLOT
+  <span style="font-weight: bold;">.fw</span> CELL_SIZE, SUB, EXIT
+</pre>
+</div>
+</td><td>
+<div class="org-src-container">
+<pre class="src src-forth">: WORD ( char "&lt;chars&gt;ccc&lt;char&gt;" -- c-addr u )
+  here swap cell-size allot
+  word' rot \ c-addr u1 len-pos
+  ! \ c-addr
+  cell-size negate allot \ deallocate len
+  cell-size - ; \ make addr point to len
+</pre>
+</div>
+</td></tr></tbody></table>
+</div>
+</div>
+
+<div id="outline-container-org4b87f6b" class="outline-4">
+<h4 id="org4b87f6b"><span class="section-number-4">1.1.2.</span> Numbers</h4>
+<div class="outline-text-4" id="text-1-1-2">
+<p>
+If the character is less than '0', or between '9' and 'A' (or 'Z' and
+'a'), then it underflows, and will end up being greater than BASE.
+</p>
+
+<table class="harmonica-table"><thead><tr><td>Assembly</td><td>Forth</td></tr></thead><tbody><tr><td>
+<div class="org-src-container">
+<pre class="src src-asm"><span style="font-weight: bold;">.fdef</span> <span style="font-style: italic;">"CHAR-&gt;DIGIT"</span>, CHAR_TO_DIGIT
+  <span style="font-weight: bold;">.fw</span> LIT, L,'0', SUB
+  <span style="font-weight: bold;">.fw</span> DUP, LIT, L,9, U_GREATER_THAN, ZBRANCH, L,(C_TO_D_END-.)
+  <span style="font-weight: bold;">.fw</span> LIT, L,('A'-'9'-1), SUB
+  <span style="font-weight: bold;">.fw</span> DUP, LIT, L,10, U_LESS_THAN, ZBRANCH, L,(C_TO_D_A-.)
+  <span style="font-weight: bold;">.fw</span> LIT, L,10, SUB
+<span style="font-weight: bold;">C_TO_D_A</span>:
+  <span style="font-weight: bold;">.fw</span> DUP, LIT, L,35, U_GREATER_THAN, ZBRANCH, L,(C_TO_D_END-.)
+  <span style="font-weight: bold;">.fw</span> LIT, L,32, SUB
+  <span style="font-weight: bold;">.fw</span> DUP, LIT, L,10, U_LESS_THAN, ZBRANCH, L,(C_TO_D_END-.)
+  <span style="font-weight: bold;">.fw</span> LIT, L,10, SUB
+<span style="font-weight: bold;">C_TO_D_END</span>:
+  <span style="font-weight: bold;">.fw</span> EXIT
+</pre>
+</div>
+</td><td>
+<div class="org-src-container">
+<pre class="src src-forth">: CHAR-&gt;DIGIT ( char -- digit )
+  char 0 -
+  dup 9 U&gt; if
+    7 - \ 9 : ; &lt; = &gt; ? @ A
+    dup 10 U&lt; if 10 - then
+    dup 35 U&gt; if
+      32 - \ A-Z [ \ ] ^ _ ` a-z
+      dup 10 U&lt; if 10 - then
+    then
+  then ;
+</pre>
+</div>
+</td></tr></tbody></table>
+
+<table class="harmonica-table"><thead><tr><td>Assembly</td><td>Forth</td></tr></thead><tbody><tr><td>
+<div class="org-src-container">
+<pre class="src src-asm"><span style="font-weight: bold;">.data</span>
+<span style="font-weight: bold;">BASE_LOC</span>: .cell 10
+<span style="font-weight: bold;">.text</span>
+<span style="font-weight: bold;">.fdef</span> <span style="font-style: italic;">"BASE"</span>, BASE
+  <span style="font-weight: bold;">.fw</span> LIT, L,BASE_LOC, EXIT
+<span style="font-weight: bold;">.fdef</span> <span style="font-style: italic;">"DECIMAL"</span>, DECIMAL
+  <span style="font-weight: bold;">.fw</span> LIT, L,10, BASE, STORE, EXIT
+<span style="font-weight: bold;">.fdef</span> <span style="font-style: italic;">"&gt;NUMBER"</span>, TO_NUMBER
+  <span style="font-weight: bold;">.fw</span> OVER, ADD, DUP, TO_R, SWAP
+  <span style="font-weight: bold;">.fw</span> TWO_TO_R
+<span style="font-weight: bold;">TO_NUM_LOOP</span>:
+  <span style="font-weight: bold;">.fw</span> R_FETCH, C_FETCH, CHAR_TO_DIGIT, DUP
+  <span style="font-weight: bold;">.fw</span> BASE, FETCH, U_LESS_THAN
+  <span style="font-weight: bold;">.fw</span> ZBRANCH, L,(TO_NUM_ELSE-.)
+  <span style="font-weight: bold;">.fw</span> SWAP, BASE, FETCH, STAR, ADD
+  <span style="font-weight: bold;">.fw</span> BRANCH, L,(TO_NUM_NEXT-.)
+<span style="font-weight: bold;">TO_NUM_ELSE</span>:
+  <span style="font-weight: bold;">.fw</span> DROP, R_FETCH, TWO_R_DROP, R_FROM
+  <span style="font-weight: bold;">.fw</span> OVER, SUB,  EXIT
+<span style="font-weight: bold;">TO_NUM_NEXT</span>:
+  <span style="font-weight: bold;">.fw</span> R_FROM, LIT, L,1, ADD, TO_R
+  <span style="font-weight: bold;">.fw</span> TWO_R_FETCH, EQUAL
+  <span style="font-weight: bold;">.fw</span> ZBRANCH, L,(TO_NUM_LOOP-.)
+  <span style="font-weight: bold;">.fw</span> TWO_R_DROP
+  <span style="font-weight: bold;">.fw</span> R_FROM, LIT, L,0
+  <span style="font-weight: bold;">.fw</span> EXIT
+</pre>
+</div>
+</td><td>
+<div class="org-src-container">
+<pre class="src src-forth">variable BASE 10 BASE !
+: &gt;NUMBER ( ud1 c-addr1 u1 -- ud2 c-addr2 u2 )
+  over + dup &gt;R swap \ ud1 c-addr1+u1 c-addr1; R: c-addr1+u1
+  do \ ud1; loops with  c-addr1 &lt;= I &lt; c-addr1+u1
+    I C@ char-&gt;digit dup BASE @ U&lt; if \ ud1 digit
+      swap BASE @ * +
+    else \ ud2 digit
+      drop I unloop R&gt; over - exit \ ud2 c-addr2 u2
+    then
+  loop
+  R&gt; 0 ;
+</pre>
+</div>
+</td></tr></tbody></table>
+
+<p>
+(We also need a way of converting signed numbers, and numbers in other
+bases too, according to §3.4.1.3.
+</p>
+
+<div class="org-src-container">
+<pre class="src src-forth">: NUMBER ( ud1 c-addr u1 -- number c-addr u2 )
+  BASE @ &gt;R
+  over @ ''' = if parse-char then
+  over @ case
+    '#' of 1 + decimal endof
+    '$' of 1 + hex endof
+    '%' of 1 + binary endof
+  endcase
+  dup 0 = if 1+ swap 1- exit ( to indicate that we failed to parse ) then
+  over @ '-' = &gt;R
+  R@ if 1+ then
+  dup 0 = if 1+ swap -1 exit ( to indicate that we failed to parse ) then
+  &gt;number
+  rot R&gt; if negate then -rot
+  R&gt; BASE !
+  ;
+
+: PARSE-CHAR ( ud1 c-addr u1 -- ud2 c-addr u2 )
+  dup 3 = if
+    drop 1+ dup C@ rot + swap 2 + 0
+  then
+  ;
+</pre>
+</div>
+</div>
+</div>
+</div>
+
+<div id="outline-container-orgcfc07d8" class="outline-3">
+<h3 id="orgcfc07d8"><span class="section-number-3">1.2.</span> <span class="todo TODO">TODO</span> Compiling</h3>
+<div class="outline-text-3" id="text-1-2">
+<p>
+See §3.4 of the <a href="https://www.taygeta.com/forth/dpans3.htm#3.4">ANSI Forth manual</a>.
+</p>
+
+<table class="harmonica-table"><thead><tr><td>Assembly</td><td>Forth</td></tr></thead><tbody><tr><td>
+<div class="org-src-container">
+<pre class="src src-asm"><span style="font-weight: bold;">.fdef</span> <span style="font-style: italic;">"BL"</span>, BL
+  <span style="font-weight: bold;">.fw</span> LIT, L,' ', EXIT
+</pre>
+</div>
+</td><td>
+<div class="org-src-container">
+<pre class="src src-forth">: BL ( -- char ) 32 ;
+</pre>
+</div>
+</td></tr></tbody></table>
+
+<table class="harmonica-table"><thead><tr><td>Assembly</td><td>Forth</td></tr></thead><tbody><tr><td>
+<div class="org-src-container">
+<pre class="src src-asm"><span style="font-weight: bold;">.fdef</span> <span style="font-style: italic;">"\x27"</span>, TICK
+  <span style="font-weight: bold;">.fw</span> BL, WORD_NEW, FIND_NEW, DROP, EXIT
+</pre>
+</div>
+</td><td>
+<div class="org-src-container">
+<pre class="src src-forth">: TICK ( "&lt;spaces&gt;name" -- xt )
+  bl word' find' drop ;
+</pre>
+</div>
+</td></tr></tbody></table>
+
+<table class="harmonica-table"><thead><tr><td>Assembly</td><td>Forth</td></tr></thead><tbody><tr><td>
+<div class="org-src-container">
+<pre class="src src-asm"><span style="font-weight: bold;">.fdef</span> <span style="font-style: italic;">"OK"</span>, OK
+  <span style="font-weight: bold;">.fw</span> LIT, L,'O', EMIT, LIT, L,'k'
+  <span style="font-weight: bold;">.fw</span> EMIT, BL, EMIT, EXIT
+</pre>
+</div>
+</td><td>
+<div class="org-src-container">
+<pre class="src src-forth">: OK
+  bl emit char O emit char k emit bl emit ;
+</pre>
+</div>
+</td></tr></tbody></table>
+
+<table class="harmonica-table"><thead><tr><td>Assembly</td><td>Forth</td></tr></thead><tbody><tr><td>
+<div class="org-src-container">
+<pre class="src src-asm"><span style="font-weight: bold;">.fdef</span> <span style="font-style: italic;">"ERROR"</span>, ERROR
+  <span style="font-weight: bold;">.fw</span> LIT, L,'E', EMIT, LIT, L,'r', EMIT
+  <span style="font-weight: bold;">.fw</span> LIT, L,'r', EMIT, BL, EMIT, EXIT
+</pre>
+</div>
+</td><td>
+<div class="org-src-container">
+<pre class="src src-forth">: ERROR
+  char E emit char r emit char r emit bl emit ;
+</pre>
+</div>
+</td></tr></tbody></table>
+</div>
+</div>
+
+<div id="outline-container-org953b3a5" class="outline-3">
+<h3 id="org953b3a5"><span class="section-number-3">1.3.</span> <span class="todo TODO">TODO</span> REPL</h3>
+<div class="outline-text-3" id="text-1-3">
+<table class="harmonica-table"><thead><tr><td>Assembly</td><td>Forth</td></tr></thead><tbody><tr><td>
+<div class="org-src-container">
+<pre class="src src-asm"><span style="font-weight: bold; font-style: italic;">// </span><span style="font-weight: bold; font-style: italic;">TODO: Different interpretation modes</span>
+<span style="font-weight: bold;">.fdef</span> <span style="font-style: italic;">"COMPILE\x2c"</span>, COMPILE_COMMA
+  <span style="font-weight: bold;">.fw</span> COMMA, EXIT
+</pre>
+</div>
+</td><td>
+<div class="org-src-container">
+<pre class="src src-forth">TODO
+</pre>
+</div>
+</td></tr></tbody></table>
+
+<table class="harmonica-table"><thead><tr><td>Assembly</td><td>Forth</td></tr></thead><tbody><tr><td>
+<div class="org-src-container">
+<pre class="src src-asm"><span style="font-weight: bold;">.fdef</span> <span style="font-style: italic;">"QUIT-FOUND"</span>, QUIT_FOUND
+  <span style="font-weight: bold;">.fw</span> NIP, LIT, L,-1, EQUAL, STATE
+  <span style="font-weight: bold;">.fw</span> FETCH, AND, ZBRANCH, L,(Q_F_EX-.)
+  <span style="font-weight: bold;">.fw</span> COMPILE_COMMA, BRANCH, L,(Q_F_END-.)
+<span style="font-weight: bold;">Q_F_EX</span>:
+  <span style="font-weight: bold;">.fw</span> EXECUTE
+<span style="font-weight: bold;">Q_F_END</span>:
+  <span style="font-weight: bold;">.fw</span> OK, EXIT
+</pre>
+</div>
+</td><td>
+<div class="org-src-container">
+<pre class="src src-forth">: QUIT_FOUND ( xt u -1|1 -- )
+  nip -1 = state @ and if \ Compiling
+    compiling, else execute then
+  ok ;
+</pre>
+</div>
+</td></tr></tbody></table>
+
+<table class="harmonica-table"><thead><tr><td>Assembly</td><td>Forth</td></tr></thead><tbody><tr><td>
+<div class="org-src-container">
+<pre class="src src-asm"><span style="font-weight: bold;">.fdef1</span> <span style="font-style: italic;">"LITERAL"</span>, LITERAL, -1 <span style="font-weight: bold; font-style: italic;">/* </span><span style="font-weight: bold; font-style: italic;">immediate */</span>
+  <span style="font-weight: bold;">.fw</span> LIT, LIT, COMMA
+  <span style="font-weight: bold;">.fw</span> COMMA, EXIT
+</pre>
+</div>
+</td><td>
+<div class="org-src-container">
+<pre class="src src-forth">: LITERAL ( x -- )
+  ' lit compiling, , ; \ TODO
+: LITERAL ['] lit , ; IMMEDIATE
+</pre>
+</div>
+</td></tr></tbody></table>
+
+<table class="harmonica-table"><thead><tr><td>Assembly</td><td>Forth</td></tr></thead><tbody><tr><td>
+<div class="org-src-container">
+<pre class="src src-asm"><span style="font-weight: bold;">.fdef</span> <span style="font-style: italic;">"QUIT-NOT-FOUND"</span>, QUIT_NOT_FOUND
+  <span style="font-weight: bold;">.fw</span> NROT, TO_NUMBER, LIT, L,0 <span style="font-weight: bold; font-style: italic;">/* </span><span style="font-weight: bold; font-style: italic;">TODO: http://forth-standard.org/standard/usage#subsection.3.4.1.3 */</span>
+  <span style="font-weight: bold;">.fw</span> EQUAL, ZBRANCH, L,(Q_N_F_ELSE-.)
+  <span style="font-weight: bold;">.fw</span> DROP, STATE, FETCH, ZBRANCH, L,(Q_N_F_END-.)
+  <span style="font-weight: bold;">.fw</span> LITERAL
+  <span style="font-weight: bold;">.fw</span> BRANCH, L,(Q_N_F_END-.)
+<span style="font-weight: bold;">Q_N_F_ELSE</span>:
+  <span style="font-weight: bold;">.fw</span> TWO_DROP, ERROR, EXIT
+<span style="font-weight: bold;">Q_N_F_END</span>:
+  <span style="font-weight: bold;">.fw</span> OK, EXIT
+</pre>
+</div>
+</td><td>
+<div class="org-src-container">
+<pre class="src src-forth">: QUIT_NOT_FOUND ( c-addr u 0 -- )
+  rot rot &gt;number 0 = if \ TODO negative numbers
+    drop state @ if \ Compiling
+      literal
+    then
+  else
+    2drop error exit
+  then
+  ok ;
+</pre>
+</div>
+</td></tr></tbody></table>
+
+<table class="harmonica-table"><thead><tr><td>Assembly</td><td>Forth</td></tr></thead><tbody><tr><td>
+<div class="org-src-container">
+<pre class="src src-asm"><span style="font-weight: bold;">.fdef</span> <span style="font-style: italic;">"QUIT"</span>, QUIT
+<span style="font-weight: bold;">QUIT_LOOP</span>:
+  <span style="font-weight: bold;">.fw</span> BL, WORD_NEW, DUP, NROT
+  <span style="font-weight: bold;">.fw</span> FIND_NEW, ROT, SWAP
+  <span style="font-weight: bold;">.fw</span> DUP, ZBRANCH, L,(QUIT_N_F-.)
+  <span style="font-weight: bold;">.fw</span> QUIT_FOUND, BRANCH, L,(QUIT_LOOP-.)
+<span style="font-weight: bold;">QUIT_N_F</span>:
+  <span style="font-weight: bold;">.fw</span> QUIT_NOT_FOUND, BRANCH, L,(QUIT_LOOP-.)
+  <span style="font-weight: bold;">.fw</span> EXIT
+</pre>
+</div>
+</td><td>
+<div class="org-src-container">
+<pre class="src src-forth">: QUIT ( -- )
+  \ TODO: Set up value and return stacks
+  begin
+    bl word' dup rot rot \ u c-addr u
+    find' rot swap \ c-addr u -1|0|1
+    dup if quit_found else
+	  quit_not_found then
+    ok
+  again ;
+</pre>
+</div>
+</td></tr></tbody></table>
+</div>
+</div>
+
+<div id="outline-container-org355b3d0" class="outline-3">
+<h3 id="org355b3d0"><span class="section-number-3">1.4.</span> <span class="todo TODO">TODO</span> DOES&gt;</h3>
+</div>
+<div id="outline-container-org14eca83" class="outline-3">
+<h3 id="org14eca83"><span class="section-number-3">1.5.</span> <span class="todo TODO">TODO</span> Brave New Words</h3>
+<div class="outline-text-3" id="text-1-5">
+<table class="harmonica-table"><thead><tr><td>Assembly</td><td>Forth</td></tr></thead><tbody><tr><td>
+<div class="org-src-container">
+<pre class="src src-asm"><span style="font-weight: bold;">.fdef1</span> <span style="font-style: italic;">"["</span>, LBRAC,-1 <span style="font-weight: bold; font-style: italic;">/* </span><span style="font-weight: bold; font-style: italic;">immediate */</span>
+  <span style="font-weight: bold;">.fw</span> LIT, L,0, STATE, STORE, EXIT
+</pre>
+</div>
+</td><td>
+<div class="org-src-container">
+<pre class="src src-forth">: [ false state ! IMMEDIATE
+</pre>
+</div>
+</td></tr></tbody></table>
+
+<table class="harmonica-table"><thead><tr><td>Assembly</td><td>Forth</td></tr></thead><tbody><tr><td>
+<div class="org-src-container">
+<pre class="src src-asm"><span style="font-weight: bold;">.fdef</span> <span style="font-style: italic;">"]"</span>, RBRAC
+  <span style="font-weight: bold;">.fw</span> LIT, L,-1, STATE, STORE, EXIT
+</pre>
+</div>
+</td><td>
+<div class="org-src-container">
+<pre class="src src-forth">: ] true state !
+</pre>
+</div>
+</td></tr></tbody></table>
+
+<table class="harmonica-table"><thead><tr><td>Assembly</td><td>Forth</td></tr></thead><tbody><tr><td>
+<div class="org-src-container">
+<pre class="src src-asm"><span style="font-weight: bold; font-style: italic;">// </span><span style="font-weight: bold; font-style: italic;">TODO: SUBROUTINE .fdef "\x3a", COLON</span>
+<span style="font-weight: bold; font-style: italic;">// </span><span style="font-weight: bold; font-style: italic;">TODO: SUBROUTINE   .fw CREATE</span>
+<span style="font-weight: bold; font-style: italic;">// </span><span style="font-weight: bold; font-style: italic;">TODO: SUBROUTINE   .fw LIT, forth_interpreter, COMMA</span>
+<span style="font-weight: bold; font-style: italic;">// </span><span style="font-weight: bold; font-style: italic;">TODO: SUBROUTINE   .fw LATEST, FETCH, HIDE</span>
+<span style="font-weight: bold; font-style: italic;">// </span><span style="font-weight: bold; font-style: italic;">TODO: SUBROUTINE   .fw RBRAC, EXIT</span>
+<span style="font-weight: bold;">.fdef</span> <span style="font-style: italic;">"\x3a"</span>, COLON
+  <span style="font-weight: bold;">.fw</span> CREATE
+  <span style="font-weight: bold;">.fw</span> LATEST, FETCH, HIDE
+  <span style="font-weight: bold;">.fw</span> RBRAC, EXIT
+  # TODO
+</pre>
+</div>
+</td><td>
+<div class="org-src-container">
+<pre class="src src-forth">
+</pre>
+</div>
+</td></tr></tbody></table>
+
+<table class="harmonica-table"><thead><tr><td>Assembly</td><td>Forth</td></tr></thead><tbody><tr><td>
+<div class="org-src-container">
+<pre class="src src-asm"><span style="font-weight: bold;">.fdef1</span> <span style="font-style: italic;">"\x3b"</span>, SEMICOLON, -1 <span style="font-weight: bold; font-style: italic;">/* </span><span style="font-weight: bold; font-style: italic;">immediate */</span>
+  <span style="font-weight: bold;">.fw</span> LIT, L,EXIT, COMMA
+  <span style="font-weight: bold;">.fw</span> LATEST, FETCH, HIDE, LBRAC, EXIT
+</pre>
+</div>
+</td><td>
+<div class="org-src-container">
+<pre class="src src-forth">TODO
+</pre>
+</div>
+</td></tr></tbody></table>
+</div>
+</div>
+
+<div id="outline-container-orgf4868e9" class="outline-3">
+<h3 id="orgf4868e9"><span class="section-number-3">1.6.</span> <span class="todo TODO">TODO</span> Control Words</h3>
+<div class="outline-text-3" id="text-1-6">
+<p>
+TODO explain, especially as we don't have comments yet
+</p>
+<ul class="org-ul">
+<li>Note, not using compile, for [']</li>
+<li>Note, literal defined previously
+<ul class="org-ul">
+<li>But ['] and LITERAL are very similar
+<ul class="org-ul">
+<li>Can we use LIT as ['], it only needs compilation semantics?
+<ul class="org-ul">
+<li>Not quite, it doesn't push XT, it pushes entry-&gt;interpreter
+<ul class="org-ul">
+<li>Perhaps swap the meaning of XT back?</li>
+</ul></li>
+</ul></li>
+</ul></li>
+</ul></li>
+</ul>
+<div class="org-src-container">
+<pre class="src src-forth">: POSTPONE ' compile, ; IMMEDIATE \ Can place elsewhere TODO
+</pre>
+</div>
+
+<div class="org-src-container">
+<pre class="src src-forth">: ['] lit lit , ' , ; IMMEDIATE
+: IF
+  ['] BRANCH, compile,
+  HERE 0 , ; IMMEDIATE
+: THEN
+  HERE over - swap ! ; IMMEDIATE
+: ELSE
+  [']BRANCH, compile,
+  HERE swap 0 ,
+  HERE over - swap ! ; IMMEDIATE
+</pre>
+</div>
+
+<div class="org-src-container">
+<pre class="src src-forth">TODO TO TEST
+
+: BEGIN
+  HERE ; IMMEDIATE
+: AGAIN
+  [']BRANCH, compile,
+  HERE - , ; IMMEDIATE
+: UNTIL
+  ['] BRANCH, compile,
+  HERE - , ; IMMEDIATE
+: WHILE
+  ['] BRANCH, compile,
+  HERE swap 0 , ; IMMEDIATE
+: REPEAT
+  [']BRANCH, ,
+  HERE swap - ,
+  HERE over swap - swap ! ; IMMEDIATE
+</pre>
+</div>
+
+<div class="org-src-container">
+<pre class="src src-forth">: DO
+  2&gt;R ; IMMEDIATE
+: ?DO
+  2dup &lt;&gt; ['] BRANCH, compile, HERE
+  2&gt;R ; IMMEDIATE
+: LOOP
+  ;
+: +LOOP
+  ;
+: LEAVE
+  TODO ; IMMEDIATE
+</pre>
+</div>
+</div>
+</div>
+
+<div id="outline-container-org0162283" class="outline-3">
+<h3 id="org0162283"><span class="section-number-3">1.7.</span> <span class="todo TODO">TODO</span> Comments</h3>
+<div class="outline-text-3" id="text-1-7">
+<div class="org-src-container">
+<pre class="src src-forth">: CHAR word' drop C@ ;
+: [CHAR] char literal ; IMMEDIATE
+</pre>
+</div>
+
+<div class="org-src-container">
+<pre class="src src-forth">: \ begin key 10 = until ;
+: ( begin key [char] ) = until ;
+</pre>
+</div>
+</div>
+</div>
+</div>
+
+<div id="outline-container-org681ca45" class="outline-2">
+<h2 id="org681ca45"><span class="section-number-2">2.</span> <span class="todo TODO">TODO</span> Change</h2>
+<div class="outline-text-2" id="text-2">
+<p>
+<a href="http://forth-standard.org/standard/doc">http://forth-standard.org/standard/doc</a>
+</p>
+<ul class="org-ul">
+<li>Have a 'non-standard' but simpler Forth?</li>
+<li>Forth requires max 31 chars for defn names, so we can simplify the dict</li>
+<li>Document sec 4.1</li>
+<li>Exns for ambiguous conds?</li>
+</ul>
+</div>
+</div>
+<div id="outline-container-orga0a5598" class="outline-2">
+<h2 id="orga0a5598"><span class="section-number-2">3.</span> <span class="todo TODO">TODO</span> Testing</h2>
+<div class="outline-text-2" id="text-3">
+<ul class="org-ul">
+<li><code>SOURCE-ID</code></li>
+</ul>
+</div>
+</div>
+<div id="outline-container-org2bf11f4" class="outline-2">
+<h2 id="org2bf11f4"><span class="section-number-2">4.</span> <span class="todo TODO">TODO</span> After REPL</h2>
+</div>
+
+<div id="outline-container-orgc3905d1" class="outline-2">
+<h2 id="orgc3905d1"><span class="section-number-2">5.</span> <span class="todo TODO">TODO</span> Forth Assembler</h2>
+<div class="outline-text-2" id="text-5">
+</div>
+<div id="outline-container-org5825c0d" class="outline-3">
+<h3 id="org5825c0d"><span class="section-number-3">5.1.</span> ;CODE</h3>
+</div>
+</div>
+<div id="outline-container-org3610d38" class="outline-2">
+<h2 id="org3610d38"><span class="section-number-2">6.</span> <span class="todo TODO">TODO</span> Ideas</h2>
+<div class="outline-text-2" id="text-6">
+<dl class="org-dl">
+<dt>Server and client</dt><dd>Have the C implementation be a REPL server,
+with separate messages, errors, and stack buffers?
+<ul class="org-ul">
+<li>Support for up/downloading 'images' (the dictionary?), and
+perhaps replace raspbootin?</li>
+</ul></dd>
+<dt>DMA Forth</dt><dd>Do [[cite:runDMA][run-DMA] TODO this link</dd>
+<dt><a href="#orgc14fc89">Naming</a></dt><dd>All the stack manipulation could be simplified by having
+names.</dd>
+<dt><a href="#org3e63146">Partial Recursive Functions (PRF)</a></dt><dd>Perhaps could take inspiration
+from the way composition is implemented there, in order to avoid
+all the stack manipulation? This could be more in the Forth
+spirit than <a href="#orgc14fc89">naming</a>.</dd>
+<dt>Dereference-count</dt><dd>When a pointer gets dereferenced a lot, move
+its pointee closer to that pointer (when doing mark&amp;move GC)? To
+make it more likely to be in the cache (akin to
+simulated-annealing in the connection machine).</dd>
+<dt>Simple JIT</dt><dd>Inline all the non-recursive calls?</dd>
+<dt>Debugger</dt><dd>Breakpoints and tracing?</dd>
+<dt>Exception aspects</dt><dd>To decouple the 'textbook algorithm' from exception handling?</dd>
+<dt>SD Card read/store</dt><dd>So that we can compile to/read from disk, and don't have to</dd>
+<dt>Memory management</dt><dd>Simple bump allocator + GC? Might have to
+modify @ and ! for GC?</dd>
+</dl>
+</div>
+</div>
+
+<div id="outline-container-orgc14fc89" class="outline-2">
+<h2 id="orgc14fc89"><span class="section-number-2">7.</span> <span class="todo TODO">TODO</span> Naming</h2>
+<div class="outline-text-2" id="text-7">
+<p>
+Plan is to extend forth to do naming, to make programs easier to
+understand.
+</p>
+
+<p>
+Doing this naively will probably result in a dynamic environment.
+</p>
+
+<p>
+Something like
+</p>
+<div class="org-src-container">
+<pre class="src src-forth">:fun REV-SUB ARG1 ARG2 =&gt; ARG2 ARG1 - ;
+</pre>
+</div>
+<p>
+which could get turned into the equivalent of
+</p>
+<div class="org-src-container">
+<pre class="src src-forth">: REV-SUB
+  2 PUSH-STACK-FRAME
+  2 FROM-FRAME
+  1 FROM-FRAME
+  -
+  POP-FRAME
+  ;
+</pre>
+</div>
+<p>
+Also, I wonder if we need to redefine EXIT, for premature exits, or
+perhaps have a trampoline take care of the push&amp;pop, like so:
+</p>
+<div class="org-src-container">
+<pre class="src src-asm"><span style="font-weight: bold;">.fw</span> SETUP
+<span style="font-weight: bold;">.fw</span> P
+<span style="font-weight: bold;">.fw</span> TEARDOWN
+<span style="font-weight: bold;">.fw</span> EXIT
+<span style="font-weight: bold;">P</span>:.fw BODY, ...
+</pre>
+</div>
+
+<p>
+This might even lead to optimisations, e.g. to
+</p>
+<div class="org-src-container">
+<pre class="src src-forth">: REV-SUB
+  SWAP -
+  ;
+</pre>
+</div>
+
+<p>
+And arg-count checking, possibly only at runtime first, to make sure
+we don't return multiple values or get too few arguments. Possibly
+static-checking too?
+</p>
+</div>
+</div>
+
+<div id="outline-container-orgafd4ca9" class="outline-2">
+<h2 id="orgafd4ca9"><span class="section-number-2">8.</span> <span class="todo TODO">TODO</span> Partial Recursive Functions (PRF) <a id="org3e63146"></a></h2>
+<div class="outline-text-2" id="text-8">
+<p>
+Perhaps turn something like
+</p>
+<div class="org-src-container">
+<pre class="src src-forth">\ FOO ( A B C -- V W )
+\ BAR ( E F -- X )
+\ BAZ ( V W X -- M N O )
+{ FOO , , BAR } BAZ
+</pre>
+</div>
+<p>
+into
+</p>
+<div class="org-src-container">
+<pre class="src src-forth">FOO &gt;R
+&gt;R \ from the empty
+BAR &gt;R
+R&gt; R&gt; R&gt;
+BAZ
+</pre>
+</div>
+</div>
+</div>
+<div id="outline-container-orged39763" class="outline-2">
+<h2 id="orged39763"><span class="section-number-2">9.</span> <span class="todo TODO">TODO</span> Terminal on host with simple-forth.c?</h2>
+<div class="outline-text-2" id="text-9">
+<p>
+First, define a protocol
+</p>
+<ul class="org-ul">
+<li>0 n char0 &#x2026; charn ( send n chars )</li>
+<li>?</li>
+</ul>
+</div>
+</div>
+</div>
+<div id="postamble" class="status">
+<p class="author">Author: Robert Kovacsics (rmk35)</p>
+<p class="date">Created: 2022-01-02 Sun 00:41</p>
+<p class="validation"><a href="https://validator.w3.org/check?uri=referer">Validate</a></p>
+</div>
+</body>
+</html>

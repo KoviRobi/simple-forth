@@ -1,0 +1,1208 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN"
+"http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml" lang="en" xml:lang="en">
+<head>
+<!-- 2022-01-02 Sun 00:41 -->
+<meta http-equiv="Content-Type" content="text/html;charset=utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Simple Forth interpreter in C</title>
+<meta name="author" content="Robert Kovacsics (rmk35)" />
+<meta name="generator" content="Org Mode" />
+<style>
+  #content { max-width: 60em; margin: auto; }
+  .title  { text-align: center;
+             margin-bottom: .2em; }
+  .subtitle { text-align: center;
+              font-size: medium;
+              font-weight: bold;
+              margin-top:0; }
+  .todo   { font-family: monospace; color: red; }
+  .done   { font-family: monospace; color: green; }
+  .priority { font-family: monospace; color: orange; }
+  .tag    { background-color: #eee; font-family: monospace;
+            padding: 2px; font-size: 80%; font-weight: normal; }
+  .timestamp { color: #bebebe; }
+  .timestamp-kwd { color: #5f9ea0; }
+  .org-right  { margin-left: auto; margin-right: 0px;  text-align: right; }
+  .org-left   { margin-left: 0px;  margin-right: auto; text-align: left; }
+  .org-center { margin-left: auto; margin-right: auto; text-align: center; }
+  .underline { text-decoration: underline; }
+  #postamble p, #preamble p { font-size: 90%; margin: .2em; }
+  p.verse { margin-left: 3%; }
+  pre {
+    border: 1px solid #e6e6e6;
+    border-radius: 3px;
+    background-color: #f2f2f2;
+    padding: 8pt;
+    font-family: monospace;
+    overflow: auto;
+    margin: 1.2em;
+  }
+  pre.src {
+    position: relative;
+    overflow: auto;
+  }
+  pre.src:before {
+    display: none;
+    position: absolute;
+    top: -8px;
+    right: 12px;
+    padding: 3px;
+    color: #555;
+    background-color: #f2f2f299;
+  }
+  pre.src:hover:before { display: inline; margin-top: 14px;}
+  /* Languages per Org manual */
+  pre.src-asymptote:before { content: 'Asymptote'; }
+  pre.src-awk:before { content: 'Awk'; }
+  pre.src-authinfo::before { content: 'Authinfo'; }
+  pre.src-C:before { content: 'C'; }
+  /* pre.src-C++ doesn't work in CSS */
+  pre.src-clojure:before { content: 'Clojure'; }
+  pre.src-css:before { content: 'CSS'; }
+  pre.src-D:before { content: 'D'; }
+  pre.src-ditaa:before { content: 'ditaa'; }
+  pre.src-dot:before { content: 'Graphviz'; }
+  pre.src-calc:before { content: 'Emacs Calc'; }
+  pre.src-emacs-lisp:before { content: 'Emacs Lisp'; }
+  pre.src-fortran:before { content: 'Fortran'; }
+  pre.src-gnuplot:before { content: 'gnuplot'; }
+  pre.src-haskell:before { content: 'Haskell'; }
+  pre.src-hledger:before { content: 'hledger'; }
+  pre.src-java:before { content: 'Java'; }
+  pre.src-js:before { content: 'Javascript'; }
+  pre.src-latex:before { content: 'LaTeX'; }
+  pre.src-ledger:before { content: 'Ledger'; }
+  pre.src-lisp:before { content: 'Lisp'; }
+  pre.src-lilypond:before { content: 'Lilypond'; }
+  pre.src-lua:before { content: 'Lua'; }
+  pre.src-matlab:before { content: 'MATLAB'; }
+  pre.src-mscgen:before { content: 'Mscgen'; }
+  pre.src-ocaml:before { content: 'Objective Caml'; }
+  pre.src-octave:before { content: 'Octave'; }
+  pre.src-org:before { content: 'Org mode'; }
+  pre.src-oz:before { content: 'OZ'; }
+  pre.src-plantuml:before { content: 'Plantuml'; }
+  pre.src-processing:before { content: 'Processing.js'; }
+  pre.src-python:before { content: 'Python'; }
+  pre.src-R:before { content: 'R'; }
+  pre.src-ruby:before { content: 'Ruby'; }
+  pre.src-sass:before { content: 'Sass'; }
+  pre.src-scheme:before { content: 'Scheme'; }
+  pre.src-screen:before { content: 'Gnu Screen'; }
+  pre.src-sed:before { content: 'Sed'; }
+  pre.src-sh:before { content: 'shell'; }
+  pre.src-sql:before { content: 'SQL'; }
+  pre.src-sqlite:before { content: 'SQLite'; }
+  /* additional languages in org.el's org-babel-load-languages alist */
+  pre.src-forth:before { content: 'Forth'; }
+  pre.src-io:before { content: 'IO'; }
+  pre.src-J:before { content: 'J'; }
+  pre.src-makefile:before { content: 'Makefile'; }
+  pre.src-maxima:before { content: 'Maxima'; }
+  pre.src-perl:before { content: 'Perl'; }
+  pre.src-picolisp:before { content: 'Pico Lisp'; }
+  pre.src-scala:before { content: 'Scala'; }
+  pre.src-shell:before { content: 'Shell Script'; }
+  pre.src-ebnf2ps:before { content: 'ebfn2ps'; }
+  /* additional language identifiers per "defun org-babel-execute"
+       in ob-*.el */
+  pre.src-cpp:before  { content: 'C++'; }
+  pre.src-abc:before  { content: 'ABC'; }
+  pre.src-coq:before  { content: 'Coq'; }
+  pre.src-groovy:before  { content: 'Groovy'; }
+  /* additional language identifiers from org-babel-shell-names in
+     ob-shell.el: ob-shell is the only babel language using a lambda to put
+     the execution function name together. */
+  pre.src-bash:before  { content: 'bash'; }
+  pre.src-csh:before  { content: 'csh'; }
+  pre.src-ash:before  { content: 'ash'; }
+  pre.src-dash:before  { content: 'dash'; }
+  pre.src-ksh:before  { content: 'ksh'; }
+  pre.src-mksh:before  { content: 'mksh'; }
+  pre.src-posh:before  { content: 'posh'; }
+  /* Additional Emacs modes also supported by the LaTeX listings package */
+  pre.src-ada:before { content: 'Ada'; }
+  pre.src-asm:before { content: 'Assembler'; }
+  pre.src-caml:before { content: 'Caml'; }
+  pre.src-delphi:before { content: 'Delphi'; }
+  pre.src-html:before { content: 'HTML'; }
+  pre.src-idl:before { content: 'IDL'; }
+  pre.src-mercury:before { content: 'Mercury'; }
+  pre.src-metapost:before { content: 'MetaPost'; }
+  pre.src-modula-2:before { content: 'Modula-2'; }
+  pre.src-pascal:before { content: 'Pascal'; }
+  pre.src-ps:before { content: 'PostScript'; }
+  pre.src-prolog:before { content: 'Prolog'; }
+  pre.src-simula:before { content: 'Simula'; }
+  pre.src-tcl:before { content: 'tcl'; }
+  pre.src-tex:before { content: 'TeX'; }
+  pre.src-plain-tex:before { content: 'Plain TeX'; }
+  pre.src-verilog:before { content: 'Verilog'; }
+  pre.src-vhdl:before { content: 'VHDL'; }
+  pre.src-xml:before { content: 'XML'; }
+  pre.src-nxml:before { content: 'XML'; }
+  /* add a generic configuration mode; LaTeX export needs an additional
+     (add-to-list 'org-latex-listings-langs '(conf " ")) in .emacs */
+  pre.src-conf:before { content: 'Configuration File'; }
+
+  table { border-collapse:collapse; }
+  caption.t-above { caption-side: top; }
+  caption.t-bottom { caption-side: bottom; }
+  td, th { vertical-align:top;  }
+  th.org-right  { text-align: center;  }
+  th.org-left   { text-align: center;   }
+  th.org-center { text-align: center; }
+  td.org-right  { text-align: right;  }
+  td.org-left   { text-align: left;   }
+  td.org-center { text-align: center; }
+  dt { font-weight: bold; }
+  .footpara { display: inline; }
+  .footdef  { margin-bottom: 1em; }
+  .figure { padding: 1em; }
+  .figure p { text-align: center; }
+  .equation-container {
+    display: table;
+    text-align: center;
+    width: 100%;
+  }
+  .equation {
+    vertical-align: middle;
+  }
+  .equation-label {
+    display: table-cell;
+    text-align: right;
+    vertical-align: middle;
+  }
+  .inlinetask {
+    padding: 10px;
+    border: 2px solid gray;
+    margin: 10px;
+    background: #ffffcc;
+  }
+  #org-div-home-and-up
+   { text-align: right; font-size: 70%; white-space: nowrap; }
+  textarea { overflow-x: auto; }
+  .linenr { font-size: smaller }
+  .code-highlighted { background-color: #ffff00; }
+  .org-info-js_info-navigation { border-style: none; }
+  #org-info-js_console-label
+    { font-size: 10px; font-weight: bold; white-space: nowrap; }
+  .org-info-js_search-highlight
+    { background-color: #ffff00; color: #000000; font-weight: bold; }
+  .org-svg { width: 90%; }
+</style>
+<link rel="stylesheet" type="text/css" href="/org-html-themes/src/readtheorg_theme/css/htmlize.css"/>
+<link rel="stylesheet" type="text/css" href="/org-html-themes/src/readtheorg_theme/css/readtheorg.css"/>
+<script src="https://ajax.googleapis.com/ajax/libs/jquery/2.1.3/jquery.min.js"></script>
+<script src="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.4/js/bootstrap.min.js"></script>
+<script type="text/javascript" src="/org-html-themes/styles/lib/js/jquery.stickytableheaders.min.js"></script>
+<script type="text/javascript" src="/org-html-themes/src/readtheorg_theme/js/readtheorg.js"></script>
+</head>
+<body>
+<div id="content" class="content">
+<h1 class="title">Simple Forth interpreter in C</h1>
+<div id="table-of-contents" role="doc-toc">
+<h2>Table of Contents</h2>
+<div id="text-table-of-contents" role="doc-toc">
+<ul>
+<li><a href="#org19ee333">1. High-level overview</a></li>
+<li><a href="#orgbf86cce">2. Putting it together</a></li>
+<li><a href="#org28ff8ad">3. Command-line arguments</a>
+<ul>
+<li><a href="#org4a4078b">3.1. Allocating stacks and heap</a></li>
+</ul>
+</li>
+<li><a href="#org7e9e50b">4. Unix-signal handling (to print stacks)</a></li>
+<li><a href="#orgd80184c">5. Printing stacks and heaps</a>
+<ul>
+<li><a href="#orgec02849">5.1. Mapping addresses to names</a></li>
+</ul>
+</li>
+<li><a href="#org52e8e0d">6. Compiling input files</a></li>
+<li><a href="#org976424f">7. Outputting compiled heap</a></li>
+<li><a href="#org2b71eca">8. Basic words</a>
+<ul>
+<li><a href="#orgc509e34">8.1. C implementation</a></li>
+<li><a href="#orgf636f4d">8.2. Mapping to dictionary entries</a></li>
+</ul>
+</li>
+<li><a href="#orgd4c027d">9. <code>[0/1]</code> Tasks</a>
+<ul>
+<li><a href="#org81ac972">9.1. <span class="todo TODO">TODO</span> Linker</a>
+<ul>
+<li><a href="#org9879522">9.1.1. Dynamic linking</a></li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+</div>
+</div>
+
+<div id="outline-container-org19ee333" class="outline-2">
+<h2 id="org19ee333"><span class="section-number-2">1.</span> High-level overview</h2>
+<div class="outline-text-2" id="text-1">
+<div class="org-src-container">
+<label class="org-src-name"><span class="listing-number">Listing 1: </span><b>unix-c-forth.c</b></label><pre class="src src-C" id="orga1190ac">&lt;&lt;includes&gt;&gt;
+<span style="font-weight: bold;">#include</span> <span style="font-style: italic;">"unix-c-forth.h"</span>
+
+<span style="font-weight: bold;">extern</span> forth_instruction forth_main;
+<span style="font-weight: bold;">extern</span> <span style="font-weight: bold; text-decoration: underline;">int</span> <span style="font-weight: bold; font-style: italic;">level</span>;
+<span style="font-weight: bold; text-decoration: underline;">forth_instruction</span> *<span style="font-weight: bold; font-style: italic;">next_inst</span>;
+&lt;&lt;globals&gt;&gt;
+
+&lt;&lt;before main&gt;&gt;
+
+<span style="font-weight: bold; text-decoration: underline;">void</span>
+print_state() {
+  print_frame_stack();
+  print_next_inst();
+  print_value_stack();
+  print_heap();
+  fflush(stdout);
+}
+
+<span style="font-weight: bold; text-decoration: underline;">void</span>
+<span style="font-weight: bold;">exit_handler</span>() {
+  print_state();
+  &lt;&lt;exit clean-up&gt;&gt;
+}
+
+<span style="font-weight: bold; text-decoration: underline;">int</span>
+<span style="font-weight: bold;">main</span>(<span style="font-weight: bold; text-decoration: underline;">int</span> <span style="font-weight: bold; font-style: italic;">argc</span>, <span style="font-weight: bold; text-decoration: underline;">char</span> **<span style="font-weight: bold; font-style: italic;">argv</span>) {
+  &lt;&lt;set up signal handling&gt;&gt;
+  &lt;&lt;parse arguments&gt;&gt;
+  &lt;&lt;initialize variables&gt;&gt;
+  atexit(exit_handler);
+
+  &lt;&lt;compile input files&gt;&gt;
+
+  <span style="font-weight: bold;">if</span> (!arguments.no_repl) {
+    next_inst = &amp;forth_main;
+    <span style="font-weight: bold; text-decoration: underline;">int</span> <span style="font-weight: bold; font-style: italic;">exit_loop</span> = 0;
+    <span style="font-weight: bold;">while</span> (exit_loop != -1) { <span style="font-weight: bold; font-style: italic;">// </span><span style="font-weight: bold; font-style: italic;">'next' trampoline</span>
+      exit_loop = unpack_and_execute_instruction(*next_inst++);
+    }
+  }
+
+  &lt;&lt;output compiled heap&gt;&gt;
+
+  exit(0);
+}
+</pre>
+</div>
+
+<p>
+An encoded instruction is a 32-bit value, representing the offset from
+the start of instruction space to where the pointer to the interpreter
+is. It is decoded to be a function pointer before executing the
+interpreter it points to. The return stack contains pointers to the
+next encoded instruction to execute.
+</p>
+<div class="org-src-container">
+<label class="org-src-name"><span class="listing-number">Listing 2: </span><b>types.h</b></label><pre class="src src-C" id="orgf754206"><span style="font-weight: bold;">#if</span><span style="font-weight: bold;">n</span><span style="font-weight: bold;">def</span> _UNIX_C_FORTH_TYPES_H_
+<span style="font-weight: bold;">#define</span> <span style="font-weight: bold; font-style: italic;">_UNIX_C_FORTH_TYPES_H_</span>
+
+<span style="font-weight: bold;">#include</span> <span style="font-style: italic;">&lt;stdint.h&gt;</span>
+<span style="font-weight: bold;">#include</span> <span style="font-style: italic;">&lt;stdio.h&gt;</span>
+
+<span style="font-weight: bold;">typedef</span> <span style="font-weight: bold; text-decoration: underline;">uint32_t</span> <span style="font-weight: bold; text-decoration: underline;">forth_instruction</span>;
+<span style="font-weight: bold;">typedef</span> <span style="font-weight: bold; text-decoration: underline;">int</span>  (*<span style="font-weight: bold; text-decoration: underline;">forth_instruction_decoded</span>)(<span style="font-weight: bold; text-decoration: underline;">forth_instruction</span>*);
+</pre>
+</div>
+
+<div class="org-src-container">
+<label class="org-src-name"><span class="listing-number">Listing 3: </span><code>&lt;&lt;globals&gt;&gt;</code></label><pre class="src src-C" id="orgdf652eb"><span style="font-weight: bold; text-decoration: underline;">FILE</span> *<span style="font-weight: bold; font-style: italic;">input_stream</span>;
+<span style="font-weight: bold; text-decoration: underline;">FILE</span> *<span style="font-weight: bold; font-style: italic;">output_stream</span>;
+<span style="font-weight: bold; text-decoration: underline;">forth_instruction</span> **<span style="font-weight: bold; font-style: italic;">frame_stack</span>, **<span style="font-weight: bold; font-style: italic;">frame_stack_bottom</span>, **<span style="font-weight: bold; font-style: italic;">frame_stack_top</span>;
+</pre>
+</div>
+
+<p>
+We also have types for a cell, which is a standard unit on the value
+stack, and on the heap.
+</p>
+<div class="org-src-container">
+<label class="org-src-name"><span class="listing-number">Listing 4: </span><b>types.h</b></label><pre class="src src-C" id="org2dac8f8"><span style="font-weight: bold;">typedef</span> <span style="font-weight: bold; text-decoration: underline;">int32_t</span>  <span style="font-weight: bold; text-decoration: underline;">scell</span>;
+<span style="font-weight: bold;">typedef</span> <span style="font-weight: bold; text-decoration: underline;">uint32_t</span> <span style="font-weight: bold; text-decoration: underline;">ucell</span>;
+
+<span style="font-weight: bold;">extern</span> <span style="font-weight: bold; text-decoration: underline;">FILE</span> *<span style="font-weight: bold; font-style: italic;">input_stream</span>;
+<span style="font-weight: bold;">extern</span> <span style="font-weight: bold; text-decoration: underline;">FILE</span> *<span style="font-weight: bold; font-style: italic;">output_stream</span>;
+<span style="font-weight: bold;">extern</span> <span style="font-weight: bold; text-decoration: underline;">forth_instruction</span> <span style="font-weight: bold; font-style: italic;">forth_main</span>;
+<span style="font-weight: bold;">extern</span> <span style="font-weight: bold; text-decoration: underline;">forth_instruction</span> *<span style="font-weight: bold; font-style: italic;">next_inst</span>;
+<span style="font-weight: bold;">extern</span> <span style="font-weight: bold; text-decoration: underline;">forth_instruction</span> **<span style="font-weight: bold; font-style: italic;">frame_stack</span>, **<span style="font-weight: bold; font-style: italic;">frame_stack_bottom</span>, **<span style="font-weight: bold; font-style: italic;">frame_stack_top</span>;
+<span style="font-weight: bold;">extern</span> <span style="font-weight: bold; text-decoration: underline;">scell</span> *<span style="font-weight: bold; font-style: italic;">value_stack</span>, *<span style="font-weight: bold; font-style: italic;">value_stack_bottom</span>, *<span style="font-weight: bold; font-style: italic;">value_stack_top</span>;
+<span style="font-weight: bold;">extern</span> <span style="font-weight: bold; text-decoration: underline;">scell</span> *<span style="font-weight: bold; font-style: italic;">HERE_LOC</span>, *<span style="font-weight: bold; font-style: italic;">heap_bottom</span>, *<span style="font-weight: bold; font-style: italic;">heap_top</span>;
+</pre>
+</div>
+
+<div class="org-src-container">
+<label class="org-src-name"><span class="listing-number">Listing 5: </span><code>&lt;&lt;globals&gt;&gt;</code></label><pre class="src src-C" id="org9471227"><span style="font-weight: bold; text-decoration: underline;">scell</span> *<span style="font-weight: bold; font-style: italic;">value_stack</span>, *<span style="font-weight: bold; font-style: italic;">value_stack_bottom</span>, *<span style="font-weight: bold; font-style: italic;">value_stack_top</span>;
+<span style="font-weight: bold; text-decoration: underline;">scell</span> *<span style="font-weight: bold; font-style: italic;">HERE_LOC</span>, *<span style="font-weight: bold; font-style: italic;">heap_bottom</span>, *<span style="font-weight: bold; font-style: italic;">heap_top</span>;
+</pre>
+</div>
+
+<p>
+The conversion from <code>forth_instruction</code> to <code>forth_instruction_decoded</code>
+is by offsetting it from the base of the heap. This involves some
+complicated casting, so it has been broken up into several variables.
+</p>
+<div class="org-src-container">
+<label class="org-src-name"><span class="listing-number">Listing 6: </span><b>unix-c-forth.h</b></label><pre class="src src-C" id="orgb07187a"><span style="font-weight: bold;">#if</span><span style="font-weight: bold;">n</span><span style="font-weight: bold;">def</span> _UNIX_C_FORTH_SIMPLE_FORTH_H_
+<span style="font-weight: bold;">#define</span> <span style="font-weight: bold; font-style: italic;">_UNIX_C_FORTH_SIMPLE_FORTH_H_</span>
+
+<span style="font-weight: bold;">#include</span> <span style="font-style: italic;">"types.h"</span>
+<span style="font-weight: bold; text-decoration: underline;">int</span> <span style="font-weight: bold;">unpack_and_execute_instruction</span>(<span style="font-weight: bold; text-decoration: underline;">forth_instruction</span> <span style="font-weight: bold; font-style: italic;">inst</span>);
+
+<span style="font-weight: bold;">#endif</span> <span style="font-weight: bold; font-style: italic;">// </span><span style="font-weight: bold; font-style: italic;">_UNIX_C_FORTH_SIMPLE_FORTH_H_</span>
+</pre>
+</div>
+
+<div class="org-src-container">
+<label class="org-src-name"><span class="listing-number">Listing 7: </span><code>&lt;&lt;before main&gt;&gt;</code></label><pre class="src src-C" id="orgd2abaa5"><span style="font-weight: bold; text-decoration: underline;">int</span>
+<span style="font-weight: bold;">unpack_and_execute_instruction</span>(<span style="font-weight: bold; text-decoration: underline;">forth_instruction</span> <span style="font-weight: bold; font-style: italic;">inst</span>)
+{
+  <span style="font-weight: bold;">typedef</span> <span style="font-weight: bold; text-decoration: underline;">forth_instruction_decoded</span> <span style="font-weight: bold; text-decoration: underline;">decoded</span>;
+  <span style="font-weight: bold; font-style: italic;">// </span><span style="font-weight: bold; font-style: italic;">Offset is in bytes</span>
+  <span style="font-weight: bold; text-decoration: underline;">uint8_t</span> *<span style="font-weight: bold; font-style: italic;">byte_addressed_heap</span> = (<span style="font-weight: bold; text-decoration: underline;">uint8_t</span>*)0; <span style="font-weight: bold; font-style: italic;">// </span><span style="font-weight: bold; font-style: italic;">TODO</span>
+  <span style="font-weight: bold; text-decoration: underline;">uint8_t</span> *<span style="font-weight: bold; font-style: italic;">interpreter_ptr_addr</span> = byte_addressed_heap + inst;
+  <span style="font-weight: bold; font-style: italic;">// </span><span style="font-weight: bold; font-style: italic;">Convert to pointer, so that dereferencing loads a whole cell,,</span>
+  <span style="font-weight: bold; font-style: italic;">// </span><span style="font-weight: bold; font-style: italic;">not just a byte</span>
+  <span style="font-weight: bold; text-decoration: underline;">scell</span> *<span style="font-weight: bold; font-style: italic;">interpreter_ptr_cell</span> = (<span style="font-weight: bold; text-decoration: underline;">scell</span> *)interpreter_ptr_addr;
+  <span style="font-weight: bold; text-decoration: underline;">decoded</span> <span style="font-weight: bold; font-style: italic;">interpreter_ptr</span> = (<span style="font-weight: bold; text-decoration: underline;">decoded</span>)(<span style="font-weight: bold; text-decoration: underline;">uintptr_t</span>)*interpreter_ptr_cell;
+  <span style="font-weight: bold; font-style: italic;">// </span><span style="font-weight: bold; font-style: italic;">Skip interpreter pointer, to the first forth instruction</span>
+  <span style="font-weight: bold; text-decoration: underline;">scell</span> *<span style="font-weight: bold; font-style: italic;">first_forth_instruction</span> = interpreter_ptr_cell+1;
+  <span style="font-weight: bold;">return</span> (*interpreter_ptr)((<span style="font-weight: bold; text-decoration: underline;">forth_instruction</span>*)first_forth_instruction);
+}
+</pre>
+</div>
+</div>
+</div>
+
+<div id="outline-container-orgbf86cce" class="outline-2">
+<h2 id="orgbf86cce"><span class="section-number-2">2.</span> Putting it together</h2>
+<div class="outline-text-2" id="text-2">
+<div class="org-src-container">
+<label class="org-src-name"><span class="listing-number">Listing 8: </span><b>Makefile</b></label><pre class="src src-Makefile" id="org0cdacf6">BUILDDIR := ../build
+SRCS := unix-c-forth.c c-words.c arguments.c
+OBJS := $(patsubst %.c,%.o,$(SRCS)) words.o
+
+CFLAGS := -g -rdynamic $(CFLAGS)
+LIBS   := -lc -ldl
+
+.PHONY: all
+all: unix-c-forth
+
+unix-c-forth: $(OBJS)
+	cc $(CFLAGS) $^ -o $@ $(LIBS)
+
+words.o: c-words.s $(BUILDDIR)/stage0.s $(BUILDDIR)/stage1.s vars.s
+	as -g $^ -o $@
+
+.PHONY: clean
+clean:
+	rm simple-c-forth $(OBJS)
+</pre>
+</div>
+
+<div class="org-src-container">
+<label class="org-src-name"><span class="listing-number">Listing 9: </span><b>vars.s</b></label><pre class="src src-asm" id="org6732250"><span style="font-weight: bold;">.data</span>
+<span style="font-weight: bold;">.balign</span> 4
+<span style="font-weight: bold;">.globl</span> previous_entry, LATEST_LOC
+<span style="font-weight: bold;">LATEST_LOC</span>:   .cell previous_entry
+</pre>
+</div>
+</div>
+</div>
+<div id="outline-container-org28ff8ad" class="outline-2">
+<h2 id="org28ff8ad"><span class="section-number-2">3.</span> Command-line arguments</h2>
+<div class="outline-text-2" id="text-3">
+<div class="org-src-container">
+<label class="org-src-name"><span class="listing-number">Listing 10: </span><code>&lt;&lt;includes&gt;&gt;</code></label><pre class="src src-C" id="orgb3315d9"><span style="font-weight: bold;">#include</span> <span style="font-style: italic;">"arguments.h"</span>
+</pre>
+</div>
+
+<div class="org-src-container">
+<label class="org-src-name"><span class="listing-number">Listing 11: </span><b>arguments.h</b></label><pre class="src src-C" id="org5eeb861"><span style="font-weight: bold;">#if</span><span style="font-weight: bold;">n</span><span style="font-weight: bold;">def</span> _UNIX_C_FORTH_ARGUMENTS_H_
+<span style="font-weight: bold;">#define</span> <span style="font-weight: bold; font-style: italic;">_UNIX_C_FORTH_ARGUMENTS_H_</span>
+
+<span style="font-weight: bold;">#include</span> <span style="font-style: italic;">&lt;argp.h&gt;</span>
+
+<span style="font-weight: bold;">#include</span> <span style="font-style: italic;">"types.h"</span>
+
+<span style="font-weight: bold; font-style: italic;">/* </span><span style="font-weight: bold; font-style: italic;">Used by main to communicate with parse_opt.</span><span style="font-weight: bold; font-style: italic;"> */</span>
+<span style="font-weight: bold;">struct</span> <span style="font-weight: bold; text-decoration: underline;">arguments</span>
+{
+  <span style="font-weight: bold; text-decoration: underline;">uint64_t</span> <span style="font-weight: bold; font-style: italic;">values_size</span>;
+  <span style="font-weight: bold; text-decoration: underline;">uint64_t</span> <span style="font-weight: bold; font-style: italic;">frames_size</span>;
+  <span style="font-weight: bold; text-decoration: underline;">uint64_t</span> <span style="font-weight: bold; font-style: italic;">heap_size</span>;
+  <span style="font-weight: bold; text-decoration: underline;">char</span> *<span style="font-weight: bold; font-style: italic;">output</span>;
+  <span style="font-weight: bold; text-decoration: underline;">uint64_t</span> <span style="font-weight: bold; font-style: italic;">offset</span>;
+  <span style="font-weight: bold; text-decoration: underline;">char</span> **<span style="font-weight: bold; font-style: italic;">inputs</span>;
+  <span style="font-weight: bold; text-decoration: underline;">unsigned</span> <span style="font-weight: bold; font-style: italic;">input_count</span>;
+  <span style="font-weight: bold; text-decoration: underline;">short</span> <span style="font-weight: bold; font-style: italic;">no_repl</span>;
+  <span style="font-weight: bold; text-decoration: underline;">short</span> <span style="font-weight: bold; font-style: italic;">target_word_size</span>;
+  <span style="font-weight: bold; text-decoration: underline;">short</span> <span style="font-weight: bold; font-style: italic;">target_le</span>;
+};
+
+<span style="font-weight: bold; text-decoration: underline;">void</span>
+<span style="font-weight: bold;">parse_arguments</span>(<span style="font-weight: bold; text-decoration: underline;">int</span> <span style="font-weight: bold; font-style: italic;">argc</span>, <span style="font-weight: bold; text-decoration: underline;">char</span> **<span style="font-weight: bold; font-style: italic;">argv</span>, <span style="font-weight: bold;">struct</span> <span style="font-weight: bold; text-decoration: underline;">arguments</span> *<span style="font-weight: bold; font-style: italic;">arguments</span>);
+
+<span style="font-weight: bold;">#endif</span> <span style="font-weight: bold; font-style: italic;">// </span><span style="font-weight: bold; font-style: italic;">_UNIX_C_FORTH_ARGUMENTS_H_</span>
+</pre>
+</div>
+
+<div class="org-src-container">
+<label class="org-src-name"><span class="listing-number">Listing 12: </span><b>arguments.c</b></label><pre class="src src-C" id="orgb6c48ef"><span style="font-weight: bold;">#include</span> <span style="font-style: italic;">&lt;stdlib.h&gt;</span>
+
+<span style="font-weight: bold;">#include</span> <span style="font-style: italic;">"arguments.h"</span>
+
+<span style="font-weight: bold;">const</span> <span style="font-weight: bold; text-decoration: underline;">char</span> *<span style="font-weight: bold; font-style: italic;">argp_program_version</span> =
+  <span style="font-style: italic;">"simple-c-forth 1.0"</span>;
+<span style="font-weight: bold;">const</span> <span style="font-weight: bold; text-decoration: underline;">char</span> *<span style="font-weight: bold; font-style: italic;">argp_program_bug_address</span> =
+  <span style="font-style: italic;">"Robert Kovacsics <a href="mailto:rmk35%40cl.cam.ac.uk">&lt;rmk35@cl.cam.ac.uk&gt;</a>"</span>;
+
+<span style="font-weight: bold; font-style: italic;">/* </span><span style="font-weight: bold; font-style: italic;">Program documentation.</span><span style="font-weight: bold; font-style: italic;"> */</span>
+<span style="font-weight: bold;">static</span> <span style="font-weight: bold; text-decoration: underline;">char</span> <span style="font-weight: bold; font-style: italic;">doc</span>[] =
+  <span style="font-style: italic;">"A simple forth interpreter written in C, part of "</span>
+  <span style="font-style: italic;">"https://github.com/KoviRobi/simple-forth"</span>;
+
+<span style="font-weight: bold; font-style: italic;">/* </span><span style="font-weight: bold; font-style: italic;">A description of the arguments we accept.</span><span style="font-weight: bold; font-style: italic;"> */</span>
+<span style="font-weight: bold;">static</span> <span style="font-weight: bold; text-decoration: underline;">char</span> <span style="font-weight: bold; font-style: italic;">args_doc</span>[] = <span style="font-style: italic;">"[Input files]"</span>;
+
+<span style="font-weight: bold; font-style: italic;">/* </span><span style="font-weight: bold; font-style: italic;">The options we understand.</span><span style="font-weight: bold; font-style: italic;"> */</span>
+<span style="font-weight: bold;">static</span> <span style="font-weight: bold;">struct</span> <span style="font-weight: bold; text-decoration: underline;">argp_option</span> <span style="font-weight: bold; font-style: italic;">options</span>[] = {
+  {<span style="font-style: italic;">"little-endian"</span>,    <span style="font-style: italic;">'l'</span>, 0,          0,
+    <span style="font-style: italic;">"Target is a little-endian system"</span> },
+  {<span style="font-style: italic;">"el"</span>,               <span style="font-style: italic;">'l'</span>, 0,          OPTION_ALIAS },
+  {<span style="font-style: italic;">"no-repl"</span>,         <span style="font-style: italic;">'n'</span>, 0,          0,
+    <span style="font-style: italic;">"Don't open a REPL on the standard input"</span> },
+  {<span style="font-style: italic;">"value-stack"</span>,      <span style="font-style: italic;">'v'</span>, <span style="font-style: italic;">"elements"</span>, 0,
+    <span style="font-style: italic;">"Size of the value stack (in elements)"</span> },
+  {<span style="font-style: italic;">"value-stack-size"</span>, <span style="font-style: italic;">'v'</span>, <span style="font-style: italic;">"elements"</span>, OPTION_ALIAS },
+  {<span style="font-style: italic;">"frame-stack"</span>,      <span style="font-style: italic;">'f'</span>, <span style="font-style: italic;">"elements"</span>, 0,
+    <span style="font-style: italic;">"Size of the frame stack (in elements)"</span> },
+  {<span style="font-style: italic;">"frame-stack-size"</span>, <span style="font-style: italic;">'f'</span>, <span style="font-style: italic;">"elements"</span>, OPTION_ALIAS },
+  {<span style="font-style: italic;">"heap"</span>,             <span style="font-style: italic;">'H'</span>, <span style="font-style: italic;">"bytes"</span>,    0,
+    <span style="font-style: italic;">"Size of the heap (in bytes)"</span> },
+  {<span style="font-style: italic;">"heap-size"</span>,        <span style="font-style: italic;">'H'</span>, <span style="font-style: italic;">"bytes"</span>,    OPTION_ALIAS },
+  {<span style="font-style: italic;">"output"</span>,           <span style="font-style: italic;">'o'</span>, <span style="font-style: italic;">"file"</span>,     0,
+    <span style="font-style: italic;">"Output dump of compiling input files"</span> },
+  {<span style="font-style: italic;">"offset"</span>,           <span style="font-style: italic;">'O'</span>, <span style="font-style: italic;">"bytes"</span>,    0,
+    <span style="font-style: italic;">"Offset for output file (default is zero, i.e. first"</span>
+    <span style="font-style: italic;">" compiled word is at 0)"</span> },
+  <span style="font-weight: bold; font-style: italic;">// </span><span style="font-weight: bold; font-style: italic;">TODO: builtin words</span>
+  {<span style="font-style: italic;">"word"</span>,             <span style="font-style: italic;">'w'</span>, <span style="font-style: italic;">"bits"</span>,     0,
+    <span style="font-style: italic;">"Size of a forth word for output file (in bits)"</span> },
+  {<span style="font-style: italic;">"target-word-size"</span>, <span style="font-style: italic;">'w'</span>, <span style="font-style: italic;">"bits"</span>,     OPTION_ALIAS },
+  { 0 }
+};
+
+<span style="font-weight: bold; font-style: italic;">/* </span><span style="font-weight: bold; font-style: italic;">Parse a single option.</span><span style="font-weight: bold; font-style: italic;"> */</span>
+<span style="font-weight: bold;">static</span> <span style="font-weight: bold; text-decoration: underline;">error_t</span>
+<span style="font-weight: bold;">parse_opt</span> (<span style="font-weight: bold; text-decoration: underline;">int</span> <span style="font-weight: bold; font-style: italic;">key</span>, <span style="font-weight: bold; text-decoration: underline;">char</span> *<span style="font-weight: bold; font-style: italic;">arg</span>, <span style="font-weight: bold;">struct</span> <span style="font-weight: bold; text-decoration: underline;">argp_state</span> *<span style="font-weight: bold; font-style: italic;">state</span>)
+{
+  <span style="font-weight: bold;">struct</span> <span style="font-weight: bold; text-decoration: underline;">arguments</span> *<span style="font-weight: bold; font-style: italic;">arguments</span> = state-&gt;input;
+
+  <span style="font-weight: bold;">switch</span> (key)
+  {
+    <span style="font-weight: bold;">case</span> <span style="font-style: italic;">'l'</span>: arguments-&gt;target_le         = 1;         <span style="font-weight: bold;">break</span>;
+    <span style="font-weight: bold;">case</span> <span style="font-style: italic;">'n'</span>: arguments-&gt;no_repl           = 1;         <span style="font-weight: bold;">break</span>;
+    <span style="font-weight: bold;">case</span> <span style="font-style: italic;">'v'</span>: arguments-&gt;values_size       = atoi(arg); <span style="font-weight: bold;">break</span>;
+    <span style="font-weight: bold;">case</span> <span style="font-style: italic;">'f'</span>: arguments-&gt;frames_size       = atoi(arg); <span style="font-weight: bold;">break</span>;
+    <span style="font-weight: bold;">case</span> <span style="font-style: italic;">'H'</span>: arguments-&gt;heap_size         = atoi(arg); <span style="font-weight: bold;">break</span>;
+    <span style="font-weight: bold;">case</span> <span style="font-style: italic;">'o'</span>: arguments-&gt;output            = arg;       <span style="font-weight: bold;">break</span>;
+    <span style="font-weight: bold;">case</span> <span style="font-style: italic;">'O'</span>: arguments-&gt;offset            = atoi(arg); <span style="font-weight: bold;">break</span>;
+    <span style="font-weight: bold;">case</span> <span style="font-style: italic;">'w'</span>: arguments-&gt;target_word_size  = atoi(arg); <span style="font-weight: bold;">break</span>;
+
+    <span style="font-weight: bold;">case</span> ARGP_KEY_ARG:
+      arguments-&gt;inputs = &amp;state-&gt;argv[state-&gt;next-1];
+      arguments-&gt;input_count = state-&gt;argc - (state-&gt;next - 1);
+      state-&gt;next = state-&gt;argc; <span style="font-weight: bold; font-style: italic;">// </span><span style="font-weight: bold; font-style: italic;">Stop parsing</span>
+      <span style="font-weight: bold;">break</span>;
+
+    <span style="font-weight: bold;">default</span>:
+      <span style="font-weight: bold;">return</span> ARGP_ERR_UNKNOWN;
+  }
+  <span style="font-weight: bold;">return</span> 0;
+}
+
+<span style="font-weight: bold; font-style: italic;">/* </span><span style="font-weight: bold; font-style: italic;">Our argp parser.</span><span style="font-weight: bold; font-style: italic;"> */</span>
+<span style="font-weight: bold;">static</span> <span style="font-weight: bold;">struct</span> <span style="font-weight: bold; text-decoration: underline;">argp</span> <span style="font-weight: bold; font-style: italic;">argp</span> = { options, parse_opt, args_doc, doc };
+
+<span style="font-weight: bold; text-decoration: underline;">void</span>
+<span style="font-weight: bold;">parse_arguments</span>(<span style="font-weight: bold; text-decoration: underline;">int</span> <span style="font-weight: bold; font-style: italic;">argc</span>, <span style="font-weight: bold; text-decoration: underline;">char</span> **<span style="font-weight: bold; font-style: italic;">argv</span>, <span style="font-weight: bold;">struct</span> <span style="font-weight: bold; text-decoration: underline;">arguments</span> *<span style="font-weight: bold; font-style: italic;">arguments</span>)
+{
+  argp_parse(&amp;argp, argc, argv, 0, 0, arguments);
+}
+</pre>
+</div>
+
+<div class="org-src-container">
+<label class="org-src-name"><span class="listing-number">Listing 13: </span><code>&lt;&lt;parse arguments&gt;&gt;</code></label><pre class="src src-C" id="orgfa0b00d"><span style="font-weight: bold;">struct</span> <span style="font-weight: bold; text-decoration: underline;">arguments</span> <span style="font-weight: bold; font-style: italic;">arguments</span>;
+arguments.values_size      = 1024;
+arguments.frames_size      = 1024;
+arguments.heap_size        = 4096;
+arguments.output           = <span style="font-weight: bold; text-decoration: underline;">NULL</span>;
+arguments.offset           = 0;
+arguments.inputs           = 0;
+arguments.input_count      = 0;
+arguments.no_repl          = 0;
+arguments.target_word_size = 32;
+arguments.target_le        = 0;
+<span style="font-weight: bold;">parse_arguments</span>(argc, argv, &amp;arguments);
+</pre>
+</div>
+</div>
+<div id="outline-container-org4a4078b" class="outline-3">
+<h3 id="org4a4078b"><span class="section-number-3">3.1.</span> Allocating stacks and heap</h3>
+<div class="outline-text-3" id="text-3-1">
+<div class="org-src-container">
+<label class="org-src-name"><span class="listing-number">Listing 14: </span><code>&lt;&lt;before main&gt;&gt;</code></label><pre class="src src-C" id="org0b51d74"><span style="font-weight: bold; text-decoration: underline;">void</span> *<span style="font-weight: bold;">allocate</span>(<span style="font-weight: bold; text-decoration: underline;">unsigned</span> <span style="font-weight: bold; text-decoration: underline;">int</span> <span style="font-weight: bold; font-style: italic;">count</span>, <span style="font-weight: bold; text-decoration: underline;">unsigned</span> <span style="font-weight: bold; text-decoration: underline;">int</span> <span style="font-weight: bold; font-style: italic;">size</span>) {
+  <span style="font-weight: bold; text-decoration: underline;">void</span> *<span style="font-weight: bold; font-style: italic;">rtn</span> = calloc(count, size);
+  <span style="font-weight: bold;">if</span> ((<span style="font-weight: bold; text-decoration: underline;">void</span> *)rtn == <span style="font-weight: bold; text-decoration: underline;">NULL</span>) perror(<span style="font-style: italic;">"Failed to allocate"</span>);
+  <span style="font-weight: bold;">return</span> rtn;
+}
+</pre>
+</div>
+
+<div class="org-src-container">
+<label class="org-src-name"><span class="listing-number">Listing 15: </span><code>&lt;&lt;initialize variables&gt;&gt;</code></label><pre class="src src-C" id="org2d462f7">input_stream = stdin;
+output_stream = stdout;
+frame_stack = allocate(arguments.frames_size, <span style="font-weight: bold;">sizeof</span>(<span style="font-weight: bold; text-decoration: underline;">forth_instruction</span>*));
+frame_stack_bottom = frame_stack;
+frame_stack_top = frame_stack_bottom + arguments.frames_size;
+value_stack = allocate(arguments.values_size, <span style="font-weight: bold;">sizeof</span>(scell));
+value_stack_bottom = value_stack;
+value_stack_top = value_stack_bottom + arguments.values_size;
+HERE_LOC = allocate(arguments.heap_size, <span style="font-weight: bold;">sizeof</span>(scell));
+heap_bottom = HERE_LOC;
+heap_top = heap_bottom + arguments.heap_size;
+</pre>
+</div>
+</div>
+</div>
+</div>
+<div id="outline-container-org7e9e50b" class="outline-2">
+<h2 id="org7e9e50b"><span class="section-number-2">4.</span> Unix-signal handling (to print stacks)</h2>
+<div class="outline-text-2" id="text-4">
+<div class="org-src-container">
+<label class="org-src-name"><span class="listing-number">Listing 16: </span><code>&lt;&lt;includes&gt;&gt;</code></label><pre class="src src-C" id="org3aeb043"><span style="font-weight: bold;">#include</span> <span style="font-style: italic;">&lt;signal.h&gt;</span>
+</pre>
+</div>
+<div class="org-src-container">
+<label class="org-src-name"><span class="listing-number">Listing 17: </span><code>&lt;&lt;set up signal handling&gt;&gt;</code></label><pre class="src src-C" id="orgeb02612"><span style="font-weight: bold;">struct</span> <span style="font-weight: bold; text-decoration: underline;">sigaction</span> <span style="font-weight: bold; font-style: italic;">new_action</span>, <span style="font-weight: bold; font-style: italic;">old_action</span>;
+new_action.sa_handler = exit;
+sigemptyset (&amp;new_action.sa_mask);
+new_action.sa_flags = 0;
+<span style="font-weight: bold;">sigaction</span> (SIGINT, <span style="font-weight: bold; text-decoration: underline;">NULL</span>, &amp;old_action);
+<span style="font-weight: bold;">if</span> (old_action.sa_handler != SIG_IGN)
+  <span style="font-weight: bold;">sigaction</span> (SIGINT, &amp;new_action, <span style="font-weight: bold; text-decoration: underline;">NULL</span>);
+new_action.sa_handler = print_state;
+<span style="font-weight: bold;">sigaction</span> (SIGQUIT, <span style="font-weight: bold; text-decoration: underline;">NULL</span>, &amp;old_action);
+<span style="font-weight: bold;">if</span> (old_action.sa_handler != SIG_IGN)
+  <span style="font-weight: bold;">sigaction</span> (SIGQUIT, &amp;new_action, <span style="font-weight: bold; text-decoration: underline;">NULL</span>);
+</pre>
+</div>
+</div>
+</div>
+<div id="outline-container-orgd80184c" class="outline-2">
+<h2 id="orgd80184c"><span class="section-number-2">5.</span> Printing stacks and heaps</h2>
+<div class="outline-text-2" id="text-5">
+<div class="org-src-container">
+<label class="org-src-name"><span class="listing-number">Listing 18: </span><code>&lt;&lt;before main&gt;&gt;</code></label><pre class="src src-C" id="orgc0445a8"><span style="font-weight: bold; text-decoration: underline;">void</span>
+<span style="font-weight: bold;">print_value_stack</span>() {
+  printf(<span style="font-style: italic;">"Values (bottom first)\n"</span>);
+  <span style="font-weight: bold;">for</span> (<span style="font-weight: bold; text-decoration: underline;">scell</span> *<span style="font-weight: bold; font-style: italic;">i</span> = value_stack_bottom; i &lt; value_stack; ++i)
+    printf(<span style="font-style: italic;">"%12d %12u 0x%08x\n"</span>, *i, *i, *i);
+}
+</pre>
+</div>
+
+<div class="org-src-container">
+<label class="org-src-name"><span class="listing-number">Listing 19: </span><code>&lt;&lt;before main&gt;&gt;</code></label><pre class="src src-C" id="org86bf154"><span style="font-weight: bold; text-decoration: underline;">char</span>
+<span style="font-weight: bold;">char_disp</span>(<span style="font-weight: bold; text-decoration: underline;">char</span> *<span style="font-weight: bold; font-style: italic;">p</span>) {
+  <span style="font-weight: bold; text-decoration: underline;">char</span> <span style="font-weight: bold; font-style: italic;">c</span> = *p;
+  <span style="font-weight: bold;">if</span> (c &lt; 32 || c &gt; 126) <span style="font-weight: bold;">return</span> <span style="font-style: italic;">' '</span>;
+  <span style="font-weight: bold;">else</span> <span style="font-weight: bold;">return</span> c;
+}
+
+<span style="font-weight: bold; text-decoration: underline;">void</span>
+<span style="font-weight: bold;">print_heap</span>() {
+  printf(<span style="font-style: italic;">"Heap (%p--%p):\n"</span>, heap_bottom, HERE_LOC);
+  <span style="font-weight: bold; text-decoration: underline;">char</span> *<span style="font-weight: bold; font-style: italic;">p</span> = (<span style="font-weight: bold; text-decoration: underline;">char</span>*)heap_bottom;
+  <span style="font-weight: bold; font-style: italic;">// </span><span style="font-weight: bold; font-style: italic;">Print in block of 4 bytes</span>
+  <span style="font-weight: bold;">for</span> (; p+3 &lt; (<span style="font-weight: bold; text-decoration: underline;">char</span>*)HERE_LOC; p += 4) {
+    printf(<span style="font-style: italic;">"%p:\t0x%08x\t%c%c%c%c\n"</span>,
+           (<span style="font-weight: bold; text-decoration: underline;">void</span>*)p,
+           *(<span style="font-weight: bold; text-decoration: underline;">uint32_t</span>*)p,
+           char_disp(p), char_disp(p+1),
+           char_disp(p+2), char_disp(p+3));
+  }
+  <span style="font-weight: bold; font-style: italic;">// </span><span style="font-weight: bold; font-style: italic;">Print the remaining bytes</span>
+  <span style="font-weight: bold;">if</span> (p &lt; (<span style="font-weight: bold; text-decoration: underline;">char</span>*)HERE_LOC) {
+    printf(<span style="font-style: italic;">"%p:\t"</span>, (<span style="font-weight: bold; text-decoration: underline;">void</span>*)p);
+    <span style="font-weight: bold; text-decoration: underline;">intptr_t</span> <span style="font-weight: bold; font-style: italic;">diff</span> = (<span style="font-weight: bold; text-decoration: underline;">char</span>*)HERE_LOC - p;
+    <span style="font-weight: bold; text-decoration: underline;">uint32_t</span> <span style="font-weight: bold; font-style: italic;">mask</span> = (1&lt;&lt;(diff*8))-1;
+    <span style="font-weight: bold; text-decoration: underline;">uint32_t</span> <span style="font-weight: bold; font-style: italic;">value</span> = *(<span style="font-weight: bold; text-decoration: underline;">uint32_t</span>*)p;
+    printf(<span style="font-style: italic;">"0x%08x\t"</span>, value&amp;mask);
+    <span style="font-weight: bold;">for</span> (<span style="font-weight: bold; text-decoration: underline;">char</span> *<span style="font-weight: bold; font-style: italic;">c</span> = p; c &lt; (<span style="font-weight: bold; text-decoration: underline;">char</span>*)HERE_LOC; c += 1)
+      printf(<span style="font-style: italic;">"%c"</span>, char_disp(c));
+    printf(<span style="font-style: italic;">"\n"</span>);
+  }
+}
+</pre>
+</div>
+</div>
+
+<div id="outline-container-orgec02849" class="outline-3">
+<h3 id="orgec02849"><span class="section-number-3">5.1.</span> Mapping addresses to names</h3>
+<div class="outline-text-3" id="text-5-1">
+<div class="org-src-container">
+<label class="org-src-name"><span class="listing-number">Listing 20: </span><code>&lt;&lt;includes&gt;&gt;</code></label><pre class="src src-C" id="org3249b61"><span style="font-weight: bold;">#include</span> <span style="font-style: italic;">&lt;dlfcn.h&gt;</span>
+<span style="font-weight: bold;">#include</span> <span style="font-style: italic;">&lt;stdlib.h&gt;</span>
+</pre>
+</div>
+
+<div class="org-src-container">
+<label class="org-src-name"><span class="listing-number">Listing 21: </span><b>types.h</b></label><pre class="src src-C" id="org01619fa"><span style="font-weight: bold; text-decoration: underline;">char</span> *<span style="font-weight: bold;">addr2name</span>(<span style="font-weight: bold; text-decoration: underline;">void</span> *<span style="font-weight: bold; font-style: italic;">addr</span>);
+<span style="font-weight: bold;">#endif</span> <span style="font-weight: bold; font-style: italic;">// </span><span style="font-weight: bold; font-style: italic;">_UNIX_C_FORTH_TYPES_H_</span>
+</pre>
+</div>
+
+<div class="org-src-container">
+<label class="org-src-name"><span class="listing-number">Listing 22: </span><code>&lt;&lt;globals&gt;&gt;</code></label><pre class="src src-C" id="org5075f05"><span style="font-weight: bold;">extern</span> <span style="font-weight: bold; text-decoration: underline;">scell</span> <span style="font-weight: bold; font-style: italic;">LATEST_LOC</span>;
+</pre>
+</div>
+<div class="org-src-container">
+<label class="org-src-name"><span class="listing-number">Listing 23: </span><code>&lt;&lt;before main&gt;&gt;</code></label><pre class="src src-C" id="orged9a8f4"><span style="font-weight: bold;">typedef</span> <span style="font-weight: bold;">struct</span> <span style="font-weight: bold; text-decoration: underline;">dict_entry</span> {
+  <span style="font-weight: bold; text-decoration: underline;">ucell</span> <span style="font-weight: bold; font-style: italic;">prev</span>;
+  <span style="font-weight: bold; text-decoration: underline;">ucell</span> <span style="font-weight: bold; font-style: italic;">flags</span>;
+  <span style="font-weight: bold; text-decoration: underline;">ucell</span> <span style="font-weight: bold; font-style: italic;">name_len</span>;
+  <span style="font-weight: bold; text-decoration: underline;">char</span> <span style="font-weight: bold; font-style: italic;">name_start</span>;
+} <span style="font-weight: bold; text-decoration: underline;">entry</span>;
+
+<span style="font-weight: bold; text-decoration: underline;">char</span> *
+<span style="font-weight: bold;">addr2name</span>(<span style="font-weight: bold; text-decoration: underline;">void</span> *<span style="font-weight: bold; font-style: italic;">addr</span>)
+{
+  <span style="font-weight: bold;">for</span> (<span style="font-weight: bold; text-decoration: underline;">entry</span> *<span style="font-weight: bold; font-style: italic;">p</span> = (<span style="font-weight: bold; text-decoration: underline;">entry</span>*)(<span style="font-weight: bold; text-decoration: underline;">uintptr_t</span>)LATEST_LOC; p != <span style="font-weight: bold; text-decoration: underline;">NULL</span>;
+              p = (<span style="font-weight: bold; text-decoration: underline;">entry</span>*)(<span style="font-weight: bold; text-decoration: underline;">uintptr_t</span>)p-&gt;prev)
+    <span style="font-weight: bold;">if</span> ((<span style="font-weight: bold; text-decoration: underline;">uintptr_t</span>)p&lt;(<span style="font-weight: bold; text-decoration: underline;">uintptr_t</span>)addr)
+      <span style="font-weight: bold;">return</span> &amp;p-&gt;name_start;
+  <span style="font-weight: bold;">return</span> <span style="font-weight: bold; text-decoration: underline;">NULL</span>;
+}
+
+<span style="font-weight: bold; text-decoration: underline;">void</span>
+<span style="font-weight: bold;">print_frame_stack</span>() {
+  printf(<span style="font-style: italic;">"Frames (bottom first)\n"</span>);
+  <span style="font-weight: bold;">for</span> (<span style="font-weight: bold; text-decoration: underline;">forth_instruction</span> **<span style="font-weight: bold; font-style: italic;">i</span> = frame_stack_bottom; i &lt; frame_stack; ++i) {
+    <span style="font-weight: bold; text-decoration: underline;">char</span> *<span style="font-weight: bold; font-style: italic;">name</span> = addr2name(*i);
+    printf(<span style="font-style: italic;">"%8p\t%s\n"</span>, *i, name!=<span style="font-weight: bold; text-decoration: underline;">NULL</span>?name:<span style="font-style: italic;">"Cannot translate"</span>);
+  }
+}
+</pre>
+</div>
+
+<div class="org-src-container">
+<label class="org-src-name"><span class="listing-number">Listing 24: </span><code>&lt;&lt;before main&gt;&gt;</code></label><pre class="src src-C" id="org2442418"><span style="font-weight: bold; text-decoration: underline;">void</span>
+<span style="font-weight: bold;">print_next_inst</span>() {
+  <span style="font-weight: bold;">if</span> (next_inst != <span style="font-weight: bold; text-decoration: underline;">NULL</span>) {
+    <span style="font-weight: bold; text-decoration: underline;">char</span> *<span style="font-weight: bold; font-style: italic;">name</span> = addr2name(next_inst);
+    <span style="font-weight: bold; text-decoration: underline;">char</span> *<span style="font-weight: bold; font-style: italic;">name_end</span> = name + ((<span style="font-weight: bold; text-decoration: underline;">ucell</span>*)name)[-1] + 1; <span style="font-weight: bold; font-style: italic;">// </span><span style="font-weight: bold; font-style: italic;">name len + null byte</span>
+    <span style="font-weight: bold; text-decoration: underline;">uintptr_t</span> <span style="font-weight: bold; font-style: italic;">offset</span> = (<span style="font-weight: bold; text-decoration: underline;">uintptr_t</span>)name_end;
+    offset = (offset+3) &amp; (~3); <span style="font-weight: bold; font-style: italic;">// </span><span style="font-weight: bold; font-style: italic;">4-byte align</span>
+    printf(<span style="font-style: italic;">"next inst:\n%8p\t%s+%lu\n"</span>, next_inst, name,
+           ((<span style="font-weight: bold; text-decoration: underline;">uintptr_t</span>)next_inst)-offset);
+  }
+}
+</pre>
+</div>
+</div>
+</div>
+</div>
+
+<div id="outline-container-org52e8e0d" class="outline-2">
+<h2 id="org52e8e0d"><span class="section-number-2">6.</span> Compiling input files</h2>
+<div class="outline-text-2" id="text-6">
+<div class="org-src-container">
+<label class="org-src-name"><span class="listing-number">Listing 25: </span><code>&lt;&lt;includes&gt;&gt;</code></label><pre class="src src-C" id="org71f4cae"><span style="font-weight: bold;">#include</span> <span style="font-style: italic;">&lt;err.h&gt;</span>
+</pre>
+</div>
+
+<div class="org-src-container">
+<label class="org-src-name"><span class="listing-number">Listing 26: </span><code>&lt;&lt;compile input files&gt;&gt;</code></label><pre class="src src-C" id="org4c9d0b2"><span style="font-weight: bold;">for</span> (<span style="font-weight: bold; text-decoration: underline;">int</span> <span style="font-weight: bold; font-style: italic;">i</span> = 0; i &lt; arguments.input_count; ++i)
+{
+  <span style="font-weight: bold; text-decoration: underline;">char</span> *<span style="font-weight: bold; font-style: italic;">input</span> = arguments.inputs[i];
+  <span style="font-weight: bold; text-decoration: underline;">FILE</span> *<span style="font-weight: bold; font-style: italic;">f</span> = fopen(input, <span style="font-style: italic;">"r"</span>);
+  <span style="font-weight: bold;">if</span> (f == <span style="font-weight: bold; text-decoration: underline;">NULL</span>) {
+    err(1, <span style="font-style: italic;">"Failed to open input file %s"</span>, input);
+  }
+  <span style="font-weight: bold; font-style: italic;">// </span><span style="font-weight: bold; font-style: italic;">set input stream to f;</span>
+  input_stream = f;
+  next_inst = &amp;forth_main;
+  <span style="font-weight: bold; text-decoration: underline;">int</span> <span style="font-weight: bold; font-style: italic;">exit_loop</span> = 0;
+  <span style="font-weight: bold;">while</span> (exit_loop != -1) { <span style="font-weight: bold; font-style: italic;">// </span><span style="font-weight: bold; font-style: italic;">'next' trampoline</span>
+    exit_loop = unpack_and_execute_instruction(*next_inst++);
+  }
+  fclose(f);
+}
+<span style="font-weight: bold; text-decoration: underline;">scell</span> *<span style="font-weight: bold; font-style: italic;">compiled_input_end</span> = HERE_LOC;
+input_stream = stdin;
+</pre>
+</div>
+</div>
+</div>
+
+<div id="outline-container-org976424f" class="outline-2">
+<h2 id="org976424f"><span class="section-number-2">7.</span> Outputting compiled heap</h2>
+<div class="outline-text-2" id="text-7">
+<div class="org-src-container">
+<label class="org-src-name"><span class="listing-number">Listing 27: </span><code>&lt;&lt;includes&gt;&gt;</code></label><pre class="src src-C" id="orge0289ce"><span style="font-weight: bold;">#include</span> <span style="font-style: italic;">&lt;endian.h&gt;</span>
+</pre>
+</div>
+
+<p>
+TODO: this won't convert properly, e.g. it will read chars as cells
+and drop/byte swap them
+</p>
+
+<div class="org-src-container">
+<label class="org-src-name"><span class="listing-number">Listing 28: </span><code>&lt;&lt;output compiled heap&gt;&gt;</code></label><pre class="src src-C" id="orga3c3e4c"><span style="font-weight: bold;">if</span> (arguments.output != <span style="font-weight: bold; text-decoration: underline;">NULL</span>) {
+  <span style="font-weight: bold; text-decoration: underline;">FILE</span> *<span style="font-weight: bold; font-style: italic;">output</span> = fopen(arguments.output, <span style="font-style: italic;">"w"</span>);
+  <span style="font-weight: bold;">if</span> (output == <span style="font-weight: bold; text-decoration: underline;">NULL</span>) {
+    err(2, <span style="font-style: italic;">"Failed to open output file %s"</span>, arguments.output);
+  }
+  <span style="font-weight: bold;">switch</span> (arguments.target_word_size &lt;&lt; 1 | arguments.target_le)
+  {
+<span style="font-weight: bold;">#define</span> <span style="font-weight: bold; font-style: italic;">be_value</span> 0
+<span style="font-weight: bold;">#define</span> <span style="font-weight: bold; font-style: italic;">le_value</span> 1
+<span style="font-weight: bold;">#define</span> <span style="font-weight: bold;">mk_switch_case</span>(<span style="font-weight: bold; font-style: italic;">bits</span>,<span style="font-weight: bold; font-style: italic;">endian</span>)                                    \
+    <span style="font-weight: bold;">case</span> ((bits&lt;&lt;1)|endian##_value):                                   \
+      <span style="font-weight: bold;">for</span> (<span style="font-weight: bold; text-decoration: underline;">ucell</span> *<span style="font-weight: bold; font-style: italic;">word</span> = heap_bottom; word &lt; (<span style="font-weight: bold; text-decoration: underline;">ucell</span>*)HERE_LOC; ++word) \
+      { uint##bits##_t data = hto##endian##bits(*word);                \
+        data += arguments.offset;                                      \
+        fwrite(&amp;data, <span style="font-weight: bold;">sizeof</span>(uint##bits##_t), 1, output);              \
+      }                                                                \
+      <span style="font-weight: bold;">break</span>;
+mk_switch_case(32, le);
+mk_switch_case(32, be);
+mk_switch_case(16, le);
+mk_switch_case(16, be);
+<span style="font-weight: bold;">#undef</span> mk_switch_case
+<span style="font-weight: bold;">#undef</span> be_value
+<span style="font-weight: bold;">#undef</span> le_value
+    <span style="font-weight: bold;">default</span>:
+      errx(3, <span style="font-style: italic;">"Unsupported target word-size &amp; endianness: %d %s"</span>,
+           arguments.target_word_size, arguments.target_le==0?<span style="font-style: italic;">"be"</span>:<span style="font-style: italic;">"le"</span>);
+  }
+  fclose(output);
+}
+</pre>
+</div>
+</div>
+</div>
+
+<div id="outline-container-org2b71eca" class="outline-2">
+<h2 id="org2b71eca"><span class="section-number-2">8.</span> Basic words</h2>
+<div class="outline-text-2" id="text-8">
+</div>
+<div id="outline-container-orgc509e34" class="outline-3">
+<h3 id="orgc509e34"><span class="section-number-3">8.1.</span> C implementation</h3>
+<div class="outline-text-3" id="text-8-1">
+<div class="org-src-container">
+<label class="org-src-name"><span class="listing-number">Listing 29: </span><b>c-words.c</b></label><pre class="src src-C" id="orgb9dff80"><span style="font-weight: bold;">#include</span> <span style="font-style: italic;">"unix-c-forth.h"</span>
+
+<span style="font-weight: bold;">#define</span> <span style="font-weight: bold; font-style: italic;">true</span> ((<span style="font-weight: bold; text-decoration: underline;">scell</span>)-1)
+<span style="font-weight: bold;">#define</span> <span style="font-weight: bold; font-style: italic;">false</span> ((<span style="font-weight: bold; text-decoration: underline;">scell</span>)0)
+
+<span style="font-weight: bold; text-decoration: underline;">scell</span> <span style="font-weight: bold; font-style: italic;">STATE_LOC</span> = <span style="font-weight: bold; text-decoration: underline;">false</span>;
+
+<span style="font-weight: bold;">#define</span> <span style="font-weight: bold;">push</span>(<span style="font-weight: bold; font-style: italic;">value</span>, <span style="font-weight: bold; font-style: italic;">stack</span>) *stack++ = value;
+<span style="font-weight: bold;">#define</span> <span style="font-weight: bold;">pop</span>(<span style="font-weight: bold; font-style: italic;">value</span>, <span style="font-weight: bold; font-style: italic;">stack</span>) value = *--stack;
+
+<span style="font-weight: bold; text-decoration: underline;">int</span> <span style="font-weight: bold; font-style: italic;">level</span> = 0;
+<span style="font-weight: bold; text-decoration: underline;">int</span> <span style="font-weight: bold;">forth_interpreter</span> (<span style="font-weight: bold; text-decoration: underline;">forth_instruction</span> *<span style="font-weight: bold; font-style: italic;">to_execute</span>) {
+  ++level;
+  <span style="font-weight: bold; text-decoration: underline;">forth_instruction</span> *<span style="font-weight: bold; font-style: italic;">frame</span> = (<span style="font-weight: bold; text-decoration: underline;">forth_instruction</span>*)(next_inst);
+  push(frame, frame_stack);
+  next_inst = to_execute;
+<span style="font-weight: bold;">#ifdef</span> TRACE
+  <span style="font-weight: bold;">for</span> (<span style="font-weight: bold; text-decoration: underline;">int</span> <span style="font-weight: bold; font-style: italic;">i</span> = 0; i &lt; level; ++i) printf(<span style="font-style: italic;">"-"</span>);
+  <span style="font-weight: bold; text-decoration: underline;">char</span> *<span style="font-weight: bold; font-style: italic;">name</span> = addr2name(next_inst);
+  printf(<span style="font-style: italic;">"&gt;\t%8p\t&gt; %s\n"</span>, next_inst, name!=<span style="font-weight: bold; text-decoration: underline;">NULL</span>?name:<span style="font-style: italic;">"Cannot translate"</span>);
+<span style="font-weight: bold;">#endif</span>
+  <span style="font-weight: bold;">return</span> 0; <span style="font-weight: bold; font-style: italic;">// </span><span style="font-weight: bold; font-style: italic;">'next' is a trampoline</span>
+}
+
+<span style="font-weight: bold; text-decoration: underline;">int</span> <span style="font-weight: bold;">FEXIT</span> (<span style="font-weight: bold; text-decoration: underline;">forth_instruction</span> *<span style="font-weight: bold; font-style: italic;">_</span>) {
+<span style="font-weight: bold;">#ifdef</span> TRACE
+  <span style="font-weight: bold;">for</span> (<span style="font-weight: bold; text-decoration: underline;">int</span> <span style="font-weight: bold; font-style: italic;">i</span> = 0; i &lt; level; ++i) printf(<span style="font-style: italic;">"-"</span>);
+  <span style="font-weight: bold; text-decoration: underline;">char</span> *<span style="font-weight: bold; font-style: italic;">name</span> = addr2name(next_inst);
+  printf(<span style="font-style: italic;">"&lt;\t%8p\t&lt; %s\n"</span>, next_inst, name!=<span style="font-weight: bold; text-decoration: underline;">NULL</span>?name:<span style="font-style: italic;">"Cannot translate"</span>);
+<span style="font-weight: bold;">#endif</span>
+  --level;
+  pop(<span style="font-weight: bold; text-decoration: underline;">forth_instruction</span> *<span style="font-weight: bold; font-style: italic;">frame</span>, frame_stack);
+  next_inst = frame;
+  <span style="font-weight: bold;">return</span> 0;
+}
+
+<span style="font-weight: bold; text-decoration: underline;">int</span> <span style="font-weight: bold;">FEXECUTE</span> (<span style="font-weight: bold; text-decoration: underline;">forth_instruction</span> *<span style="font-weight: bold; font-style: italic;">_</span>) {
+  pop(<span style="font-weight: bold; text-decoration: underline;">scell</span> <span style="font-weight: bold; font-style: italic;">c</span>, value_stack);
+  <span style="font-weight: bold;">return</span> unpack_and_execute_instruction((<span style="font-weight: bold; text-decoration: underline;">forth_instruction</span>)c);
+}
+
+<span style="font-weight: bold; text-decoration: underline;">int</span> <span style="font-weight: bold;">FCELL_SIZE</span> (<span style="font-weight: bold; text-decoration: underline;">forth_instruction</span> *<span style="font-weight: bold; font-style: italic;">_</span>) {
+  push(<span style="font-weight: bold;">sizeof</span>(scell), value_stack);
+  <span style="font-weight: bold;">return</span> 0;
+}
+
+<span style="font-weight: bold; text-decoration: underline;">int</span> <span style="font-weight: bold;">FCHAR_SIZE</span> (<span style="font-weight: bold; text-decoration: underline;">forth_instruction</span> *<span style="font-weight: bold; font-style: italic;">_</span>) {
+  push(<span style="font-weight: bold;">sizeof</span>(<span style="font-weight: bold; text-decoration: underline;">char</span>), value_stack);
+  <span style="font-weight: bold;">return</span> 0;
+}
+</pre>
+</div>
+
+<div class="org-src-container">
+<label class="org-src-name"><span class="listing-number">Listing 30: </span><b>c-words.c</b></label><pre class="src src-C" id="orgc65d16e"><span style="font-weight: bold;">#define</span> <span style="font-weight: bold;">binop</span>(<span style="font-weight: bold; font-style: italic;">type</span>, <span style="font-weight: bold; font-style: italic;">name</span>, <span style="font-weight: bold; font-style: italic;">op</span>) <span style="font-weight: bold; text-decoration: underline;">int</span> <span style="font-weight: bold;">F</span>##name(<span style="font-weight: bold; text-decoration: underline;">forth_instruction</span> *<span style="font-weight: bold; font-style: italic;">_</span>) { \
+    pop(<span style="font-weight: bold; text-decoration: underline;">type</span> <span style="font-weight: bold; font-style: italic;">b</span>, value_stack);                               \
+    pop(<span style="font-weight: bold; text-decoration: underline;">type</span> <span style="font-weight: bold; font-style: italic;">a</span>, value_stack);                               \
+    push(op, value_stack);                                  \
+    <span style="font-weight: bold;">return</span> 0;                                               \
+  }
+<span style="font-weight: bold;">#define</span> <span style="font-weight: bold;">sbinop</span>(<span style="font-weight: bold; font-style: italic;">name</span>, <span style="font-weight: bold; font-style: italic;">op</span>) binop(scell, name, op)
+<span style="font-weight: bold;">#define</span> <span style="font-weight: bold;">ubinop</span>(<span style="font-weight: bold; font-style: italic;">name</span>, <span style="font-weight: bold; font-style: italic;">op</span>) binop(ucell, name, op)
+
+&#12; <span style="font-weight: bold; font-style: italic;">// </span><span style="font-weight: bold; font-style: italic;">Binary</span>
+<span style="font-weight: bold;">sbinop</span>(ADD, a+b);
+<span style="font-weight: bold;">sbinop</span>(SUB, a-b);
+<span style="font-weight: bold;">sbinop</span>(STAR, <span style="font-weight: bold; text-decoration: underline;">a</span>*<span style="font-weight: bold; font-style: italic;">b</span>);
+<span style="font-weight: bold;">sbinop</span>(SLASH, a/b);
+<span style="font-weight: bold;">sbinop</span>(LSHIFT, a&lt;&lt;b);
+<span style="font-weight: bold;">sbinop</span>(RSHIFT, a&gt;&gt;b);
+<span style="font-weight: bold;">sbinop</span>(EQUAL, a==b?<span style="font-weight: bold; text-decoration: underline;">true</span>:<span style="font-weight: bold; text-decoration: underline;">false</span>);
+<span style="font-weight: bold;">sbinop</span>(NOT_EQUAL, a!=b?<span style="font-weight: bold; text-decoration: underline;">true</span>:<span style="font-weight: bold; text-decoration: underline;">false</span>);
+<span style="font-weight: bold;">sbinop</span>(LESS_THAN, a&lt;b?<span style="font-weight: bold; text-decoration: underline;">true</span>:<span style="font-weight: bold; text-decoration: underline;">false</span>);
+<span style="font-weight: bold;">sbinop</span>(GREATER_THAN, a&gt;b?<span style="font-weight: bold; text-decoration: underline;">true</span>:<span style="font-weight: bold; text-decoration: underline;">false</span>);
+<span style="font-weight: bold;">ubinop</span>(U_LESS_THAN, a&lt;b?<span style="font-weight: bold; text-decoration: underline;">true</span>:<span style="font-weight: bold; text-decoration: underline;">false</span>);
+<span style="font-weight: bold;">ubinop</span>(U_GREATER_THAN, a&gt;b?<span style="font-weight: bold; text-decoration: underline;">true</span>:<span style="font-weight: bold; text-decoration: underline;">false</span>);
+<span style="font-weight: bold;">sbinop</span>(AND, a&amp;b);
+<span style="font-weight: bold;">sbinop</span>(OR, a|b);
+
+<span style="font-weight: bold; text-decoration: underline;">int</span> <span style="font-weight: bold;">FNEGATE</span> (<span style="font-weight: bold; text-decoration: underline;">forth_instruction</span> *<span style="font-weight: bold; font-style: italic;">_</span>) {
+  pop(<span style="font-weight: bold; text-decoration: underline;">scell</span> <span style="font-weight: bold; font-style: italic;">a</span>, value_stack);
+  push(-a, value_stack);
+  <span style="font-weight: bold;">return</span> 0;
+}
+</pre>
+</div>
+
+<div class="org-src-container">
+<label class="org-src-name"><span class="listing-number">Listing 31: </span><b>c-words.c</b></label><pre class="src src-C" id="org33352a7">&#12; <span style="font-weight: bold; font-style: italic;">// </span><span style="font-weight: bold; font-style: italic;">Boolean</span>
+
+<span style="font-weight: bold; text-decoration: underline;">int</span> <span style="font-weight: bold;">FINVERT</span> (<span style="font-weight: bold; text-decoration: underline;">forth_instruction</span> *<span style="font-weight: bold; font-style: italic;">_</span>) {
+  pop(<span style="font-weight: bold; text-decoration: underline;">scell</span> <span style="font-weight: bold; font-style: italic;">a</span>, value_stack);
+  push(~a, value_stack);
+  <span style="font-weight: bold;">return</span> 0;
+}
+
+<span style="font-weight: bold; text-decoration: underline;">int</span> <span style="font-weight: bold;">FTRUE</span> (<span style="font-weight: bold; text-decoration: underline;">forth_instruction</span> *<span style="font-weight: bold; font-style: italic;">_</span>) {
+  push(<span style="font-weight: bold; text-decoration: underline;">true</span>, value_stack);
+  <span style="font-weight: bold;">return</span> 0;
+}
+
+<span style="font-weight: bold; text-decoration: underline;">int</span> <span style="font-weight: bold;">FFALSE</span> (<span style="font-weight: bold; text-decoration: underline;">forth_instruction</span> *<span style="font-weight: bold; font-style: italic;">_</span>) {
+  push(<span style="font-weight: bold; text-decoration: underline;">false</span>, value_stack);
+  <span style="font-weight: bold;">return</span> 0;
+}
+</pre>
+</div>
+
+<div class="org-src-container">
+<label class="org-src-name"><span class="listing-number">Listing 32: </span><b>c-words.c</b></label><pre class="src src-C" id="orgb8d9428"><span style="font-weight: bold; font-style: italic;">// </span><span style="font-weight: bold; font-style: italic;">TODO: categorize</span>
+<span style="font-weight: bold; text-decoration: underline;">int</span> <span style="font-weight: bold;">FEMIT</span> (<span style="font-weight: bold; text-decoration: underline;">forth_instruction</span> *<span style="font-weight: bold; font-style: italic;">_</span>) {
+  pop(<span style="font-weight: bold; text-decoration: underline;">ucell</span> <span style="font-weight: bold; font-style: italic;">a</span>, value_stack);
+  <span style="font-weight: bold; text-decoration: underline;">int</span> <span style="font-weight: bold; font-style: italic;">s</span> = EOF;
+  <span style="font-weight: bold;">while</span> (((s = putc(a, output_stream)) == EOF) &amp;&amp;
+         (!feof(output_stream))) { }
+  <span style="font-weight: bold;">return</span> feof(output_stream)?-1:0;
+}
+
+<span style="font-weight: bold; text-decoration: underline;">int</span> <span style="font-weight: bold;">FKEY</span> (<span style="font-weight: bold; text-decoration: underline;">forth_instruction</span> *<span style="font-weight: bold; font-style: italic;">_</span>) {
+  <span style="font-weight: bold; text-decoration: underline;">int</span> <span style="font-weight: bold; font-style: italic;">c</span> = EOF;
+  <span style="font-weight: bold;">while</span> (((c = getc(input_stream)) == EOF) &amp;&amp;
+         (!feof(input_stream))) { }
+  <span style="font-weight: bold;">if</span> (feof(input_stream)) <span style="font-weight: bold;">return</span> -1;
+  push(c, value_stack);
+  <span style="font-weight: bold;">return</span> 0;
+}
+
+<span style="font-weight: bold; text-decoration: underline;">int</span> <span style="font-weight: bold;">FBYE</span> (<span style="font-weight: bold; text-decoration: underline;">forth_instruction</span> *<span style="font-weight: bold; font-style: italic;">_</span>) {
+  <span style="font-weight: bold;">return</span> -1;
+}
+
+<span style="font-weight: bold; text-decoration: underline;">int</span> <span style="font-weight: bold;">FLIT</span> (<span style="font-weight: bold; text-decoration: underline;">forth_instruction</span> *<span style="font-weight: bold; font-style: italic;">_</span>) {
+  <span style="font-weight: bold; text-decoration: underline;">scell</span> <span style="font-weight: bold; font-style: italic;">value</span> = *(<span style="font-weight: bold; text-decoration: underline;">scell</span>*)next_inst++;
+  push(value, value_stack);
+  <span style="font-weight: bold;">return</span> 0;
+}
+
+<span style="font-weight: bold; text-decoration: underline;">int</span> <span style="font-weight: bold;">FC_COMMA</span> (<span style="font-weight: bold; text-decoration: underline;">forth_instruction</span> *<span style="font-weight: bold; font-style: italic;">_</span>) { <span style="font-weight: bold; font-style: italic;">/* </span><span style="font-weight: bold; font-style: italic;">TODO: HERE ! CHAR-SIZE ALLOT</span><span style="font-weight: bold; font-style: italic;"> */</span>
+  pop(<span style="font-weight: bold; text-decoration: underline;">scell</span> <span style="font-weight: bold; font-style: italic;">a</span>, value_stack);
+  <span style="font-weight: bold; text-decoration: underline;">char</span> *<span style="font-weight: bold; font-style: italic;">charheap</span> = (<span style="font-weight: bold; text-decoration: underline;">char</span> *)HERE_LOC;
+  *charheap++ = (<span style="font-weight: bold; text-decoration: underline;">char</span>)a;
+  HERE_LOC = (<span style="font-weight: bold; text-decoration: underline;">scell</span> *)charheap;
+  <span style="font-weight: bold;">return</span> 0;
+}
+
+<span style="font-weight: bold; text-decoration: underline;">int</span> <span style="font-weight: bold;">FCOMMA</span> (<span style="font-weight: bold; text-decoration: underline;">forth_instruction</span> *<span style="font-weight: bold; font-style: italic;">_</span>) { <span style="font-weight: bold; font-style: italic;">/* </span><span style="font-weight: bold; font-style: italic;">TODO: HERE ! CELL-SIZE ALLOT</span><span style="font-weight: bold; font-style: italic;"> */</span>
+  pop(<span style="font-weight: bold; text-decoration: underline;">scell</span> <span style="font-weight: bold; font-style: italic;">a</span>, value_stack);
+  *HERE_LOC++ = a;
+  <span style="font-weight: bold;">return</span> 0;
+}
+</pre>
+</div>
+
+<div class="org-src-container">
+<label class="org-src-name"><span class="listing-number">Listing 33: </span><b>c-words.c</b></label><pre class="src src-C" id="orgbfc1831">&#12; <span style="font-weight: bold; font-style: italic;">// </span><span style="font-weight: bold; font-style: italic;">Memory</span>
+<span style="font-weight: bold; text-decoration: underline;">int</span> <span style="font-weight: bold;">FC_STORE</span> (<span style="font-weight: bold; text-decoration: underline;">forth_instruction</span> *<span style="font-weight: bold; font-style: italic;">_</span>) {
+  pop(<span style="font-weight: bold; text-decoration: underline;">ucell</span> <span style="font-weight: bold; font-style: italic;">addr</span>, value_stack);
+  pop(<span style="font-weight: bold; text-decoration: underline;">ucell</span> <span style="font-weight: bold; font-style: italic;">value</span>, value_stack);
+  *(<span style="font-weight: bold; text-decoration: underline;">unsigned</span> <span style="font-weight: bold; text-decoration: underline;">char</span>*)(<span style="font-weight: bold; text-decoration: underline;">uintptr_t</span>)addr = (<span style="font-weight: bold; text-decoration: underline;">unsigned</span> <span style="font-weight: bold; text-decoration: underline;">char</span>)value;
+  <span style="font-weight: bold;">return</span> 0;
+}
+
+<span style="font-weight: bold; text-decoration: underline;">int</span> <span style="font-weight: bold;">FC_FETCH</span> (<span style="font-weight: bold; text-decoration: underline;">forth_instruction</span> *<span style="font-weight: bold; font-style: italic;">_</span>) {
+  pop(<span style="font-weight: bold; text-decoration: underline;">ucell</span> <span style="font-weight: bold; font-style: italic;">a</span>, value_stack);
+  push(*(<span style="font-weight: bold; text-decoration: underline;">char</span>*)(<span style="font-weight: bold; text-decoration: underline;">uintptr_t</span>)a, value_stack);
+  <span style="font-weight: bold;">return</span> 0;
+}
+
+<span style="font-weight: bold; text-decoration: underline;">int</span> <span style="font-weight: bold;">FSTORE</span> (<span style="font-weight: bold; text-decoration: underline;">forth_instruction</span> *<span style="font-weight: bold; font-style: italic;">_</span>) {
+  pop(<span style="font-weight: bold; text-decoration: underline;">ucell</span> <span style="font-weight: bold; font-style: italic;">addr</span>, value_stack);
+  pop(<span style="font-weight: bold; text-decoration: underline;">ucell</span> <span style="font-weight: bold; font-style: italic;">value</span>, value_stack);
+  *(<span style="font-weight: bold; text-decoration: underline;">ucell</span>*)(<span style="font-weight: bold; text-decoration: underline;">uintptr_t</span>)addr = value;
+  <span style="font-weight: bold;">return</span> 0;
+}
+
+<span style="font-weight: bold; text-decoration: underline;">int</span> <span style="font-weight: bold;">FFETCH</span> (<span style="font-weight: bold; text-decoration: underline;">forth_instruction</span> *<span style="font-weight: bold; font-style: italic;">_</span>) {
+  pop(<span style="font-weight: bold; text-decoration: underline;">ucell</span> <span style="font-weight: bold; font-style: italic;">a</span>, value_stack);
+  push(*(scell*)(uintptr_t)a, value_stack);
+  <span style="font-weight: bold;">return</span> 0;
+}
+</pre>
+</div>
+
+<div class="org-src-container">
+<label class="org-src-name"><span class="listing-number">Listing 34: </span><b>c-words.c</b></label><pre class="src src-C" id="org4b83610">&#12; <span style="font-weight: bold; font-style: italic;">// </span><span style="font-weight: bold; font-style: italic;">Stack</span>
+
+<span style="font-weight: bold; text-decoration: underline;">int</span> <span style="font-weight: bold;">FDUP</span> (<span style="font-weight: bold; text-decoration: underline;">forth_instruction</span> *<span style="font-weight: bold; font-style: italic;">_</span>) {
+  pop(<span style="font-weight: bold; text-decoration: underline;">scell</span> <span style="font-weight: bold; font-style: italic;">a</span>, value_stack);
+  push(a, value_stack);
+  push(a, value_stack);
+  <span style="font-weight: bold;">return</span> 0;
+}
+
+<span style="font-weight: bold; text-decoration: underline;">int</span> <span style="font-weight: bold;">FDROP</span> (<span style="font-weight: bold; text-decoration: underline;">forth_instruction</span> *<span style="font-weight: bold; font-style: italic;">_</span>) {
+  pop(<span style="font-weight: bold; text-decoration: underline;">scell</span> <span style="font-weight: bold; font-style: italic;">a</span>, value_stack);
+  <span style="font-weight: bold;">return</span> 0;
+}
+
+<span style="font-weight: bold; text-decoration: underline;">int</span> <span style="font-weight: bold;">FNIP</span> (<span style="font-weight: bold; text-decoration: underline;">forth_instruction</span> *<span style="font-weight: bold; font-style: italic;">_</span>) {
+  pop(<span style="font-weight: bold; text-decoration: underline;">scell</span> <span style="font-weight: bold; font-style: italic;">a</span>, value_stack);
+  pop(<span style="font-weight: bold; text-decoration: underline;">scell</span> <span style="font-weight: bold; font-style: italic;">b</span>, value_stack);
+  push(a, value_stack);
+  <span style="font-weight: bold;">return</span> 0;
+}
+
+<span style="font-weight: bold; text-decoration: underline;">int</span> <span style="font-weight: bold;">FOVER</span> (<span style="font-weight: bold; text-decoration: underline;">forth_instruction</span> *<span style="font-weight: bold; font-style: italic;">_</span>) {
+  <span style="font-weight: bold; text-decoration: underline;">scell</span> <span style="font-weight: bold; font-style: italic;">value</span> = *(value_stack-2);
+  push(value, value_stack);
+  <span style="font-weight: bold;">return</span> 0;
+}
+
+<span style="font-weight: bold; text-decoration: underline;">int</span> <span style="font-weight: bold;">FPICK</span> (<span style="font-weight: bold; text-decoration: underline;">forth_instruction</span> *<span style="font-weight: bold; font-style: italic;">_</span>) {
+  pop(<span style="font-weight: bold; text-decoration: underline;">scell</span> <span style="font-weight: bold; font-style: italic;">u</span>, value_stack);
+  <span style="font-weight: bold; text-decoration: underline;">scell</span> *<span style="font-weight: bold; font-style: italic;">picked</span> =  value_stack - 1 - u;
+  push(*picked, value_stack);
+  <span style="font-weight: bold;">return</span> 0;
+}
+
+<span style="font-weight: bold; text-decoration: underline;">int</span> <span style="font-weight: bold;">FSWAP</span> (<span style="font-weight: bold; text-decoration: underline;">forth_instruction</span> *<span style="font-weight: bold; font-style: italic;">_</span>) {
+  pop(<span style="font-weight: bold; text-decoration: underline;">scell</span> <span style="font-weight: bold; font-style: italic;">a</span>, value_stack);
+  pop(<span style="font-weight: bold; text-decoration: underline;">scell</span> <span style="font-weight: bold; font-style: italic;">b</span>, value_stack);
+  push(a, value_stack);
+  push(b, value_stack);
+  <span style="font-weight: bold;">return</span> 0;
+}
+
+<span style="font-weight: bold; text-decoration: underline;">int</span> <span style="font-weight: bold;">FROT</span> (<span style="font-weight: bold; text-decoration: underline;">forth_instruction</span> *<span style="font-weight: bold; font-style: italic;">_</span>) {
+  pop(<span style="font-weight: bold; text-decoration: underline;">scell</span> <span style="font-weight: bold; font-style: italic;">x3</span>, value_stack);
+  pop(<span style="font-weight: bold; text-decoration: underline;">scell</span> <span style="font-weight: bold; font-style: italic;">x2</span>, value_stack);
+  pop(<span style="font-weight: bold; text-decoration: underline;">scell</span> <span style="font-weight: bold; font-style: italic;">x1</span>, value_stack);
+  push(x2, value_stack);
+  push(x3, value_stack);
+  push(x1, value_stack);
+  <span style="font-weight: bold;">return</span> 0;
+}
+</pre>
+</div>
+
+<div class="org-src-container">
+<label class="org-src-name"><span class="listing-number">Listing 35: </span><b>c-words.c</b></label><pre class="src src-C" id="org3cb6ace">&#12; <span style="font-weight: bold; font-style: italic;">// </span><span style="font-weight: bold; font-style: italic;">Return stack</span>
+
+<span style="font-weight: bold; text-decoration: underline;">int</span> <span style="font-weight: bold;">FR_FETCH</span> (<span style="font-weight: bold; text-decoration: underline;">forth_instruction</span> *<span style="font-weight: bold; font-style: italic;">_</span>) {
+  <span style="font-weight: bold; text-decoration: underline;">scell</span> <span style="font-weight: bold; font-style: italic;">value</span> = *(<span style="font-weight: bold; text-decoration: underline;">scell</span>*)(frame_stack-1);
+  push(value, value_stack);
+  <span style="font-weight: bold;">return</span> 0;
+}
+
+<span style="font-weight: bold; text-decoration: underline;">int</span> <span style="font-weight: bold;">FR_FROM</span> (<span style="font-weight: bold; text-decoration: underline;">forth_instruction</span> *<span style="font-weight: bold; font-style: italic;">_</span>) {
+  --frame_stack;
+  <span style="font-weight: bold; text-decoration: underline;">scell</span> <span style="font-weight: bold; font-style: italic;">a</span> = *(<span style="font-weight: bold; text-decoration: underline;">scell</span>*)frame_stack;
+  push(a, value_stack);
+  <span style="font-weight: bold;">return</span> 0;
+}
+
+<span style="font-weight: bold; text-decoration: underline;">int</span> <span style="font-weight: bold;">FTO_R</span> (<span style="font-weight: bold; text-decoration: underline;">forth_instruction</span> *<span style="font-weight: bold; font-style: italic;">_</span>) {
+  pop(<span style="font-weight: bold; text-decoration: underline;">scell</span> <span style="font-weight: bold; font-style: italic;">a</span>, value_stack);
+  *(<span style="font-weight: bold; text-decoration: underline;">scell</span>*)frame_stack = a;
+  ++frame_stack;
+  <span style="font-weight: bold;">return</span> 0;
+}
+</pre>
+</div>
+
+<div class="org-src-container">
+<label class="org-src-name"><span class="listing-number">Listing 36: </span><b>c-words.c</b></label><pre class="src src-C" id="org99ed283">&#12; <span style="font-weight: bold; font-style: italic;">// </span><span style="font-weight: bold; font-style: italic;">Branches</span>
+
+<span style="font-weight: bold; text-decoration: underline;">int</span> <span style="font-weight: bold;">FBRANCH</span> (<span style="font-weight: bold; text-decoration: underline;">forth_instruction</span> *<span style="font-weight: bold; font-style: italic;">_</span>) {
+  next_inst += (*(<span style="font-weight: bold; text-decoration: underline;">scell</span> *)next_inst)/<span style="font-weight: bold;">sizeof</span>(*next_inst);
+  <span style="font-weight: bold;">return</span> 0;
+}
+
+<span style="font-weight: bold; text-decoration: underline;">int</span> <span style="font-weight: bold;">FZBRANCH</span> (<span style="font-weight: bold; text-decoration: underline;">forth_instruction</span> *<span style="font-weight: bold; font-style: italic;">_</span>) {
+  pop(<span style="font-weight: bold; text-decoration: underline;">scell</span> <span style="font-weight: bold; font-style: italic;">a</span>, value_stack);
+  <span style="font-weight: bold;">if</span> (a==0) next_inst += (*(<span style="font-weight: bold; text-decoration: underline;">scell</span> *)next_inst)/<span style="font-weight: bold;">sizeof</span>(*next_inst);
+  <span style="font-weight: bold;">else</span> ++next_inst; <span style="font-weight: bold; font-style: italic;">// </span><span style="font-weight: bold; font-style: italic;">skip over target</span>
+  <span style="font-weight: bold;">return</span> 0;
+}
+</pre>
+</div>
+</div>
+</div>
+<div id="outline-container-orgf636f4d" class="outline-3">
+<h3 id="orgf636f4d"><span class="section-number-3">8.2.</span> Mapping to dictionary entries</h3>
+<div class="outline-text-3" id="text-8-2">
+<div class="org-src-container">
+<label class="org-src-name"><span class="listing-number">Listing 37: </span><b>c-words.s</b></label><pre class="src src-asm" id="org5940ce9"><span style="font-weight: bold;">.macro</span> .fw word:req, rest:vararg
+  <span style="font-weight: bold;">.ifnc</span> <span style="font-style: italic;">"\word"</span>,<span style="font-style: italic;">"L"</span>
+    <span style="font-weight: bold;">.4byte</span> \word <span style="font-weight: bold; font-style: italic;">/* </span><span style="font-weight: bold; font-style: italic;">FWSIZE */</span>
+  <span style="font-weight: bold;">.endif</span>
+  <span style="font-weight: bold;">.ifnb</span> \rest
+    <span style="font-weight: bold;">.fw</span> \rest
+  <span style="font-weight: bold;">.endif</span>
+<span style="font-weight: bold;">.endm</span>
+
+<span style="font-weight: bold;">.macro</span> .cell init=0
+  <span style="font-weight: bold;">.4byte</span> \init
+<span style="font-weight: bold;">.endm</span>
+
+<span style="font-weight: bold;">.set</span> previous_entry, 0
+<span style="font-weight: bold;">.macro</span> .entry name:req, label, imm=0, hid=0
+  <span style="font-weight: bold;">.ifc</span> _,\label
+    <span style="font-weight: bold;">.entry</span> \name, \name, \imm, \hid
+  <span style="font-weight: bold;">.else</span>
+    <span style="font-weight: bold;">.balign</span> 4 <span style="font-weight: bold; font-style: italic;">/* </span><span style="font-weight: bold; font-style: italic;">Align to power of 2 */</span>
+    <span style="font-weight: bold;">.globl</span> FHDR_\label
+    <span style="font-weight: bold;">FHDR_</span>\label :
+    <span style="font-weight: bold;">1</span>:.cell previous_entry
+    <span style="font-weight: bold;">.set</span> previous_entry, 1b
+    <span style="font-weight: bold;">.byte</span> \hid, \imm
+    <span style="font-weight: bold;">.balign</span> 4
+    <span style="font-weight: bold;">.cell</span> 2f-3f
+    <span style="font-weight: bold;">3</span>:.ascii <span style="font-style: italic;">"\name"</span>
+    <span style="font-weight: bold;">2</span>:.byte 0
+    <span style="font-weight: bold;">.balign</span> 4 <span style="font-weight: bold; font-style: italic;">/* </span><span style="font-weight: bold; font-style: italic;">Align to power of 2 */</span>
+    <span style="font-weight: bold;">.globl</span> \label
+    \label :
+  <span style="font-weight: bold;">.endif</span>
+<span style="font-weight: bold;">.endm</span>
+
+<span style="font-weight: bold;">.macro</span> .forth_interpreter
+  <span style="font-weight: bold;">.cell</span> forth_interpreter
+<span style="font-weight: bold;">.endm</span>
+
+<span style="font-weight: bold;">.macro</span> fromC name, label, rest:vararg
+  <span style="font-weight: bold;">.ifc</span> _,\label
+    <span style="font-weight: bold;">fromC</span> \name, \name
+  <span style="font-weight: bold;">.else</span>
+    <span style="font-weight: bold;">.entry</span> \name, \label
+    <span style="font-weight: bold;">.fw</span> F\label, 0
+  <span style="font-weight: bold;">.endif</span>
+  <span style="font-weight: bold;">.ifnb</span> \rest
+    <span style="font-weight: bold;">fromC</span> \rest
+  <span style="font-weight: bold;">.endif</span>
+<span style="font-weight: bold;">.endm</span>
+
+<span style="font-weight: bold;">fromC</span> <span style="font-weight: bold;">KEY</span>, _, EMIT, _
+<span style="font-weight: bold;">fromC</span> <span style="font-weight: bold;">BYE</span>, _, EXIT, _, EXECUTE, _
+<span style="font-weight: bold;">fromC</span> <span style="font-style: italic;">"[']"</span>, LIT
+
+<span style="font-weight: bold;">fromC</span> <span style="font-style: italic;">"+"</span>, ADD, <span style="font-style: italic;">"-"</span>, SUB, <span style="font-style: italic;">"*"</span>, STAR, <span style="font-style: italic;">"/"</span>, SLASH
+<span style="font-weight: bold;">fromC</span> <span style="font-style: italic;">"&lt;"</span>, LESS_THAN, <span style="font-style: italic;">"&gt;"</span>, GREATER_THAN
+<span style="font-weight: bold;">fromC</span> <span style="font-style: italic;">"U&lt;"</span>, U_LESS_THAN, <span style="font-style: italic;">"U&gt;"</span>, U_GREATER_THAN
+<span style="font-weight: bold;">fromC</span> <span style="font-style: italic;">"&lt;&gt;"</span>, NOT_EQUAL, <span style="font-style: italic;">"\x3d"</span>, EQUAL
+<span style="font-weight: bold;">fromC</span> <span style="font-weight: bold;">OR</span>, _, AND, _, LSHIFT, _, RSHIFT, _, INVERT, _, NEGATE, _
+<span style="font-weight: bold;">fromC</span> <span style="font-style: italic;">"C!"</span>, C_STORE, <span style="font-style: italic;">"C@"</span>, C_FETCH, <span style="font-style: italic;">"!"</span>, STORE, <span style="font-style: italic;">"@"</span>, FETCH
+<span style="font-weight: bold;">fromC</span> <span style="font-style: italic;">"CELL-SIZE"</span>, CELL_SIZE, <span style="font-style: italic;">"CHAR-SIZE"</span>, CHAR_SIZE
+
+<span style="font-weight: bold;">fromC</span> <span style="font-weight: bold;">DUP</span>, _, DROP, _, NIP, _, OVER, _, PICK, _, ROT, _, SWAP, _
+<span style="font-weight: bold;">fromC</span> <span style="font-style: italic;">"R@"</span>, R_FETCH, <span style="font-style: italic;">"R&gt;"</span>, R_FROM, <span style="font-style: italic;">"&gt;R"</span>, TO_R
+
+<span style="font-weight: bold;">fromC</span> <span style="font-weight: bold;">BRANCH</span>, _, <span style="font-style: italic;">"?BRANCH"</span>, ZBRANCH<span style="font-weight: bold; font-style: italic;">;</span>
+
+<span style="font-weight: bold;">.entry</span> <span style="font-style: italic;">"&lt;FORTH_MAIN&gt;"</span>, forth_main, 0, -1
+<span style="font-weight: bold;">.fw</span> QUIT
+<span style="font-weight: bold;">.fw</span> BYE
+</pre>
+</div>
+</div>
+</div>
+</div>
+
+<div id="outline-container-orgd4c027d" class="outline-2">
+<h2 id="orgd4c027d"><span class="section-number-2">9.</span> <code>[0/1]</code> Tasks</h2>
+<div class="outline-text-2" id="text-9">
+</div>
+<div id="outline-container-org81ac972" class="outline-3">
+<h3 id="org81ac972"><span class="section-number-3">9.1.</span> <span class="todo TODO">TODO</span> Linker</h3>
+<div class="outline-text-3" id="text-9-1">
+<p>
+Have the <code>unix-c-forth</code> interpreter output a file containing
+appropriately sized words, but not relinked, and a file with the
+symbols; then have another program to re-link it to say the bare-metal
+raspberry pi
+</p>
+</div>
+<div id="outline-container-org9879522" class="outline-4">
+<h4 id="org9879522"><span class="section-number-4">9.1.1.</span> Dynamic linking</h4>
+<div class="outline-text-4" id="text-9-1-1">
+<p>
+The ideas of GOT/PLT, and a relocation register, changed when changing
+libraries, should be applicable here too.
+</p>
+</div>
+</div>
+</div>
+</div>
+</div>
+<div id="postamble" class="status">
+<p class="author">Author: Robert Kovacsics (rmk35)</p>
+<p class="date">Created: 2022-01-02 Sun 00:41</p>
+<p class="validation"><a href="https://validator.w3.org/check?uri=referer">Validate</a></p>
+</div>
+</body>
+</html>
