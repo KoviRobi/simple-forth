@@ -1,0 +1,1205 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN"
+"http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml" lang="en" xml:lang="en">
+<head>
+<!-- 2022-01-02 Sun 02:12 -->
+<meta http-equiv="Content-Type" content="text/html;charset=utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Unix C part of the simple Forth interpreter</title>
+<meta name="author" content="Robert Kovacsics (rmk35)" />
+<meta name="generator" content="Org Mode" />
+<style>
+  #content { max-width: 60em; margin: auto; }
+  .title  { text-align: center;
+             margin-bottom: .2em; }
+  .subtitle { text-align: center;
+              font-size: medium;
+              font-weight: bold;
+              margin-top:0; }
+  .todo   { font-family: monospace; color: red; }
+  .done   { font-family: monospace; color: green; }
+  .priority { font-family: monospace; color: orange; }
+  .tag    { background-color: #eee; font-family: monospace;
+            padding: 2px; font-size: 80%; font-weight: normal; }
+  .timestamp { color: #bebebe; }
+  .timestamp-kwd { color: #5f9ea0; }
+  .org-right  { margin-left: auto; margin-right: 0px;  text-align: right; }
+  .org-left   { margin-left: 0px;  margin-right: auto; text-align: left; }
+  .org-center { margin-left: auto; margin-right: auto; text-align: center; }
+  .underline { text-decoration: underline; }
+  #postamble p, #preamble p { font-size: 90%; margin: .2em; }
+  p.verse { margin-left: 3%; }
+  pre {
+    border: 1px solid #e6e6e6;
+    border-radius: 3px;
+    background-color: #f2f2f2;
+    padding: 8pt;
+    font-family: monospace;
+    overflow: auto;
+    margin: 1.2em;
+  }
+  pre.src {
+    position: relative;
+    overflow: auto;
+  }
+  pre.src:before {
+    display: none;
+    position: absolute;
+    top: -8px;
+    right: 12px;
+    padding: 3px;
+    color: #555;
+    background-color: #f2f2f299;
+  }
+  pre.src:hover:before { display: inline; margin-top: 14px;}
+  /* Languages per Org manual */
+  pre.src-asymptote:before { content: 'Asymptote'; }
+  pre.src-awk:before { content: 'Awk'; }
+  pre.src-authinfo::before { content: 'Authinfo'; }
+  pre.src-C:before { content: 'C'; }
+  /* pre.src-C++ doesn't work in CSS */
+  pre.src-clojure:before { content: 'Clojure'; }
+  pre.src-css:before { content: 'CSS'; }
+  pre.src-D:before { content: 'D'; }
+  pre.src-ditaa:before { content: 'ditaa'; }
+  pre.src-dot:before { content: 'Graphviz'; }
+  pre.src-calc:before { content: 'Emacs Calc'; }
+  pre.src-emacs-lisp:before { content: 'Emacs Lisp'; }
+  pre.src-fortran:before { content: 'Fortran'; }
+  pre.src-gnuplot:before { content: 'gnuplot'; }
+  pre.src-haskell:before { content: 'Haskell'; }
+  pre.src-hledger:before { content: 'hledger'; }
+  pre.src-java:before { content: 'Java'; }
+  pre.src-js:before { content: 'Javascript'; }
+  pre.src-latex:before { content: 'LaTeX'; }
+  pre.src-ledger:before { content: 'Ledger'; }
+  pre.src-lisp:before { content: 'Lisp'; }
+  pre.src-lilypond:before { content: 'Lilypond'; }
+  pre.src-lua:before { content: 'Lua'; }
+  pre.src-matlab:before { content: 'MATLAB'; }
+  pre.src-mscgen:before { content: 'Mscgen'; }
+  pre.src-ocaml:before { content: 'Objective Caml'; }
+  pre.src-octave:before { content: 'Octave'; }
+  pre.src-org:before { content: 'Org mode'; }
+  pre.src-oz:before { content: 'OZ'; }
+  pre.src-plantuml:before { content: 'Plantuml'; }
+  pre.src-processing:before { content: 'Processing.js'; }
+  pre.src-python:before { content: 'Python'; }
+  pre.src-R:before { content: 'R'; }
+  pre.src-ruby:before { content: 'Ruby'; }
+  pre.src-sass:before { content: 'Sass'; }
+  pre.src-scheme:before { content: 'Scheme'; }
+  pre.src-screen:before { content: 'Gnu Screen'; }
+  pre.src-sed:before { content: 'Sed'; }
+  pre.src-sh:before { content: 'shell'; }
+  pre.src-sql:before { content: 'SQL'; }
+  pre.src-sqlite:before { content: 'SQLite'; }
+  /* additional languages in org.el's org-babel-load-languages alist */
+  pre.src-forth:before { content: 'Forth'; }
+  pre.src-io:before { content: 'IO'; }
+  pre.src-J:before { content: 'J'; }
+  pre.src-makefile:before { content: 'Makefile'; }
+  pre.src-maxima:before { content: 'Maxima'; }
+  pre.src-perl:before { content: 'Perl'; }
+  pre.src-picolisp:before { content: 'Pico Lisp'; }
+  pre.src-scala:before { content: 'Scala'; }
+  pre.src-shell:before { content: 'Shell Script'; }
+  pre.src-ebnf2ps:before { content: 'ebfn2ps'; }
+  /* additional language identifiers per "defun org-babel-execute"
+       in ob-*.el */
+  pre.src-cpp:before  { content: 'C++'; }
+  pre.src-abc:before  { content: 'ABC'; }
+  pre.src-coq:before  { content: 'Coq'; }
+  pre.src-groovy:before  { content: 'Groovy'; }
+  /* additional language identifiers from org-babel-shell-names in
+     ob-shell.el: ob-shell is the only babel language using a lambda to put
+     the execution function name together. */
+  pre.src-bash:before  { content: 'bash'; }
+  pre.src-csh:before  { content: 'csh'; }
+  pre.src-ash:before  { content: 'ash'; }
+  pre.src-dash:before  { content: 'dash'; }
+  pre.src-ksh:before  { content: 'ksh'; }
+  pre.src-mksh:before  { content: 'mksh'; }
+  pre.src-posh:before  { content: 'posh'; }
+  /* Additional Emacs modes also supported by the LaTeX listings package */
+  pre.src-ada:before { content: 'Ada'; }
+  pre.src-asm:before { content: 'Assembler'; }
+  pre.src-caml:before { content: 'Caml'; }
+  pre.src-delphi:before { content: 'Delphi'; }
+  pre.src-html:before { content: 'HTML'; }
+  pre.src-idl:before { content: 'IDL'; }
+  pre.src-mercury:before { content: 'Mercury'; }
+  pre.src-metapost:before { content: 'MetaPost'; }
+  pre.src-modula-2:before { content: 'Modula-2'; }
+  pre.src-pascal:before { content: 'Pascal'; }
+  pre.src-ps:before { content: 'PostScript'; }
+  pre.src-prolog:before { content: 'Prolog'; }
+  pre.src-simula:before { content: 'Simula'; }
+  pre.src-tcl:before { content: 'tcl'; }
+  pre.src-tex:before { content: 'TeX'; }
+  pre.src-plain-tex:before { content: 'Plain TeX'; }
+  pre.src-verilog:before { content: 'Verilog'; }
+  pre.src-vhdl:before { content: 'VHDL'; }
+  pre.src-xml:before { content: 'XML'; }
+  pre.src-nxml:before { content: 'XML'; }
+  /* add a generic configuration mode; LaTeX export needs an additional
+     (add-to-list 'org-latex-listings-langs '(conf " ")) in .emacs */
+  pre.src-conf:before { content: 'Configuration File'; }
+
+  table { border-collapse:collapse; }
+  caption.t-above { caption-side: top; }
+  caption.t-bottom { caption-side: bottom; }
+  td, th { vertical-align:top;  }
+  th.org-right  { text-align: center;  }
+  th.org-left   { text-align: center;   }
+  th.org-center { text-align: center; }
+  td.org-right  { text-align: right;  }
+  td.org-left   { text-align: left;   }
+  td.org-center { text-align: center; }
+  dt { font-weight: bold; }
+  .footpara { display: inline; }
+  .footdef  { margin-bottom: 1em; }
+  .figure { padding: 1em; }
+  .figure p { text-align: center; }
+  .equation-container {
+    display: table;
+    text-align: center;
+    width: 100%;
+  }
+  .equation {
+    vertical-align: middle;
+  }
+  .equation-label {
+    display: table-cell;
+    text-align: right;
+    vertical-align: middle;
+  }
+  .inlinetask {
+    padding: 10px;
+    border: 2px solid gray;
+    margin: 10px;
+    background: #ffffcc;
+  }
+  #org-div-home-and-up
+   { text-align: right; font-size: 70%; white-space: nowrap; }
+  textarea { overflow-x: auto; }
+  .linenr { font-size: smaller }
+  .code-highlighted { background-color: #ffff00; }
+  .org-info-js_info-navigation { border-style: none; }
+  #org-info-js_console-label
+    { font-size: 10px; font-weight: bold; white-space: nowrap; }
+  .org-info-js_search-highlight
+    { background-color: #ffff00; color: #000000; font-weight: bold; }
+  .org-svg { width: 90%; }
+</style>
+<link rel="stylesheet" type="text/css" href="../org-html-themes/src/readtheorg_theme/css/htmlize.css"/>
+<link rel="stylesheet" type="text/css" href="../org-html-themes/src/readtheorg_theme/css/readtheorg.css"/>
+<script type="text/javascript" src="../org-html-themes/src/readtheorg_theme/js/readtheorg.js"></script>
+</head>
+<body>
+<div id="content" class="content">
+<h1 class="title">Unix C part of the simple Forth interpreter</h1>
+<div id="table-of-contents" role="doc-toc">
+<h2>Table of Contents</h2>
+<div id="text-table-of-contents" role="doc-toc">
+<ul>
+<li><a href="#org29005c6">1. High-level overview</a></li>
+<li><a href="#orge12fcfa">2. Putting it together</a></li>
+<li><a href="#org976ad7b">3. Command-line arguments</a>
+<ul>
+<li><a href="#org9c1fd35">3.1. Allocating stacks and heap</a></li>
+</ul>
+</li>
+<li><a href="#org08759ee">4. Unix-signal handling (to print stacks)</a></li>
+<li><a href="#orgd9777de">5. Printing stacks and heaps</a>
+<ul>
+<li><a href="#org343e7ee">5.1. Mapping addresses to names</a></li>
+</ul>
+</li>
+<li><a href="#org5b809a5">6. Compiling input files</a></li>
+<li><a href="#org9a40683">7. Outputting compiled heap</a></li>
+<li><a href="#org8611ae8">8. Basic words</a>
+<ul>
+<li><a href="#orgd073f96">8.1. C implementation</a></li>
+<li><a href="#org82a152f">8.2. Mapping to dictionary entries</a></li>
+</ul>
+</li>
+<li><a href="#org2aa4d28">9. <code>[0/1]</code> Tasks</a>
+<ul>
+<li><a href="#org75f118d">9.1. <span class="todo TODO">TODO</span> Linker</a>
+<ul>
+<li><a href="#org1b3d506">9.1.1. Dynamic linking</a></li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+</div>
+</div>
+
+<div id="outline-container-org29005c6" class="outline-2">
+<h2 id="org29005c6"><span class="section-number-2">1.</span> High-level overview</h2>
+<div class="outline-text-2" id="text-1">
+<div class="org-src-container">
+<label class="org-src-name"><span class="listing-number">Listing 1: </span><b>unix-c-forth.c</b></label><pre class="src src-C" id="org1693303">&lt;&lt;includes&gt;&gt;
+<span class="org-preprocessor">#include</span> <span class="org-string">"unix-c-forth.h"</span>
+
+<span class="org-keyword">extern</span> forth_instruction forth_main;
+<span class="org-keyword">extern</span> <span class="org-type">int</span> <span class="org-variable-name">level</span>;
+<span class="org-type">forth_instruction</span> *<span class="org-variable-name">next_inst</span>;
+&lt;&lt;globals&gt;&gt;
+
+&lt;&lt;before main&gt;&gt;
+
+<span class="org-type">void</span>
+print_state() {
+  print_frame_stack();
+  print_next_inst();
+  print_value_stack();
+  print_heap();
+  fflush(stdout);
+}
+
+<span class="org-type">void</span>
+<span class="org-function-name">exit_handler</span>() {
+  print_state();
+  &lt;&lt;exit clean-up&gt;&gt;
+}
+
+<span class="org-type">int</span>
+<span class="org-function-name">main</span>(<span class="org-type">int</span> <span class="org-variable-name">argc</span>, <span class="org-type">char</span> **<span class="org-variable-name">argv</span>) {
+  &lt;&lt;set up signal handling&gt;&gt;
+  &lt;&lt;parse arguments&gt;&gt;
+  &lt;&lt;initialize variables&gt;&gt;
+  atexit(exit_handler);
+
+  &lt;&lt;compile input files&gt;&gt;
+
+  <span class="org-keyword">if</span> (<span class="org-negation-char">!</span>arguments.no_repl) {
+    next_inst = &amp;forth_main;
+    <span class="org-type">int</span> <span class="org-variable-name">exit_loop</span> = 0;
+    <span class="org-keyword">while</span> (exit_loop != -1) { <span class="org-comment-delimiter">// </span><span class="org-comment">'next' trampoline</span>
+      exit_loop = unpack_and_execute_instruction(*next_inst++);
+    }
+  }
+
+  &lt;&lt;output compiled heap&gt;&gt;
+
+  exit(0);
+}
+</pre>
+</div>
+
+<p>
+An encoded instruction is a 32-bit value, representing the offset from
+the start of instruction space to where the pointer to the interpreter
+is. It is decoded to be a function pointer before executing the
+interpreter it points to. The return stack contains pointers to the
+next encoded instruction to execute.
+</p>
+<div class="org-src-container">
+<label class="org-src-name"><span class="listing-number">Listing 2: </span><b>types.h</b></label><pre class="src src-C" id="orge22dcbe"><span class="org-preprocessor">#if</span><span class="org-negation-char"><span class="org-preprocessor">n</span></span><span class="org-preprocessor">def</span> _UNIX_C_FORTH_TYPES_H_
+<span class="org-preprocessor">#define</span> <span class="org-variable-name">_UNIX_C_FORTH_TYPES_H_</span>
+
+<span class="org-preprocessor">#include</span> <span class="org-string">&lt;stdint.h&gt;</span>
+<span class="org-preprocessor">#include</span> <span class="org-string">&lt;stdio.h&gt;</span>
+
+<span class="org-keyword">typedef</span> <span class="org-type">uint32_t</span> <span class="org-type">forth_instruction</span>;
+<span class="org-keyword">typedef</span> <span class="org-type">int</span>  (*<span class="org-type">forth_instruction_decoded</span>)(<span class="org-type">forth_instruction</span>*);
+</pre>
+</div>
+
+<div class="org-src-container">
+<label class="org-src-name"><span class="listing-number">Listing 3: </span><code>&lt;&lt;globals&gt;&gt;</code></label><pre class="src src-C" id="org42a42cb"><span class="org-type">FILE</span> *<span class="org-variable-name">input_stream</span>;
+<span class="org-type">FILE</span> *<span class="org-variable-name">output_stream</span>;
+<span class="org-type">forth_instruction</span> **<span class="org-variable-name">frame_stack</span>, **<span class="org-variable-name">frame_stack_bottom</span>, **<span class="org-variable-name">frame_stack_top</span>;
+</pre>
+</div>
+
+<p>
+We also have types for a cell, which is a standard unit on the value
+stack, and on the heap.
+</p>
+<div class="org-src-container">
+<label class="org-src-name"><span class="listing-number">Listing 4: </span><b>types.h</b></label><pre class="src src-C" id="orgffa81d2"><span class="org-keyword">typedef</span> <span class="org-type">int32_t</span>  <span class="org-type">scell</span>;
+<span class="org-keyword">typedef</span> <span class="org-type">uint32_t</span> <span class="org-type">ucell</span>;
+
+<span class="org-keyword">extern</span> <span class="org-type">FILE</span> *<span class="org-variable-name">input_stream</span>;
+<span class="org-keyword">extern</span> <span class="org-type">FILE</span> *<span class="org-variable-name">output_stream</span>;
+<span class="org-keyword">extern</span> <span class="org-type">forth_instruction</span> <span class="org-variable-name">forth_main</span>;
+<span class="org-keyword">extern</span> <span class="org-type">forth_instruction</span> *<span class="org-variable-name">next_inst</span>;
+<span class="org-keyword">extern</span> <span class="org-type">forth_instruction</span> **<span class="org-variable-name">frame_stack</span>, **<span class="org-variable-name">frame_stack_bottom</span>, **<span class="org-variable-name">frame_stack_top</span>;
+<span class="org-keyword">extern</span> <span class="org-type">scell</span> *<span class="org-variable-name">value_stack</span>, *<span class="org-variable-name">value_stack_bottom</span>, *<span class="org-variable-name">value_stack_top</span>;
+<span class="org-keyword">extern</span> <span class="org-type">scell</span> *<span class="org-variable-name">HERE_LOC</span>, *<span class="org-variable-name">heap_bottom</span>, *<span class="org-variable-name">heap_top</span>;
+</pre>
+</div>
+
+<div class="org-src-container">
+<label class="org-src-name"><span class="listing-number">Listing 5: </span><code>&lt;&lt;globals&gt;&gt;</code></label><pre class="src src-C" id="orgd9c54b8"><span class="org-type">scell</span> *<span class="org-variable-name">value_stack</span>, *<span class="org-variable-name">value_stack_bottom</span>, *<span class="org-variable-name">value_stack_top</span>;
+<span class="org-type">scell</span> *<span class="org-variable-name">HERE_LOC</span>, *<span class="org-variable-name">heap_bottom</span>, *<span class="org-variable-name">heap_top</span>;
+</pre>
+</div>
+
+<p>
+The conversion from <code>forth_instruction</code> to <code>forth_instruction_decoded</code>
+is by offsetting it from the base of the heap. This involves some
+complicated casting, so it has been broken up into several variables.
+</p>
+<div class="org-src-container">
+<label class="org-src-name"><span class="listing-number">Listing 6: </span><b>unix-c-forth.h</b></label><pre class="src src-C" id="org28a7f9d"><span class="org-preprocessor">#if</span><span class="org-negation-char"><span class="org-preprocessor">n</span></span><span class="org-preprocessor">def</span> _UNIX_C_FORTH_SIMPLE_FORTH_H_
+<span class="org-preprocessor">#define</span> <span class="org-variable-name">_UNIX_C_FORTH_SIMPLE_FORTH_H_</span>
+
+<span class="org-preprocessor">#include</span> <span class="org-string">"types.h"</span>
+<span class="org-type">int</span> <span class="org-function-name">unpack_and_execute_instruction</span>(<span class="org-type">forth_instruction</span> <span class="org-variable-name">inst</span>);
+
+<span class="org-preprocessor">#endif</span> <span class="org-comment-delimiter">// </span><span class="org-comment">_UNIX_C_FORTH_SIMPLE_FORTH_H_</span>
+</pre>
+</div>
+
+<div class="org-src-container">
+<label class="org-src-name"><span class="listing-number">Listing 7: </span><code>&lt;&lt;before main&gt;&gt;</code></label><pre class="src src-C" id="orgad5cfb3"><span class="org-type">int</span>
+<span class="org-function-name">unpack_and_execute_instruction</span>(<span class="org-type">forth_instruction</span> <span class="org-variable-name">inst</span>)
+{
+  <span class="org-keyword">typedef</span> <span class="org-type">forth_instruction_decoded</span> <span class="org-type">decoded</span>;
+  <span class="org-comment-delimiter">// </span><span class="org-comment">Offset is in bytes</span>
+  <span class="org-type">uint8_t</span> *<span class="org-variable-name">byte_addressed_heap</span> = (<span class="org-type">uint8_t</span>*)0; <span class="org-comment-delimiter">// </span><span class="org-comment">TODO</span>
+  <span class="org-type">uint8_t</span> *<span class="org-variable-name">interpreter_ptr_addr</span> = byte_addressed_heap + inst;
+  <span class="org-comment-delimiter">// </span><span class="org-comment">Convert to pointer, so that dereferencing loads a whole cell,,</span>
+  <span class="org-comment-delimiter">// </span><span class="org-comment">not just a byte</span>
+  <span class="org-type">scell</span> *<span class="org-variable-name">interpreter_ptr_cell</span> = (<span class="org-type">scell</span> *)interpreter_ptr_addr;
+  <span class="org-type">decoded</span> <span class="org-variable-name">interpreter_ptr</span> = (<span class="org-type">decoded</span>)(<span class="org-type">uintptr_t</span>)*interpreter_ptr_cell;
+  <span class="org-comment-delimiter">// </span><span class="org-comment">Skip interpreter pointer, to the first forth instruction</span>
+  <span class="org-type">scell</span> *<span class="org-variable-name">first_forth_instruction</span> = interpreter_ptr_cell+1;
+  <span class="org-keyword">return</span> (*interpreter_ptr)((<span class="org-type">forth_instruction</span>*)first_forth_instruction);
+}
+</pre>
+</div>
+</div>
+</div>
+
+<div id="outline-container-orge12fcfa" class="outline-2">
+<h2 id="orge12fcfa"><span class="section-number-2">2.</span> Putting it together</h2>
+<div class="outline-text-2" id="text-2">
+<div class="org-src-container">
+<label class="org-src-name"><span class="listing-number">Listing 8: </span><b>Makefile</b></label><pre class="src src-Makefile" id="org18837ab">BUILDDIR := ../build
+SRCS := unix-c-forth.c c-words.c arguments.c
+OBJS := $(patsubst %.c,%.o,$(SRCS)) words.o
+
+CFLAGS := -g -rdynamic $(CFLAGS)
+LIBS   := -lc -ldl
+
+.PHONY: all
+all: unix-c-forth
+
+unix-c-forth: $(OBJS)
+	cc $(CFLAGS) $^ -o $@ $(LIBS)
+
+words.o: c-words.s $(BUILDDIR)/stage0.s $(BUILDDIR)/stage1.s vars.s
+	as -g $^ -o $@
+
+.PHONY: clean
+clean:
+	rm simple-c-forth $(OBJS)
+</pre>
+</div>
+
+<div class="org-src-container">
+<label class="org-src-name"><span class="listing-number">Listing 9: </span><b>vars.s</b></label><pre class="src src-asm" id="orge218dec"><span class="org-keyword">.data</span>
+<span class="org-keyword">.balign</span> 4
+<span class="org-keyword">.globl</span> previous_entry, LATEST_LOC
+<span class="org-function-name">LATEST_LOC</span>:   .cell previous_entry
+</pre>
+</div>
+</div>
+</div>
+<div id="outline-container-org976ad7b" class="outline-2">
+<h2 id="org976ad7b"><span class="section-number-2">3.</span> Command-line arguments</h2>
+<div class="outline-text-2" id="text-3">
+<div class="org-src-container">
+<label class="org-src-name"><span class="listing-number">Listing 10: </span><code>&lt;&lt;includes&gt;&gt;</code></label><pre class="src src-C" id="org99b02d2"><span class="org-preprocessor">#include</span> <span class="org-string">"arguments.h"</span>
+</pre>
+</div>
+
+<div class="org-src-container">
+<label class="org-src-name"><span class="listing-number">Listing 11: </span><b>arguments.h</b></label><pre class="src src-C" id="orge891323"><span class="org-preprocessor">#if</span><span class="org-negation-char"><span class="org-preprocessor">n</span></span><span class="org-preprocessor">def</span> _UNIX_C_FORTH_ARGUMENTS_H_
+<span class="org-preprocessor">#define</span> <span class="org-variable-name">_UNIX_C_FORTH_ARGUMENTS_H_</span>
+
+<span class="org-preprocessor">#include</span> <span class="org-string">&lt;argp.h&gt;</span>
+
+<span class="org-preprocessor">#include</span> <span class="org-string">"types.h"</span>
+
+<span class="org-comment-delimiter">/* </span><span class="org-comment">Used by main to communicate with parse_opt.</span><span class="org-comment-delimiter"> */</span>
+<span class="org-keyword">struct</span> <span class="org-type">arguments</span>
+{
+  <span class="org-type">uint64_t</span> <span class="org-variable-name">values_size</span>;
+  <span class="org-type">uint64_t</span> <span class="org-variable-name">frames_size</span>;
+  <span class="org-type">uint64_t</span> <span class="org-variable-name">heap_size</span>;
+  <span class="org-type">char</span> *<span class="org-variable-name">output</span>;
+  <span class="org-type">uint64_t</span> <span class="org-variable-name">offset</span>;
+  <span class="org-type">char</span> **<span class="org-variable-name">inputs</span>;
+  <span class="org-type">unsigned</span> <span class="org-variable-name">input_count</span>;
+  <span class="org-type">short</span> <span class="org-variable-name">no_repl</span>;
+  <span class="org-type">short</span> <span class="org-variable-name">target_word_size</span>;
+  <span class="org-type">short</span> <span class="org-variable-name">target_le</span>;
+};
+
+<span class="org-type">void</span>
+<span class="org-function-name">parse_arguments</span>(<span class="org-type">int</span> <span class="org-variable-name">argc</span>, <span class="org-type">char</span> **<span class="org-variable-name">argv</span>, <span class="org-keyword">struct</span> <span class="org-type">arguments</span> *<span class="org-variable-name">arguments</span>);
+
+<span class="org-preprocessor">#endif</span> <span class="org-comment-delimiter">// </span><span class="org-comment">_UNIX_C_FORTH_ARGUMENTS_H_</span>
+</pre>
+</div>
+
+<div class="org-src-container">
+<label class="org-src-name"><span class="listing-number">Listing 12: </span><b>arguments.c</b></label><pre class="src src-C" id="org03d536d"><span class="org-preprocessor">#include</span> <span class="org-string">&lt;stdlib.h&gt;</span>
+
+<span class="org-preprocessor">#include</span> <span class="org-string">"arguments.h"</span>
+
+<span class="org-keyword">const</span> <span class="org-type">char</span> *<span class="org-variable-name">argp_program_version</span> =
+  <span class="org-string">"simple-c-forth 1.0"</span>;
+<span class="org-keyword">const</span> <span class="org-type">char</span> *<span class="org-variable-name">argp_program_bug_address</span> =
+  <span class="org-string">"Robert Kovacsics <a href="mailto:rmk35%40cl.cam.ac.uk">&lt;rmk35@cl.cam.ac.uk&gt;</a>"</span>;
+
+<span class="org-comment-delimiter">/* </span><span class="org-comment">Program documentation.</span><span class="org-comment-delimiter"> */</span>
+<span class="org-keyword">static</span> <span class="org-type">char</span> <span class="org-variable-name">doc</span>[] =
+  <span class="org-string">"A simple forth interpreter written in C, part of "</span>
+  <span class="org-string">"https://github.com/KoviRobi/simple-forth"</span>;
+
+<span class="org-comment-delimiter">/* </span><span class="org-comment">A description of the arguments we accept.</span><span class="org-comment-delimiter"> */</span>
+<span class="org-keyword">static</span> <span class="org-type">char</span> <span class="org-variable-name">args_doc</span>[] = <span class="org-string">"[Input files]"</span>;
+
+<span class="org-comment-delimiter">/* </span><span class="org-comment">The options we understand.</span><span class="org-comment-delimiter"> */</span>
+<span class="org-keyword">static</span> <span class="org-keyword">struct</span> <span class="org-type">argp_option</span> <span class="org-variable-name">options</span>[] = {
+  {<span class="org-string">"little-endian"</span>,    <span class="org-string">'l'</span>, 0,          0,
+    <span class="org-string">"Target is a little-endian system"</span> },
+  {<span class="org-string">"el"</span>,               <span class="org-string">'l'</span>, 0,          OPTION_ALIAS },
+  {<span class="org-string">"no-repl"</span>,         <span class="org-string">'n'</span>, 0,          0,
+    <span class="org-string">"Don't open a REPL on the standard input"</span> },
+  {<span class="org-string">"value-stack"</span>,      <span class="org-string">'v'</span>, <span class="org-string">"elements"</span>, 0,
+    <span class="org-string">"Size of the value stack (in elements)"</span> },
+  {<span class="org-string">"value-stack-size"</span>, <span class="org-string">'v'</span>, <span class="org-string">"elements"</span>, OPTION_ALIAS },
+  {<span class="org-string">"frame-stack"</span>,      <span class="org-string">'f'</span>, <span class="org-string">"elements"</span>, 0,
+    <span class="org-string">"Size of the frame stack (in elements)"</span> },
+  {<span class="org-string">"frame-stack-size"</span>, <span class="org-string">'f'</span>, <span class="org-string">"elements"</span>, OPTION_ALIAS },
+  {<span class="org-string">"heap"</span>,             <span class="org-string">'H'</span>, <span class="org-string">"bytes"</span>,    0,
+    <span class="org-string">"Size of the heap (in bytes)"</span> },
+  {<span class="org-string">"heap-size"</span>,        <span class="org-string">'H'</span>, <span class="org-string">"bytes"</span>,    OPTION_ALIAS },
+  {<span class="org-string">"output"</span>,           <span class="org-string">'o'</span>, <span class="org-string">"file"</span>,     0,
+    <span class="org-string">"Output dump of compiling input files"</span> },
+  {<span class="org-string">"offset"</span>,           <span class="org-string">'O'</span>, <span class="org-string">"bytes"</span>,    0,
+    <span class="org-string">"Offset for output file (default is zero, i.e. first"</span>
+    <span class="org-string">" compiled word is at 0)"</span> },
+  <span class="org-comment-delimiter">// </span><span class="org-comment">TODO: builtin words</span>
+  {<span class="org-string">"word"</span>,             <span class="org-string">'w'</span>, <span class="org-string">"bits"</span>,     0,
+    <span class="org-string">"Size of a forth word for output file (in bits)"</span> },
+  {<span class="org-string">"target-word-size"</span>, <span class="org-string">'w'</span>, <span class="org-string">"bits"</span>,     OPTION_ALIAS },
+  { 0 }
+};
+
+<span class="org-comment-delimiter">/* </span><span class="org-comment">Parse a single option.</span><span class="org-comment-delimiter"> */</span>
+<span class="org-keyword">static</span> <span class="org-type">error_t</span>
+<span class="org-function-name">parse_opt</span> (<span class="org-type">int</span> <span class="org-variable-name">key</span>, <span class="org-type">char</span> *<span class="org-variable-name">arg</span>, <span class="org-keyword">struct</span> <span class="org-type">argp_state</span> *<span class="org-variable-name">state</span>)
+{
+  <span class="org-keyword">struct</span> <span class="org-type">arguments</span> *<span class="org-variable-name">arguments</span> = state-&gt;input;
+
+  <span class="org-keyword">switch</span> (key)
+  {
+    <span class="org-keyword">case</span> <span class="org-string">'l'</span>: arguments-&gt;target_le         = 1;         <span class="org-keyword">break</span>;
+    <span class="org-keyword">case</span> <span class="org-string">'n'</span>: arguments-&gt;no_repl           = 1;         <span class="org-keyword">break</span>;
+    <span class="org-keyword">case</span> <span class="org-string">'v'</span>: arguments-&gt;values_size       = atoi(arg); <span class="org-keyword">break</span>;
+    <span class="org-keyword">case</span> <span class="org-string">'f'</span>: arguments-&gt;frames_size       = atoi(arg); <span class="org-keyword">break</span>;
+    <span class="org-keyword">case</span> <span class="org-string">'H'</span>: arguments-&gt;heap_size         = atoi(arg); <span class="org-keyword">break</span>;
+    <span class="org-keyword">case</span> <span class="org-string">'o'</span>: arguments-&gt;output            = arg;       <span class="org-keyword">break</span>;
+    <span class="org-keyword">case</span> <span class="org-string">'O'</span>: arguments-&gt;offset            = atoi(arg); <span class="org-keyword">break</span>;
+    <span class="org-keyword">case</span> <span class="org-string">'w'</span>: arguments-&gt;target_word_size  = atoi(arg); <span class="org-keyword">break</span>;
+
+    <span class="org-keyword">case</span> ARGP_KEY_ARG:
+      arguments-&gt;inputs = &amp;state-&gt;argv[state-&gt;next-1];
+      arguments-&gt;input_count = state-&gt;argc - (state-&gt;next - 1);
+      state-&gt;next = state-&gt;argc; <span class="org-comment-delimiter">// </span><span class="org-comment">Stop parsing</span>
+      <span class="org-keyword">break</span>;
+
+    <span class="org-keyword">default</span>:
+      <span class="org-keyword">return</span> ARGP_ERR_UNKNOWN;
+  }
+  <span class="org-keyword">return</span> 0;
+}
+
+<span class="org-comment-delimiter">/* </span><span class="org-comment">Our argp parser.</span><span class="org-comment-delimiter"> */</span>
+<span class="org-keyword">static</span> <span class="org-keyword">struct</span> <span class="org-type">argp</span> <span class="org-variable-name">argp</span> = { options, parse_opt, args_doc, doc };
+
+<span class="org-type">void</span>
+<span class="org-function-name">parse_arguments</span>(<span class="org-type">int</span> <span class="org-variable-name">argc</span>, <span class="org-type">char</span> **<span class="org-variable-name">argv</span>, <span class="org-keyword">struct</span> <span class="org-type">arguments</span> *<span class="org-variable-name">arguments</span>)
+{
+  argp_parse(&amp;argp, argc, argv, 0, 0, arguments);
+}
+</pre>
+</div>
+
+<div class="org-src-container">
+<label class="org-src-name"><span class="listing-number">Listing 13: </span><code>&lt;&lt;parse arguments&gt;&gt;</code></label><pre class="src src-C" id="orgb2817c1"><span class="org-keyword">struct</span> <span class="org-type">arguments</span> <span class="org-variable-name">arguments</span>;
+arguments.values_size      = 1024;
+arguments.frames_size      = 1024;
+arguments.heap_size        = 4096;
+arguments.output           = <span class="org-constant">NULL</span>;
+arguments.offset           = 0;
+arguments.inputs           = 0;
+arguments.input_count      = 0;
+arguments.no_repl          = 0;
+arguments.target_word_size = 32;
+arguments.target_le        = 0;
+<span class="org-function-name">parse_arguments</span>(argc, argv, &amp;arguments);
+</pre>
+</div>
+</div>
+<div id="outline-container-org9c1fd35" class="outline-3">
+<h3 id="org9c1fd35"><span class="section-number-3">3.1.</span> Allocating stacks and heap</h3>
+<div class="outline-text-3" id="text-3-1">
+<div class="org-src-container">
+<label class="org-src-name"><span class="listing-number">Listing 14: </span><code>&lt;&lt;before main&gt;&gt;</code></label><pre class="src src-C" id="org120cdf9"><span class="org-type">void</span> *<span class="org-function-name">allocate</span>(<span class="org-type">unsigned</span> <span class="org-type">int</span> <span class="org-variable-name">count</span>, <span class="org-type">unsigned</span> <span class="org-type">int</span> <span class="org-variable-name">size</span>) {
+  <span class="org-type">void</span> *<span class="org-variable-name">rtn</span> = calloc(count, size);
+  <span class="org-keyword">if</span> ((<span class="org-type">void</span> *)rtn == <span class="org-constant">NULL</span>) perror(<span class="org-string">"Failed to allocate"</span>);
+  <span class="org-keyword">return</span> rtn;
+}
+</pre>
+</div>
+
+<div class="org-src-container">
+<label class="org-src-name"><span class="listing-number">Listing 15: </span><code>&lt;&lt;initialize variables&gt;&gt;</code></label><pre class="src src-C" id="org7bdde58">input_stream = stdin;
+output_stream = stdout;
+frame_stack = allocate(arguments.frames_size, <span class="org-keyword">sizeof</span>(<span class="org-type">forth_instruction</span>*));
+frame_stack_bottom = frame_stack;
+frame_stack_top = frame_stack_bottom + arguments.frames_size;
+value_stack = allocate(arguments.values_size, <span class="org-keyword">sizeof</span>(scell));
+value_stack_bottom = value_stack;
+value_stack_top = value_stack_bottom + arguments.values_size;
+HERE_LOC = allocate(arguments.heap_size, <span class="org-keyword">sizeof</span>(scell));
+heap_bottom = HERE_LOC;
+heap_top = heap_bottom + arguments.heap_size;
+</pre>
+</div>
+</div>
+</div>
+</div>
+<div id="outline-container-org08759ee" class="outline-2">
+<h2 id="org08759ee"><span class="section-number-2">4.</span> Unix-signal handling (to print stacks)</h2>
+<div class="outline-text-2" id="text-4">
+<div class="org-src-container">
+<label class="org-src-name"><span class="listing-number">Listing 16: </span><code>&lt;&lt;includes&gt;&gt;</code></label><pre class="src src-C" id="org2533432"><span class="org-preprocessor">#include</span> <span class="org-string">&lt;signal.h&gt;</span>
+</pre>
+</div>
+<div class="org-src-container">
+<label class="org-src-name"><span class="listing-number">Listing 17: </span><code>&lt;&lt;set up signal handling&gt;&gt;</code></label><pre class="src src-C" id="org83f8bbf"><span class="org-keyword">struct</span> <span class="org-type">sigaction</span> <span class="org-variable-name">new_action</span>, <span class="org-variable-name">old_action</span>;
+new_action.sa_handler = exit;
+sigemptyset (&amp;new_action.sa_mask);
+new_action.sa_flags = 0;
+<span class="org-function-name">sigaction</span> (SIGINT, <span class="org-constant">NULL</span>, &amp;old_action);
+<span class="org-keyword">if</span> (old_action.sa_handler != SIG_IGN)
+  <span class="org-function-name">sigaction</span> (SIGINT, &amp;new_action, <span class="org-constant">NULL</span>);
+new_action.sa_handler = print_state;
+<span class="org-function-name">sigaction</span> (SIGQUIT, <span class="org-constant">NULL</span>, &amp;old_action);
+<span class="org-keyword">if</span> (old_action.sa_handler != SIG_IGN)
+  <span class="org-function-name">sigaction</span> (SIGQUIT, &amp;new_action, <span class="org-constant">NULL</span>);
+</pre>
+</div>
+</div>
+</div>
+<div id="outline-container-orgd9777de" class="outline-2">
+<h2 id="orgd9777de"><span class="section-number-2">5.</span> Printing stacks and heaps</h2>
+<div class="outline-text-2" id="text-5">
+<div class="org-src-container">
+<label class="org-src-name"><span class="listing-number">Listing 18: </span><code>&lt;&lt;before main&gt;&gt;</code></label><pre class="src src-C" id="org35d9311"><span class="org-type">void</span>
+<span class="org-function-name">print_value_stack</span>() {
+  printf(<span class="org-string">"Values (bottom first)\n"</span>);
+  <span class="org-keyword">for</span> (<span class="org-type">scell</span> *<span class="org-variable-name">i</span> = value_stack_bottom; i &lt; value_stack; ++i)
+    printf(<span class="org-string">"%12d %12u 0x%08x\n"</span>, *i, *i, *i);
+}
+</pre>
+</div>
+
+<div class="org-src-container">
+<label class="org-src-name"><span class="listing-number">Listing 19: </span><code>&lt;&lt;before main&gt;&gt;</code></label><pre class="src src-C" id="org58aebde"><span class="org-type">char</span>
+<span class="org-function-name">char_disp</span>(<span class="org-type">char</span> *<span class="org-variable-name">p</span>) {
+  <span class="org-type">char</span> <span class="org-variable-name">c</span> = *p;
+  <span class="org-keyword">if</span> (c &lt; 32 || c &gt; 126) <span class="org-keyword">return</span> <span class="org-string">' '</span>;
+  <span class="org-keyword">else</span> <span class="org-keyword">return</span> c;
+}
+
+<span class="org-type">void</span>
+<span class="org-function-name">print_heap</span>() {
+  printf(<span class="org-string">"Heap (%p--%p):\n"</span>, heap_bottom, HERE_LOC);
+  <span class="org-type">char</span> *<span class="org-variable-name">p</span> = (<span class="org-type">char</span>*)heap_bottom;
+  <span class="org-comment-delimiter">// </span><span class="org-comment">Print in block of 4 bytes</span>
+  <span class="org-keyword">for</span> (; p+3 &lt; (<span class="org-type">char</span>*)HERE_LOC; p += 4) {
+    printf(<span class="org-string">"%p:\t0x%08x\t%c%c%c%c\n"</span>,
+           (<span class="org-type">void</span>*)p,
+           *(<span class="org-type">uint32_t</span>*)p,
+           char_disp(p), char_disp(p+1),
+           char_disp(p+2), char_disp(p+3));
+  }
+  <span class="org-comment-delimiter">// </span><span class="org-comment">Print the remaining bytes</span>
+  <span class="org-keyword">if</span> (p &lt; (<span class="org-type">char</span>*)HERE_LOC) {
+    printf(<span class="org-string">"%p:\t"</span>, (<span class="org-type">void</span>*)p);
+    <span class="org-type">intptr_t</span> <span class="org-variable-name">diff</span> = (<span class="org-type">char</span>*)HERE_LOC - p;
+    <span class="org-type">uint32_t</span> <span class="org-variable-name">mask</span> = (1&lt;&lt;(diff*8))-1;
+    <span class="org-type">uint32_t</span> <span class="org-variable-name">value</span> = *(<span class="org-type">uint32_t</span>*)p;
+    printf(<span class="org-string">"0x%08x\t"</span>, value&amp;mask);
+    <span class="org-keyword">for</span> (<span class="org-type">char</span> *<span class="org-variable-name">c</span> = p; c &lt; (<span class="org-type">char</span>*)HERE_LOC; c += 1)
+      printf(<span class="org-string">"%c"</span>, char_disp(c));
+    printf(<span class="org-string">"\n"</span>);
+  }
+}
+</pre>
+</div>
+</div>
+
+<div id="outline-container-org343e7ee" class="outline-3">
+<h3 id="org343e7ee"><span class="section-number-3">5.1.</span> Mapping addresses to names</h3>
+<div class="outline-text-3" id="text-5-1">
+<div class="org-src-container">
+<label class="org-src-name"><span class="listing-number">Listing 20: </span><code>&lt;&lt;includes&gt;&gt;</code></label><pre class="src src-C" id="orgbb73746"><span class="org-preprocessor">#include</span> <span class="org-string">&lt;dlfcn.h&gt;</span>
+<span class="org-preprocessor">#include</span> <span class="org-string">&lt;stdlib.h&gt;</span>
+</pre>
+</div>
+
+<div class="org-src-container">
+<label class="org-src-name"><span class="listing-number">Listing 21: </span><b>types.h</b></label><pre class="src src-C" id="org22d321b"><span class="org-type">char</span> *<span class="org-function-name">addr2name</span>(<span class="org-type">void</span> *<span class="org-variable-name">addr</span>);
+<span class="org-preprocessor">#endif</span> <span class="org-comment-delimiter">// </span><span class="org-comment">_UNIX_C_FORTH_TYPES_H_</span>
+</pre>
+</div>
+
+<div class="org-src-container">
+<label class="org-src-name"><span class="listing-number">Listing 22: </span><code>&lt;&lt;globals&gt;&gt;</code></label><pre class="src src-C" id="orge146ceb"><span class="org-keyword">extern</span> <span class="org-type">scell</span> <span class="org-variable-name">LATEST_LOC</span>;
+</pre>
+</div>
+<div class="org-src-container">
+<label class="org-src-name"><span class="listing-number">Listing 23: </span><code>&lt;&lt;before main&gt;&gt;</code></label><pre class="src src-C" id="org5fafbb9"><span class="org-keyword">typedef</span> <span class="org-keyword">struct</span> <span class="org-type">dict_entry</span> {
+  <span class="org-type">ucell</span> <span class="org-variable-name">prev</span>;
+  <span class="org-type">ucell</span> <span class="org-variable-name">flags</span>;
+  <span class="org-type">ucell</span> <span class="org-variable-name">name_len</span>;
+  <span class="org-type">char</span> <span class="org-variable-name">name_start</span>;
+} <span class="org-type">entry</span>;
+
+<span class="org-type">char</span> *
+<span class="org-function-name">addr2name</span>(<span class="org-type">void</span> *<span class="org-variable-name">addr</span>)
+{
+  <span class="org-keyword">for</span> (<span class="org-type">entry</span> *<span class="org-variable-name">p</span> = (<span class="org-type">entry</span>*)(<span class="org-type">uintptr_t</span>)LATEST_LOC; p != <span class="org-constant">NULL</span>;
+              p = (<span class="org-type">entry</span>*)(<span class="org-type">uintptr_t</span>)p-&gt;prev)
+    <span class="org-keyword">if</span> ((<span class="org-type">uintptr_t</span>)p&lt;(<span class="org-type">uintptr_t</span>)addr)
+      <span class="org-keyword">return</span> &amp;p-&gt;name_start;
+  <span class="org-keyword">return</span> <span class="org-constant">NULL</span>;
+}
+
+<span class="org-type">void</span>
+<span class="org-function-name">print_frame_stack</span>() {
+  printf(<span class="org-string">"Frames (bottom first)\n"</span>);
+  <span class="org-keyword">for</span> (<span class="org-type">forth_instruction</span> **<span class="org-variable-name">i</span> = frame_stack_bottom; i &lt; frame_stack; ++i) {
+    <span class="org-type">char</span> *<span class="org-variable-name">name</span> = addr2name(*i);
+    printf(<span class="org-string">"%8p\t%s\n"</span>, *i, name!=<span class="org-constant">NULL</span>?name:<span class="org-string">"Cannot translate"</span>);
+  }
+}
+</pre>
+</div>
+
+<div class="org-src-container">
+<label class="org-src-name"><span class="listing-number">Listing 24: </span><code>&lt;&lt;before main&gt;&gt;</code></label><pre class="src src-C" id="org03fffea"><span class="org-type">void</span>
+<span class="org-function-name">print_next_inst</span>() {
+  <span class="org-keyword">if</span> (next_inst != <span class="org-constant">NULL</span>) {
+    <span class="org-type">char</span> *<span class="org-variable-name">name</span> = addr2name(next_inst);
+    <span class="org-type">char</span> *<span class="org-variable-name">name_end</span> = name + ((<span class="org-type">ucell</span>*)name)[-1] + 1; <span class="org-comment-delimiter">// </span><span class="org-comment">name len + null byte</span>
+    <span class="org-type">uintptr_t</span> <span class="org-variable-name">offset</span> = (<span class="org-type">uintptr_t</span>)name_end;
+    offset = (offset+3) &amp; (~3); <span class="org-comment-delimiter">// </span><span class="org-comment">4-byte align</span>
+    printf(<span class="org-string">"next inst:\n%8p\t%s+%lu\n"</span>, next_inst, name,
+           ((<span class="org-type">uintptr_t</span>)next_inst)-offset);
+  }
+}
+</pre>
+</div>
+</div>
+</div>
+</div>
+
+<div id="outline-container-org5b809a5" class="outline-2">
+<h2 id="org5b809a5"><span class="section-number-2">6.</span> Compiling input files</h2>
+<div class="outline-text-2" id="text-6">
+<div class="org-src-container">
+<label class="org-src-name"><span class="listing-number">Listing 25: </span><code>&lt;&lt;includes&gt;&gt;</code></label><pre class="src src-C" id="org5f08c3c"><span class="org-preprocessor">#include</span> <span class="org-string">&lt;err.h&gt;</span>
+</pre>
+</div>
+
+<div class="org-src-container">
+<label class="org-src-name"><span class="listing-number">Listing 26: </span><code>&lt;&lt;compile input files&gt;&gt;</code></label><pre class="src src-C" id="org72e7b3e"><span class="org-keyword">for</span> (<span class="org-type">int</span> <span class="org-variable-name">i</span> = 0; i &lt; arguments.input_count; ++i)
+{
+  <span class="org-type">char</span> *<span class="org-variable-name">input</span> = arguments.inputs[i];
+  <span class="org-type">FILE</span> *<span class="org-variable-name">f</span> = fopen(input, <span class="org-string">"r"</span>);
+  <span class="org-keyword">if</span> (f == <span class="org-constant">NULL</span>) {
+    err(1, <span class="org-string">"Failed to open input file %s"</span>, input);
+  }
+  <span class="org-comment-delimiter">// </span><span class="org-comment">set input stream to f;</span>
+  input_stream = f;
+  next_inst = &amp;forth_main;
+  <span class="org-type">int</span> <span class="org-variable-name">exit_loop</span> = 0;
+  <span class="org-keyword">while</span> (exit_loop != -1) { <span class="org-comment-delimiter">// </span><span class="org-comment">'next' trampoline</span>
+    exit_loop = unpack_and_execute_instruction(*next_inst++);
+  }
+  fclose(f);
+}
+<span class="org-type">scell</span> *<span class="org-variable-name">compiled_input_end</span> = HERE_LOC;
+input_stream = stdin;
+</pre>
+</div>
+</div>
+</div>
+
+<div id="outline-container-org9a40683" class="outline-2">
+<h2 id="org9a40683"><span class="section-number-2">7.</span> Outputting compiled heap</h2>
+<div class="outline-text-2" id="text-7">
+<div class="org-src-container">
+<label class="org-src-name"><span class="listing-number">Listing 27: </span><code>&lt;&lt;includes&gt;&gt;</code></label><pre class="src src-C" id="org17aec82"><span class="org-preprocessor">#include</span> <span class="org-string">&lt;endian.h&gt;</span>
+</pre>
+</div>
+
+<p>
+TODO: this won't convert properly, e.g. it will read chars as cells
+and drop/byte swap them
+</p>
+
+<div class="org-src-container">
+<label class="org-src-name"><span class="listing-number">Listing 28: </span><code>&lt;&lt;output compiled heap&gt;&gt;</code></label><pre class="src src-C" id="orge032072"><span class="org-keyword">if</span> (arguments.output != <span class="org-constant">NULL</span>) {
+  <span class="org-type">FILE</span> *<span class="org-variable-name">output</span> = fopen(arguments.output, <span class="org-string">"w"</span>);
+  <span class="org-keyword">if</span> (output == <span class="org-constant">NULL</span>) {
+    err(2, <span class="org-string">"Failed to open output file %s"</span>, arguments.output);
+  }
+  <span class="org-keyword">switch</span> (arguments.target_word_size &lt;&lt; 1 | arguments.target_le)
+  {
+<span class="org-preprocessor">#define</span> <span class="org-variable-name">be_value</span> 0
+<span class="org-preprocessor">#define</span> <span class="org-variable-name">le_value</span> 1
+<span class="org-preprocessor">#define</span> <span class="org-function-name">mk_switch_case</span>(<span class="org-variable-name">bits</span>,<span class="org-variable-name">endian</span>)                                    \
+    <span class="org-keyword">case</span> ((bits&lt;&lt;1)|endian##_value):                                   \
+      <span class="org-keyword">for</span> (<span class="org-type">ucell</span> *<span class="org-variable-name">word</span> = heap_bottom; word &lt; (<span class="org-type">ucell</span>*)HERE_LOC; ++word) \
+      { uint##bits##_t data = hto##endian##bits(*word);                \
+        data += arguments.offset;                                      \
+        fwrite(&amp;data, <span class="org-keyword">sizeof</span>(uint##bits##_t), 1, output);              \
+      }                                                                \
+      <span class="org-keyword">break</span>;
+mk_switch_case(32, le);
+mk_switch_case(32, be);
+mk_switch_case(16, le);
+mk_switch_case(16, be);
+<span class="org-preprocessor">#undef</span> mk_switch_case
+<span class="org-preprocessor">#undef</span> be_value
+<span class="org-preprocessor">#undef</span> le_value
+    <span class="org-keyword">default</span>:
+      errx(3, <span class="org-string">"Unsupported target word-size &amp; endianness: %d %s"</span>,
+           arguments.target_word_size, arguments.target_le==0?<span class="org-string">"be"</span>:<span class="org-string">"le"</span>);
+  }
+  fclose(output);
+}
+</pre>
+</div>
+</div>
+</div>
+
+<div id="outline-container-org8611ae8" class="outline-2">
+<h2 id="org8611ae8"><span class="section-number-2">8.</span> Basic words</h2>
+<div class="outline-text-2" id="text-8">
+</div>
+<div id="outline-container-orgd073f96" class="outline-3">
+<h3 id="orgd073f96"><span class="section-number-3">8.1.</span> C implementation</h3>
+<div class="outline-text-3" id="text-8-1">
+<div class="org-src-container">
+<label class="org-src-name"><span class="listing-number">Listing 29: </span><b>c-words.c</b></label><pre class="src src-C" id="orgb1a663c"><span class="org-preprocessor">#include</span> <span class="org-string">"unix-c-forth.h"</span>
+
+<span class="org-preprocessor">#define</span> <span class="org-variable-name">true</span> ((<span class="org-type">scell</span>)-1)
+<span class="org-preprocessor">#define</span> <span class="org-variable-name">false</span> ((<span class="org-type">scell</span>)0)
+
+<span class="org-type">scell</span> <span class="org-variable-name">STATE_LOC</span> = <span class="org-constant">false</span>;
+
+<span class="org-preprocessor">#define</span> <span class="org-function-name">push</span>(<span class="org-variable-name">value</span>, <span class="org-variable-name">stack</span>) *stack++ = value;
+<span class="org-preprocessor">#define</span> <span class="org-function-name">pop</span>(<span class="org-variable-name">value</span>, <span class="org-variable-name">stack</span>) value = *--stack;
+
+<span class="org-type">int</span> <span class="org-variable-name">level</span> = 0;
+<span class="org-type">int</span> <span class="org-function-name">forth_interpreter</span> (<span class="org-type">forth_instruction</span> *<span class="org-variable-name">to_execute</span>) {
+  ++level;
+  <span class="org-type">forth_instruction</span> *<span class="org-variable-name">frame</span> = (<span class="org-type">forth_instruction</span>*)(next_inst);
+  push(frame, frame_stack);
+  next_inst = to_execute;
+<span class="org-preprocessor">#ifdef</span> TRACE
+  <span class="org-keyword">for</span> (<span class="org-type">int</span> <span class="org-variable-name">i</span> = 0; i &lt; level; ++i) printf(<span class="org-string">"-"</span>);
+  <span class="org-type">char</span> *<span class="org-variable-name">name</span> = addr2name(next_inst);
+  printf(<span class="org-string">"&gt;\t%8p\t&gt; %s\n"</span>, next_inst, name!=<span class="org-constant">NULL</span>?name:<span class="org-string">"Cannot translate"</span>);
+<span class="org-preprocessor">#endif</span>
+  <span class="org-keyword">return</span> 0; <span class="org-comment-delimiter">// </span><span class="org-comment">'next' is a trampoline</span>
+}
+
+<span class="org-type">int</span> <span class="org-function-name">FEXIT</span> (<span class="org-type">forth_instruction</span> *<span class="org-variable-name">_</span>) {
+<span class="org-preprocessor">#ifdef</span> TRACE
+  <span class="org-keyword">for</span> (<span class="org-type">int</span> <span class="org-variable-name">i</span> = 0; i &lt; level; ++i) printf(<span class="org-string">"-"</span>);
+  <span class="org-type">char</span> *<span class="org-variable-name">name</span> = addr2name(next_inst);
+  printf(<span class="org-string">"&lt;\t%8p\t&lt; %s\n"</span>, next_inst, name!=<span class="org-constant">NULL</span>?name:<span class="org-string">"Cannot translate"</span>);
+<span class="org-preprocessor">#endif</span>
+  --level;
+  pop(<span class="org-type">forth_instruction</span> *<span class="org-variable-name">frame</span>, frame_stack);
+  next_inst = frame;
+  <span class="org-keyword">return</span> 0;
+}
+
+<span class="org-type">int</span> <span class="org-function-name">FEXECUTE</span> (<span class="org-type">forth_instruction</span> *<span class="org-variable-name">_</span>) {
+  pop(<span class="org-type">scell</span> <span class="org-variable-name">c</span>, value_stack);
+  <span class="org-keyword">return</span> unpack_and_execute_instruction((<span class="org-type">forth_instruction</span>)c);
+}
+
+<span class="org-type">int</span> <span class="org-function-name">FCELL_SIZE</span> (<span class="org-type">forth_instruction</span> *<span class="org-variable-name">_</span>) {
+  push(<span class="org-keyword">sizeof</span>(scell), value_stack);
+  <span class="org-keyword">return</span> 0;
+}
+
+<span class="org-type">int</span> <span class="org-function-name">FCHAR_SIZE</span> (<span class="org-type">forth_instruction</span> *<span class="org-variable-name">_</span>) {
+  push(<span class="org-keyword">sizeof</span>(<span class="org-type">char</span>), value_stack);
+  <span class="org-keyword">return</span> 0;
+}
+</pre>
+</div>
+
+<div class="org-src-container">
+<label class="org-src-name"><span class="listing-number">Listing 30: </span><b>c-words.c</b></label><pre class="src src-C" id="orgdadd274"><span class="org-preprocessor">#define</span> <span class="org-function-name">binop</span>(<span class="org-variable-name">type</span>, <span class="org-variable-name">name</span>, <span class="org-variable-name">op</span>) <span class="org-type">int</span> <span class="org-function-name">F</span>##name(<span class="org-type">forth_instruction</span> *<span class="org-variable-name">_</span>) { \
+    pop(<span class="org-type">type</span> <span class="org-variable-name">b</span>, value_stack);                               \
+    pop(<span class="org-type">type</span> <span class="org-variable-name">a</span>, value_stack);                               \
+    push(op, value_stack);                                  \
+    <span class="org-keyword">return</span> 0;                                               \
+  }
+<span class="org-preprocessor">#define</span> <span class="org-function-name">sbinop</span>(<span class="org-variable-name">name</span>, <span class="org-variable-name">op</span>) binop(scell, name, op)
+<span class="org-preprocessor">#define</span> <span class="org-function-name">ubinop</span>(<span class="org-variable-name">name</span>, <span class="org-variable-name">op</span>) binop(ucell, name, op)
+
+&#12; <span class="org-comment-delimiter">// </span><span class="org-comment">Binary</span>
+<span class="org-function-name">sbinop</span>(ADD, a+b);
+<span class="org-function-name">sbinop</span>(SUB, a-b);
+<span class="org-function-name">sbinop</span>(STAR, <span class="org-type">a</span>*<span class="org-variable-name">b</span>);
+<span class="org-function-name">sbinop</span>(SLASH, a/b);
+<span class="org-function-name">sbinop</span>(LSHIFT, a&lt;&lt;b);
+<span class="org-function-name">sbinop</span>(RSHIFT, a&gt;&gt;b);
+<span class="org-function-name">sbinop</span>(EQUAL, a==b?<span class="org-constant">true</span>:<span class="org-constant">false</span>);
+<span class="org-function-name">sbinop</span>(NOT_EQUAL, a!=b?<span class="org-constant">true</span>:<span class="org-constant">false</span>);
+<span class="org-function-name">sbinop</span>(LESS_THAN, a&lt;b?<span class="org-constant">true</span>:<span class="org-constant">false</span>);
+<span class="org-function-name">sbinop</span>(GREATER_THAN, a&gt;b?<span class="org-constant">true</span>:<span class="org-constant">false</span>);
+<span class="org-function-name">ubinop</span>(U_LESS_THAN, a&lt;b?<span class="org-constant">true</span>:<span class="org-constant">false</span>);
+<span class="org-function-name">ubinop</span>(U_GREATER_THAN, a&gt;b?<span class="org-constant">true</span>:<span class="org-constant">false</span>);
+<span class="org-function-name">sbinop</span>(AND, a&amp;b);
+<span class="org-function-name">sbinop</span>(OR, a|b);
+
+<span class="org-type">int</span> <span class="org-function-name">FNEGATE</span> (<span class="org-type">forth_instruction</span> *<span class="org-variable-name">_</span>) {
+  pop(<span class="org-type">scell</span> <span class="org-variable-name">a</span>, value_stack);
+  push(-a, value_stack);
+  <span class="org-keyword">return</span> 0;
+}
+</pre>
+</div>
+
+<div class="org-src-container">
+<label class="org-src-name"><span class="listing-number">Listing 31: </span><b>c-words.c</b></label><pre class="src src-C" id="org5ed570a">&#12; <span class="org-comment-delimiter">// </span><span class="org-comment">Boolean</span>
+
+<span class="org-type">int</span> <span class="org-function-name">FINVERT</span> (<span class="org-type">forth_instruction</span> *<span class="org-variable-name">_</span>) {
+  pop(<span class="org-type">scell</span> <span class="org-variable-name">a</span>, value_stack);
+  push(~a, value_stack);
+  <span class="org-keyword">return</span> 0;
+}
+
+<span class="org-type">int</span> <span class="org-function-name">FTRUE</span> (<span class="org-type">forth_instruction</span> *<span class="org-variable-name">_</span>) {
+  push(<span class="org-constant">true</span>, value_stack);
+  <span class="org-keyword">return</span> 0;
+}
+
+<span class="org-type">int</span> <span class="org-function-name">FFALSE</span> (<span class="org-type">forth_instruction</span> *<span class="org-variable-name">_</span>) {
+  push(<span class="org-constant">false</span>, value_stack);
+  <span class="org-keyword">return</span> 0;
+}
+</pre>
+</div>
+
+<div class="org-src-container">
+<label class="org-src-name"><span class="listing-number">Listing 32: </span><b>c-words.c</b></label><pre class="src src-C" id="orge2e3c6f"><span class="org-comment-delimiter">// </span><span class="org-comment">TODO: categorize</span>
+<span class="org-type">int</span> <span class="org-function-name">FEMIT</span> (<span class="org-type">forth_instruction</span> *<span class="org-variable-name">_</span>) {
+  pop(<span class="org-type">ucell</span> <span class="org-variable-name">a</span>, value_stack);
+  <span class="org-type">int</span> <span class="org-variable-name">s</span> = EOF;
+  <span class="org-keyword">while</span> (((s = putc(a, output_stream)) == EOF) &amp;&amp;
+         (<span class="org-negation-char">!</span>feof(output_stream))) { }
+  <span class="org-keyword">return</span> feof(output_stream)?-1:0;
+}
+
+<span class="org-type">int</span> <span class="org-function-name">FKEY</span> (<span class="org-type">forth_instruction</span> *<span class="org-variable-name">_</span>) {
+  <span class="org-type">int</span> <span class="org-variable-name">c</span> = EOF;
+  <span class="org-keyword">while</span> (((c = getc(input_stream)) == EOF) &amp;&amp;
+         (<span class="org-negation-char">!</span>feof(input_stream))) { }
+  <span class="org-keyword">if</span> (feof(input_stream)) <span class="org-keyword">return</span> -1;
+  push(c, value_stack);
+  <span class="org-keyword">return</span> 0;
+}
+
+<span class="org-type">int</span> <span class="org-function-name">FBYE</span> (<span class="org-type">forth_instruction</span> *<span class="org-variable-name">_</span>) {
+  <span class="org-keyword">return</span> -1;
+}
+
+<span class="org-type">int</span> <span class="org-function-name">FLIT</span> (<span class="org-type">forth_instruction</span> *<span class="org-variable-name">_</span>) {
+  <span class="org-type">scell</span> <span class="org-variable-name">value</span> = *(<span class="org-type">scell</span>*)next_inst++;
+  push(value, value_stack);
+  <span class="org-keyword">return</span> 0;
+}
+
+<span class="org-type">int</span> <span class="org-function-name">FC_COMMA</span> (<span class="org-type">forth_instruction</span> *<span class="org-variable-name">_</span>) { <span class="org-comment-delimiter">/* </span><span class="org-comment">TODO: HERE ! CHAR-SIZE ALLOT</span><span class="org-comment-delimiter"> */</span>
+  pop(<span class="org-type">scell</span> <span class="org-variable-name">a</span>, value_stack);
+  <span class="org-type">char</span> *<span class="org-variable-name">charheap</span> = (<span class="org-type">char</span> *)HERE_LOC;
+  *charheap++ = (<span class="org-type">char</span>)a;
+  HERE_LOC = (<span class="org-type">scell</span> *)charheap;
+  <span class="org-keyword">return</span> 0;
+}
+
+<span class="org-type">int</span> <span class="org-function-name">FCOMMA</span> (<span class="org-type">forth_instruction</span> *<span class="org-variable-name">_</span>) { <span class="org-comment-delimiter">/* </span><span class="org-comment">TODO: HERE ! CELL-SIZE ALLOT</span><span class="org-comment-delimiter"> */</span>
+  pop(<span class="org-type">scell</span> <span class="org-variable-name">a</span>, value_stack);
+  *HERE_LOC++ = a;
+  <span class="org-keyword">return</span> 0;
+}
+</pre>
+</div>
+
+<div class="org-src-container">
+<label class="org-src-name"><span class="listing-number">Listing 33: </span><b>c-words.c</b></label><pre class="src src-C" id="org8053702">&#12; <span class="org-comment-delimiter">// </span><span class="org-comment">Memory</span>
+<span class="org-type">int</span> <span class="org-function-name">FC_STORE</span> (<span class="org-type">forth_instruction</span> *<span class="org-variable-name">_</span>) {
+  pop(<span class="org-type">ucell</span> <span class="org-variable-name">addr</span>, value_stack);
+  pop(<span class="org-type">ucell</span> <span class="org-variable-name">value</span>, value_stack);
+  *(<span class="org-type">unsigned</span> <span class="org-type">char</span>*)(<span class="org-type">uintptr_t</span>)addr = (<span class="org-type">unsigned</span> <span class="org-type">char</span>)value;
+  <span class="org-keyword">return</span> 0;
+}
+
+<span class="org-type">int</span> <span class="org-function-name">FC_FETCH</span> (<span class="org-type">forth_instruction</span> *<span class="org-variable-name">_</span>) {
+  pop(<span class="org-type">ucell</span> <span class="org-variable-name">a</span>, value_stack);
+  push(*(<span class="org-type">char</span>*)(<span class="org-type">uintptr_t</span>)a, value_stack);
+  <span class="org-keyword">return</span> 0;
+}
+
+<span class="org-type">int</span> <span class="org-function-name">FSTORE</span> (<span class="org-type">forth_instruction</span> *<span class="org-variable-name">_</span>) {
+  pop(<span class="org-type">ucell</span> <span class="org-variable-name">addr</span>, value_stack);
+  pop(<span class="org-type">ucell</span> <span class="org-variable-name">value</span>, value_stack);
+  *(<span class="org-type">ucell</span>*)(<span class="org-type">uintptr_t</span>)addr = value;
+  <span class="org-keyword">return</span> 0;
+}
+
+<span class="org-type">int</span> <span class="org-function-name">FFETCH</span> (<span class="org-type">forth_instruction</span> *<span class="org-variable-name">_</span>) {
+  pop(<span class="org-type">ucell</span> <span class="org-variable-name">a</span>, value_stack);
+  push(*(scell*)(uintptr_t)a, value_stack);
+  <span class="org-keyword">return</span> 0;
+}
+</pre>
+</div>
+
+<div class="org-src-container">
+<label class="org-src-name"><span class="listing-number">Listing 34: </span><b>c-words.c</b></label><pre class="src src-C" id="org255d782">&#12; <span class="org-comment-delimiter">// </span><span class="org-comment">Stack</span>
+
+<span class="org-type">int</span> <span class="org-function-name">FDUP</span> (<span class="org-type">forth_instruction</span> *<span class="org-variable-name">_</span>) {
+  pop(<span class="org-type">scell</span> <span class="org-variable-name">a</span>, value_stack);
+  push(a, value_stack);
+  push(a, value_stack);
+  <span class="org-keyword">return</span> 0;
+}
+
+<span class="org-type">int</span> <span class="org-function-name">FDROP</span> (<span class="org-type">forth_instruction</span> *<span class="org-variable-name">_</span>) {
+  pop(<span class="org-type">scell</span> <span class="org-variable-name">a</span>, value_stack);
+  <span class="org-keyword">return</span> 0;
+}
+
+<span class="org-type">int</span> <span class="org-function-name">FNIP</span> (<span class="org-type">forth_instruction</span> *<span class="org-variable-name">_</span>) {
+  pop(<span class="org-type">scell</span> <span class="org-variable-name">a</span>, value_stack);
+  pop(<span class="org-type">scell</span> <span class="org-variable-name">b</span>, value_stack);
+  push(a, value_stack);
+  <span class="org-keyword">return</span> 0;
+}
+
+<span class="org-type">int</span> <span class="org-function-name">FOVER</span> (<span class="org-type">forth_instruction</span> *<span class="org-variable-name">_</span>) {
+  <span class="org-type">scell</span> <span class="org-variable-name">value</span> = *(value_stack-2);
+  push(value, value_stack);
+  <span class="org-keyword">return</span> 0;
+}
+
+<span class="org-type">int</span> <span class="org-function-name">FPICK</span> (<span class="org-type">forth_instruction</span> *<span class="org-variable-name">_</span>) {
+  pop(<span class="org-type">scell</span> <span class="org-variable-name">u</span>, value_stack);
+  <span class="org-type">scell</span> *<span class="org-variable-name">picked</span> =  value_stack - 1 - u;
+  push(*picked, value_stack);
+  <span class="org-keyword">return</span> 0;
+}
+
+<span class="org-type">int</span> <span class="org-function-name">FSWAP</span> (<span class="org-type">forth_instruction</span> *<span class="org-variable-name">_</span>) {
+  pop(<span class="org-type">scell</span> <span class="org-variable-name">a</span>, value_stack);
+  pop(<span class="org-type">scell</span> <span class="org-variable-name">b</span>, value_stack);
+  push(a, value_stack);
+  push(b, value_stack);
+  <span class="org-keyword">return</span> 0;
+}
+
+<span class="org-type">int</span> <span class="org-function-name">FROT</span> (<span class="org-type">forth_instruction</span> *<span class="org-variable-name">_</span>) {
+  pop(<span class="org-type">scell</span> <span class="org-variable-name">x3</span>, value_stack);
+  pop(<span class="org-type">scell</span> <span class="org-variable-name">x2</span>, value_stack);
+  pop(<span class="org-type">scell</span> <span class="org-variable-name">x1</span>, value_stack);
+  push(x2, value_stack);
+  push(x3, value_stack);
+  push(x1, value_stack);
+  <span class="org-keyword">return</span> 0;
+}
+</pre>
+</div>
+
+<div class="org-src-container">
+<label class="org-src-name"><span class="listing-number">Listing 35: </span><b>c-words.c</b></label><pre class="src src-C" id="orgdceb693">&#12; <span class="org-comment-delimiter">// </span><span class="org-comment">Return stack</span>
+
+<span class="org-type">int</span> <span class="org-function-name">FR_FETCH</span> (<span class="org-type">forth_instruction</span> *<span class="org-variable-name">_</span>) {
+  <span class="org-type">scell</span> <span class="org-variable-name">value</span> = *(<span class="org-type">scell</span>*)(frame_stack-1);
+  push(value, value_stack);
+  <span class="org-keyword">return</span> 0;
+}
+
+<span class="org-type">int</span> <span class="org-function-name">FR_FROM</span> (<span class="org-type">forth_instruction</span> *<span class="org-variable-name">_</span>) {
+  --frame_stack;
+  <span class="org-type">scell</span> <span class="org-variable-name">a</span> = *(<span class="org-type">scell</span>*)frame_stack;
+  push(a, value_stack);
+  <span class="org-keyword">return</span> 0;
+}
+
+<span class="org-type">int</span> <span class="org-function-name">FTO_R</span> (<span class="org-type">forth_instruction</span> *<span class="org-variable-name">_</span>) {
+  pop(<span class="org-type">scell</span> <span class="org-variable-name">a</span>, value_stack);
+  *(<span class="org-type">scell</span>*)frame_stack = a;
+  ++frame_stack;
+  <span class="org-keyword">return</span> 0;
+}
+</pre>
+</div>
+
+<div class="org-src-container">
+<label class="org-src-name"><span class="listing-number">Listing 36: </span><b>c-words.c</b></label><pre class="src src-C" id="org3c49349">&#12; <span class="org-comment-delimiter">// </span><span class="org-comment">Branches</span>
+
+<span class="org-type">int</span> <span class="org-function-name">FBRANCH</span> (<span class="org-type">forth_instruction</span> *<span class="org-variable-name">_</span>) {
+  next_inst += (*(<span class="org-type">scell</span> *)next_inst)/<span class="org-keyword">sizeof</span>(*next_inst);
+  <span class="org-keyword">return</span> 0;
+}
+
+<span class="org-type">int</span> <span class="org-function-name">FZBRANCH</span> (<span class="org-type">forth_instruction</span> *<span class="org-variable-name">_</span>) {
+  pop(<span class="org-type">scell</span> <span class="org-variable-name">a</span>, value_stack);
+  <span class="org-keyword">if</span> (a==0) next_inst += (*(<span class="org-type">scell</span> *)next_inst)/<span class="org-keyword">sizeof</span>(*next_inst);
+  <span class="org-keyword">else</span> ++next_inst; <span class="org-comment-delimiter">// </span><span class="org-comment">skip over target</span>
+  <span class="org-keyword">return</span> 0;
+}
+</pre>
+</div>
+</div>
+</div>
+<div id="outline-container-org82a152f" class="outline-3">
+<h3 id="org82a152f"><span class="section-number-3">8.2.</span> Mapping to dictionary entries</h3>
+<div class="outline-text-3" id="text-8-2">
+<div class="org-src-container">
+<label class="org-src-name"><span class="listing-number">Listing 37: </span><b>c-words.s</b></label><pre class="src src-asm" id="org66a48fd"><span class="org-keyword">.macro</span> .fw word:req, rest:vararg
+  <span class="org-keyword">.ifnc</span> <span class="org-string">"\word"</span>,<span class="org-string">"L"</span>
+    <span class="org-keyword">.4byte</span> \word <span class="org-comment-delimiter">/* </span><span class="org-comment">FWSIZE */</span>
+  <span class="org-keyword">.endif</span>
+  <span class="org-keyword">.ifnb</span> \rest
+    <span class="org-keyword">.fw</span> \rest
+  <span class="org-keyword">.endif</span>
+<span class="org-keyword">.endm</span>
+
+<span class="org-keyword">.macro</span> .cell init=0
+  <span class="org-keyword">.4byte</span> \init
+<span class="org-keyword">.endm</span>
+
+<span class="org-keyword">.set</span> previous_entry, 0
+<span class="org-keyword">.macro</span> .entry name:req, label, imm=0, hid=0
+  <span class="org-keyword">.ifc</span> _,\label
+    <span class="org-keyword">.entry</span> \name, \name, \imm, \hid
+  <span class="org-keyword">.else</span>
+    <span class="org-keyword">.balign</span> 4 <span class="org-comment-delimiter">/* </span><span class="org-comment">Align to power of 2 */</span>
+    <span class="org-keyword">.globl</span> FHDR_\label
+    <span class="org-keyword">FHDR_</span>\label :
+    <span class="org-keyword">1</span>:.cell previous_entry
+    <span class="org-keyword">.set</span> previous_entry, 1b
+    <span class="org-keyword">.byte</span> \hid, \imm
+    <span class="org-keyword">.balign</span> 4
+    <span class="org-keyword">.cell</span> 2f-3f
+    <span class="org-keyword">3</span>:.ascii <span class="org-string">"\name"</span>
+    <span class="org-keyword">2</span>:.byte 0
+    <span class="org-keyword">.balign</span> 4 <span class="org-comment-delimiter">/* </span><span class="org-comment">Align to power of 2 */</span>
+    <span class="org-keyword">.globl</span> \label
+    \label :
+  <span class="org-keyword">.endif</span>
+<span class="org-keyword">.endm</span>
+
+<span class="org-keyword">.macro</span> .forth_interpreter
+  <span class="org-keyword">.cell</span> forth_interpreter
+<span class="org-keyword">.endm</span>
+
+<span class="org-keyword">.macro</span> fromC name, label, rest:vararg
+  <span class="org-keyword">.ifc</span> _,\label
+    <span class="org-keyword">fromC</span> \name, \name
+  <span class="org-keyword">.else</span>
+    <span class="org-keyword">.entry</span> \name, \label
+    <span class="org-keyword">.fw</span> F\label, 0
+  <span class="org-keyword">.endif</span>
+  <span class="org-keyword">.ifnb</span> \rest
+    <span class="org-keyword">fromC</span> \rest
+  <span class="org-keyword">.endif</span>
+<span class="org-keyword">.endm</span>
+
+<span class="org-function-name">fromC</span> <span class="org-keyword">KEY</span>, _, EMIT, _
+<span class="org-function-name">fromC</span> <span class="org-keyword">BYE</span>, _, EXIT, _, EXECUTE, _
+<span class="org-function-name">fromC</span> <span class="org-string">"[']"</span>, LIT
+
+<span class="org-function-name">fromC</span> <span class="org-string">"+"</span>, ADD, <span class="org-string">"-"</span>, SUB, <span class="org-string">"*"</span>, STAR, <span class="org-string">"/"</span>, SLASH
+<span class="org-function-name">fromC</span> <span class="org-string">"&lt;"</span>, LESS_THAN, <span class="org-string">"&gt;"</span>, GREATER_THAN
+<span class="org-function-name">fromC</span> <span class="org-string">"U&lt;"</span>, U_LESS_THAN, <span class="org-string">"U&gt;"</span>, U_GREATER_THAN
+<span class="org-function-name">fromC</span> <span class="org-string">"&lt;&gt;"</span>, NOT_EQUAL, <span class="org-string">"\x3d"</span>, EQUAL
+<span class="org-function-name">fromC</span> <span class="org-keyword">OR</span>, _, AND, _, LSHIFT, _, RSHIFT, _, INVERT, _, NEGATE, _
+<span class="org-function-name">fromC</span> <span class="org-string">"C!"</span>, C_STORE, <span class="org-string">"C@"</span>, C_FETCH, <span class="org-string">"!"</span>, STORE, <span class="org-string">"@"</span>, FETCH
+<span class="org-function-name">fromC</span> <span class="org-string">"CELL-SIZE"</span>, CELL_SIZE, <span class="org-string">"CHAR-SIZE"</span>, CHAR_SIZE
+
+<span class="org-function-name">fromC</span> <span class="org-keyword">DUP</span>, _, DROP, _, NIP, _, OVER, _, PICK, _, ROT, _, SWAP, _
+<span class="org-function-name">fromC</span> <span class="org-string">"R@"</span>, R_FETCH, <span class="org-string">"R&gt;"</span>, R_FROM, <span class="org-string">"&gt;R"</span>, TO_R
+
+<span class="org-function-name">fromC</span> <span class="org-keyword">BRANCH</span>, _, <span class="org-string">"?BRANCH"</span>, ZBRANCH<span class="org-comment-delimiter">;</span>
+
+<span class="org-keyword">.entry</span> <span class="org-string">"&lt;FORTH_MAIN&gt;"</span>, forth_main, 0, -1
+<span class="org-keyword">.fw</span> QUIT
+<span class="org-keyword">.fw</span> BYE
+</pre>
+</div>
+</div>
+</div>
+</div>
+
+<div id="outline-container-org2aa4d28" class="outline-2">
+<h2 id="org2aa4d28"><span class="section-number-2">9.</span> <code>[0/1]</code> Tasks</h2>
+<div class="outline-text-2" id="text-9">
+</div>
+<div id="outline-container-org75f118d" class="outline-3">
+<h3 id="org75f118d"><span class="section-number-3">9.1.</span> <span class="todo TODO">TODO</span> Linker</h3>
+<div class="outline-text-3" id="text-9-1">
+<p>
+Have the <code>unix-c-forth</code> interpreter output a file containing
+appropriately sized words, but not relinked, and a file with the
+symbols; then have another program to re-link it to say the bare-metal
+raspberry pi
+</p>
+</div>
+<div id="outline-container-org1b3d506" class="outline-4">
+<h4 id="org1b3d506"><span class="section-number-4">9.1.1.</span> Dynamic linking</h4>
+<div class="outline-text-4" id="text-9-1-1">
+<p>
+The ideas of GOT/PLT, and a relocation register, changed when changing
+libraries, should be applicable here too.
+</p>
+</div>
+</div>
+</div>
+</div>
+</div>
+<div id="postamble" class="status">
+<p class="author">Author: Robert Kovacsics (rmk35)</p>
+<p class="date">Created: 2022-01-02 Sun 02:12</p>
+<p class="validation"><a href="https://validator.w3.org/check?uri=referer">Validate</a></p>
+</div>
+</body>
+</html>

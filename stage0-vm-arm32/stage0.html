@@ -1,0 +1,1205 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN"
+"http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml" lang="en" xml:lang="en">
+<head>
+<!-- 2022-01-02 Sun 02:12 -->
+<meta http-equiv="Content-Type" content="text/html;charset=utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>ARM 32-bit assembly port of the simple Forth interpreter</title>
+<meta name="author" content="Robert Kovacsics (rmk35)" />
+<meta name="generator" content="Org Mode" />
+<style>
+  #content { max-width: 60em; margin: auto; }
+  .title  { text-align: center;
+             margin-bottom: .2em; }
+  .subtitle { text-align: center;
+              font-size: medium;
+              font-weight: bold;
+              margin-top:0; }
+  .todo   { font-family: monospace; color: red; }
+  .done   { font-family: monospace; color: green; }
+  .priority { font-family: monospace; color: orange; }
+  .tag    { background-color: #eee; font-family: monospace;
+            padding: 2px; font-size: 80%; font-weight: normal; }
+  .timestamp { color: #bebebe; }
+  .timestamp-kwd { color: #5f9ea0; }
+  .org-right  { margin-left: auto; margin-right: 0px;  text-align: right; }
+  .org-left   { margin-left: 0px;  margin-right: auto; text-align: left; }
+  .org-center { margin-left: auto; margin-right: auto; text-align: center; }
+  .underline { text-decoration: underline; }
+  #postamble p, #preamble p { font-size: 90%; margin: .2em; }
+  p.verse { margin-left: 3%; }
+  pre {
+    border: 1px solid #e6e6e6;
+    border-radius: 3px;
+    background-color: #f2f2f2;
+    padding: 8pt;
+    font-family: monospace;
+    overflow: auto;
+    margin: 1.2em;
+  }
+  pre.src {
+    position: relative;
+    overflow: auto;
+  }
+  pre.src:before {
+    display: none;
+    position: absolute;
+    top: -8px;
+    right: 12px;
+    padding: 3px;
+    color: #555;
+    background-color: #f2f2f299;
+  }
+  pre.src:hover:before { display: inline; margin-top: 14px;}
+  /* Languages per Org manual */
+  pre.src-asymptote:before { content: 'Asymptote'; }
+  pre.src-awk:before { content: 'Awk'; }
+  pre.src-authinfo::before { content: 'Authinfo'; }
+  pre.src-C:before { content: 'C'; }
+  /* pre.src-C++ doesn't work in CSS */
+  pre.src-clojure:before { content: 'Clojure'; }
+  pre.src-css:before { content: 'CSS'; }
+  pre.src-D:before { content: 'D'; }
+  pre.src-ditaa:before { content: 'ditaa'; }
+  pre.src-dot:before { content: 'Graphviz'; }
+  pre.src-calc:before { content: 'Emacs Calc'; }
+  pre.src-emacs-lisp:before { content: 'Emacs Lisp'; }
+  pre.src-fortran:before { content: 'Fortran'; }
+  pre.src-gnuplot:before { content: 'gnuplot'; }
+  pre.src-haskell:before { content: 'Haskell'; }
+  pre.src-hledger:before { content: 'hledger'; }
+  pre.src-java:before { content: 'Java'; }
+  pre.src-js:before { content: 'Javascript'; }
+  pre.src-latex:before { content: 'LaTeX'; }
+  pre.src-ledger:before { content: 'Ledger'; }
+  pre.src-lisp:before { content: 'Lisp'; }
+  pre.src-lilypond:before { content: 'Lilypond'; }
+  pre.src-lua:before { content: 'Lua'; }
+  pre.src-matlab:before { content: 'MATLAB'; }
+  pre.src-mscgen:before { content: 'Mscgen'; }
+  pre.src-ocaml:before { content: 'Objective Caml'; }
+  pre.src-octave:before { content: 'Octave'; }
+  pre.src-org:before { content: 'Org mode'; }
+  pre.src-oz:before { content: 'OZ'; }
+  pre.src-plantuml:before { content: 'Plantuml'; }
+  pre.src-processing:before { content: 'Processing.js'; }
+  pre.src-python:before { content: 'Python'; }
+  pre.src-R:before { content: 'R'; }
+  pre.src-ruby:before { content: 'Ruby'; }
+  pre.src-sass:before { content: 'Sass'; }
+  pre.src-scheme:before { content: 'Scheme'; }
+  pre.src-screen:before { content: 'Gnu Screen'; }
+  pre.src-sed:before { content: 'Sed'; }
+  pre.src-sh:before { content: 'shell'; }
+  pre.src-sql:before { content: 'SQL'; }
+  pre.src-sqlite:before { content: 'SQLite'; }
+  /* additional languages in org.el's org-babel-load-languages alist */
+  pre.src-forth:before { content: 'Forth'; }
+  pre.src-io:before { content: 'IO'; }
+  pre.src-J:before { content: 'J'; }
+  pre.src-makefile:before { content: 'Makefile'; }
+  pre.src-maxima:before { content: 'Maxima'; }
+  pre.src-perl:before { content: 'Perl'; }
+  pre.src-picolisp:before { content: 'Pico Lisp'; }
+  pre.src-scala:before { content: 'Scala'; }
+  pre.src-shell:before { content: 'Shell Script'; }
+  pre.src-ebnf2ps:before { content: 'ebfn2ps'; }
+  /* additional language identifiers per "defun org-babel-execute"
+       in ob-*.el */
+  pre.src-cpp:before  { content: 'C++'; }
+  pre.src-abc:before  { content: 'ABC'; }
+  pre.src-coq:before  { content: 'Coq'; }
+  pre.src-groovy:before  { content: 'Groovy'; }
+  /* additional language identifiers from org-babel-shell-names in
+     ob-shell.el: ob-shell is the only babel language using a lambda to put
+     the execution function name together. */
+  pre.src-bash:before  { content: 'bash'; }
+  pre.src-csh:before  { content: 'csh'; }
+  pre.src-ash:before  { content: 'ash'; }
+  pre.src-dash:before  { content: 'dash'; }
+  pre.src-ksh:before  { content: 'ksh'; }
+  pre.src-mksh:before  { content: 'mksh'; }
+  pre.src-posh:before  { content: 'posh'; }
+  /* Additional Emacs modes also supported by the LaTeX listings package */
+  pre.src-ada:before { content: 'Ada'; }
+  pre.src-asm:before { content: 'Assembler'; }
+  pre.src-caml:before { content: 'Caml'; }
+  pre.src-delphi:before { content: 'Delphi'; }
+  pre.src-html:before { content: 'HTML'; }
+  pre.src-idl:before { content: 'IDL'; }
+  pre.src-mercury:before { content: 'Mercury'; }
+  pre.src-metapost:before { content: 'MetaPost'; }
+  pre.src-modula-2:before { content: 'Modula-2'; }
+  pre.src-pascal:before { content: 'Pascal'; }
+  pre.src-ps:before { content: 'PostScript'; }
+  pre.src-prolog:before { content: 'Prolog'; }
+  pre.src-simula:before { content: 'Simula'; }
+  pre.src-tcl:before { content: 'tcl'; }
+  pre.src-tex:before { content: 'TeX'; }
+  pre.src-plain-tex:before { content: 'Plain TeX'; }
+  pre.src-verilog:before { content: 'Verilog'; }
+  pre.src-vhdl:before { content: 'VHDL'; }
+  pre.src-xml:before { content: 'XML'; }
+  pre.src-nxml:before { content: 'XML'; }
+  /* add a generic configuration mode; LaTeX export needs an additional
+     (add-to-list 'org-latex-listings-langs '(conf " ")) in .emacs */
+  pre.src-conf:before { content: 'Configuration File'; }
+
+  table { border-collapse:collapse; }
+  caption.t-above { caption-side: top; }
+  caption.t-bottom { caption-side: bottom; }
+  td, th { vertical-align:top;  }
+  th.org-right  { text-align: center;  }
+  th.org-left   { text-align: center;   }
+  th.org-center { text-align: center; }
+  td.org-right  { text-align: right;  }
+  td.org-left   { text-align: left;   }
+  td.org-center { text-align: center; }
+  dt { font-weight: bold; }
+  .footpara { display: inline; }
+  .footdef  { margin-bottom: 1em; }
+  .figure { padding: 1em; }
+  .figure p { text-align: center; }
+  .equation-container {
+    display: table;
+    text-align: center;
+    width: 100%;
+  }
+  .equation {
+    vertical-align: middle;
+  }
+  .equation-label {
+    display: table-cell;
+    text-align: right;
+    vertical-align: middle;
+  }
+  .inlinetask {
+    padding: 10px;
+    border: 2px solid gray;
+    margin: 10px;
+    background: #ffffcc;
+  }
+  #org-div-home-and-up
+   { text-align: right; font-size: 70%; white-space: nowrap; }
+  textarea { overflow-x: auto; }
+  .linenr { font-size: smaller }
+  .code-highlighted { background-color: #ffff00; }
+  .org-info-js_info-navigation { border-style: none; }
+  #org-info-js_console-label
+    { font-size: 10px; font-weight: bold; white-space: nowrap; }
+  .org-info-js_search-highlight
+    { background-color: #ffff00; color: #000000; font-weight: bold; }
+  .org-svg { width: 90%; }
+</style>
+<link rel="stylesheet" type="text/css" href="../org-html-themes/src/readtheorg_theme/css/htmlize.css"/>
+<link rel="stylesheet" type="text/css" href="../org-html-themes/src/readtheorg_theme/css/readtheorg.css"/>
+<script type="text/javascript" src="../org-html-themes/src/readtheorg_theme/js/readtheorg.js"></script>
+</head>
+<body>
+<div id="content" class="content">
+<h1 class="title">ARM 32-bit assembly port of the simple Forth interpreter</h1>
+<div id="table-of-contents" role="doc-toc">
+<h2>Table of Contents</h2>
+<div id="text-table-of-contents" role="doc-toc">
+<ul>
+<li><a href="#org37375ee">1. <span class="todo TODO">TODO</span> Forth</a>
+<ul>
+<li><a href="#org1ad42b3">1.1. <span class="todo TODO">TODO</span> The base interpreter</a>
+<ul>
+<li><a href="#org677289b">1.1.1. <span class="todo TODO">TODO</span> An Indirect-Threaded Interpreter</a></li>
+<li><a href="#orgb2586a0">1.1.2. <span class="todo TODO">TODO</span> A Direct-Threaded Interpreter</a></li>
+<li><a href="#orgdab1ddc">1.1.3. <span class="todo TODO">TODO</span> A Subroutine-Threaded Interpreter</a>
+<ul>
+<li><a href="#org7bdebf5">1.1.3.1. Arm32</a></li>
+<li><a href="#org5dba131">1.1.3.2. Thumb</a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li><a href="#org3decb79">1.2. DEBUG</a></li>
+<li><a href="#org23a9a84">1.3. <span class="todo TODO">TODO</span> Dictionary-list</a>
+<ul>
+<li><a href="#orgeb0915d">1.3.1. Machine dependent words</a></li>
+<li><a href="#org0926328">1.3.2. <span class="todo TODO">TODO</span> Simple helper words</a></li>
+<li><a href="#orge2c74f2">1.3.3. <span class="todo TODO">TODO</span> Creation</a></li>
+<li><a href="#org55e43f6">1.3.4. <span class="todo TODO">TODO</span> Lookup</a></li>
+<li><a href="#orgcf58a35">1.3.5. <span class="todo TODO">TODO</span> Memory comparison</a></li>
+</ul>
+</li>
+<li><a href="#orgd41007f">1.4. <span class="todo TODO">TODO</span> Interpreting</a></li>
+</ul>
+</li>
+<li><a href="#org9ad3e95">2. <span class="todo TODO">TODO</span> Testing</a></li>
+</ul>
+</div>
+</div>
+
+<div id="outline-container-org37375ee" class="outline-2">
+<h2 id="org37375ee"><span class="section-number-2">1.</span> <span class="todo TODO">TODO</span> Forth</h2>
+<div class="outline-text-2" id="text-1">
+</div>
+<div id="outline-container-org1ad42b3" class="outline-3">
+<h3 id="org1ad42b3"><span class="section-number-3">1.1.</span> <span class="todo TODO">TODO</span> The base interpreter</h3>
+<div class="outline-text-3" id="text-1-1">
+<p>
+There are multiple choices of interpreters, each with their own
+advantages and disadvantages.
+</p>
+</div>
+
+<div id="outline-container-org677289b" class="outline-4">
+<h4 id="org677289b"><span class="section-number-4">1.1.1.</span> <span class="todo TODO">TODO</span> An Indirect-Threaded Interpreter</h4>
+<div class="outline-text-4" id="text-1-1-1">
+<p>
+A piece of Forth code will look like the following, in memory:
+</p>
+<div class="org-src-container">
+<pre class="src src-dot">digraph {
+  rankdir=TB;
+  node [shape=<span class="org-string">"record"</span>];
+
+  prog [label=<span class="org-string">"&lt;0&gt; Forth\ninterpreter | &lt;1&gt; Address of Forth method | &lt;2&gt; Address of Native method | ... | &lt;n&gt; Exit"</span>];
+
+  interp [label=<span class="org-string">"&lt;0&gt; Push next_inst\nonto return stack | &lt;1&gt; Set next_inst\nfrom r0 | &lt;n&gt; Branch to `Next`"</span>];
+
+  subrA [label=<span class="org-string">"&lt;0&gt; Forth\ninterpreter | ... | &lt;n&gt; Exit"</span>];
+  subrB [label=<span class="org-string">"&lt;0&gt; Next\ncell | &lt;1&gt; Instruction | ... | &lt;n&gt; Branch to\n`Next`"</span>];
+  subrExit [label=<span class="org-string">"&lt;0&gt; Next\ncell | &lt;1&gt; Pop next_inst\nfrom return stack | &lt;2&gt; Branch to\n`Next`"</span>];
+
+  next [label=<span class="org-string">"&lt;0&gt; Load next_inst to r0 | Increment next_inst | Load interpreter at r0 | Interpret r0+4"</span>];
+
+  prog:0 -&gt; interp:0;
+  subrA:0 -&gt; interp:0 [minlen=2];
+
+  interp:0:s -&gt; next:0:n [color=white,minlen=2];
+  interp:n:s -&gt; next:0:n [constraint=false];
+
+  prog:1 -&gt; subrA:0:n [minlen=2];
+  prog:2 -&gt; subrB:0:n [minlen=2];
+  prog:n:s -&gt; subrExit:0;
+
+  subrA:n:s -&gt; subrExit:0 [minlen=2];
+
+  subrB:0:n -&gt; subrB:1:n;
+  subrExit:0:n -&gt; subrExit:1:n;
+  subrB:n:s -&gt; next:0:n [constraint=false];
+  subrExit:2:s -&gt; next:0:n [constraint=false];
+}
+</pre>
+</div>
+
+<p>
+Let's first look at the leftmost block, a forth code block, composed
+of <i>forth words</i>, which may not be 32-bits (especially for systems
+with small memory, but it is in this case). The first forth word of a
+code block is always the interpreter, which here points to a native
+code block that executes the rest of the forth words.
+</p>
+
+<p>
+The forth interpreter pushes the <code>next_inst</code> onto the stack (like the
+program counter, but for the interpreted words), loads the start of
+the current code block from <code>r0</code> into <code>next_inst</code>, and begins
+executing the current code block by jumping to <code>next</code>, another native code block
+</p>
+
+<p>
+Of note here is the interpreter, which is how we differentiate between
+Forth and native methods. For Forth methods, it pushes the
+<code>next_instr</code> onto the return stack; for native methods it is just a
+pointer to the beginning of the assembled native code.
+</p>
+
+<p>
+The Forth interpreter keeps executing the interpreters of each call in
+the current method, including the exit call.
+</p>
+
+<p>
+For code-blocks, we will be including both assembly code, and Forth
+code (not standard, but will work once we have got to section TODO).
+</p>
+
+<p>
+Until section <a href="#orga26a750">1.3.2</a> (or saying it before the code block),
+all the assembly code goes into file <code>stage0-machine-arm.s</code>.
+</p>
+
+<table class="harmonica-table"><thead><tr><td>Assembly</td><td>Forth</td></tr></thead><tbody><tr><td>
+<div class="org-src-container">
+<pre class="src src-asm"><span class="org-function-name">next_inst</span> .req r11
+<span class="org-function-name">data_space</span> .req r11
+<span class="org-function-name">rsp</span> .req r12
+
+<span class="org-keyword">.macro</span> .execute reg=r0
+  <span class="org-keyword">ldr</span> pc, [\reg], #4 <span class="org-comment-delimiter">/* </span><span class="org-comment">FWSIZE */</span>
+<span class="org-keyword">.endm</span>
+<span class="org-keyword">.macro</span> .next
+  <span class="org-keyword">b</span> next
+<span class="org-keyword">.endm</span>
+<span class="org-keyword">.macro</span> .exit
+  <span class="org-keyword">ldr</span> next_inst, [rsp], #4
+  <span class="org-keyword">b</span> next
+<span class="org-keyword">.endm</span>
+<span class="org-keyword">.macro</span> .fw word:req, rest:vararg
+  <span class="org-keyword">.ifnc</span> <span class="org-string">"\word"</span>,<span class="org-string">"L"</span>
+    <span class="org-keyword">.4byte</span> \word <span class="org-comment-delimiter">/* </span><span class="org-comment">FWSIZE */</span>
+  <span class="org-keyword">.endif</span>
+  <span class="org-keyword">.ifnb</span> \rest <span class="org-comment-delimiter">; </span><span class="org-comment">.fw \rest ; .endif</span>
+<span class="org-keyword">.endm</span>
+<span class="org-keyword">.macro</span> .forth_interpreter
+  <span class="org-keyword">.fw</span> forth_interpreter
+<span class="org-keyword">.endm</span>
+<span class="org-keyword">.macro</span> .asm_interpreter
+  <span class="org-keyword">.fw</span> 1f
+<span class="org-function-name">1</span>:
+<span class="org-keyword">.endm</span>
+<span class="org-keyword">.macro</span> .cell init=0
+  <span class="org-keyword">.word</span> \init
+<span class="org-keyword">.endm</span>
+
+<span class="org-function-name">forth_interpreter</span>:
+  <span class="org-keyword">str</span> next_inst, [rsp, #-4]!
+  <span class="org-keyword">mov</span> next_inst, r0
+  <span class="org-comment-delimiter">/* </span><span class="org-comment">b next */</span>
+
+<span class="org-function-name">next</span>:
+  <span class="org-keyword">ldr</span> r0, [next_inst], #4 <span class="org-comment-delimiter">/* </span><span class="org-comment">FWSIZE */</span>
+  <span class="org-keyword">.execute</span>
+</pre>
+</div>
+</td><td>
+<div class="org-src-container">
+<pre class="src src-forth">:ASM FORTH-INTERPRETER
+  { next_inst } return_stack PUSH
+  r0 INTO next_inst MOV
+  ( or next_inst FROM r0 MOV )
+LABEL: NEXT
+  next_inst INTO r0 2 LDRH+
+  r0 INTO r1 4 LDR+ ( vs +LDR and +LDR! )
+  r1 BX
+:ASM EXIT
+  TODO
+</pre>
+</div>
+</td></tr></tbody></table>
+</div>
+</div>
+
+<div id="outline-container-orgb2586a0" class="outline-4">
+<h4 id="orgb2586a0"><span class="section-number-4">1.1.2.</span> <span class="todo TODO">TODO</span> A Direct-Threaded Interpreter</h4>
+<div class="outline-text-4" id="text-1-1-2">
+<table class="harmonica-table"><thead><tr><td>Assembly</td><td>Forth</td></tr></thead><tbody><tr><td>
+<div class="org-src-container">
+<pre class="src src-asm"><span class="org-function-name">next_inst</span> .req r11
+<span class="org-function-name">data_space</span> .req r11
+<span class="org-function-name">rsp</span> .req r12
+
+<span class="org-keyword">.macro</span> .execute reg=r0
+  <span class="org-keyword">bx</span> \reg
+<span class="org-keyword">.endm</span>
+<span class="org-keyword">.macro</span> .next
+  <span class="org-keyword">ldr</span> pc, [next_inst], #4 <span class="org-comment-delimiter">/* </span><span class="org-comment">FWSIZE */</span>
+<span class="org-keyword">.endm</span>
+<span class="org-keyword">.macro</span> .exit
+  <span class="org-keyword">ldr</span> next_inst, [rsp], #4
+  <span class="org-keyword">.next</span>
+<span class="org-keyword">.endm</span>
+<span class="org-keyword">.macro</span> .fw word:req, rest:vararg
+  <span class="org-keyword">.ifnc</span> <span class="org-string">"\word"</span>,<span class="org-string">"L"</span>
+    <span class="org-keyword">.4byte</span> \word <span class="org-comment-delimiter">/* </span><span class="org-comment">FWSIZE */</span>
+  <span class="org-keyword">.endif</span>
+  <span class="org-keyword">.ifnb</span> \rest <span class="org-comment-delimiter">; </span><span class="org-comment">.fw \rest ; .endif</span>
+<span class="org-keyword">.endm</span>
+<span class="org-keyword">.macro</span> .forth_interpreter
+  <span class="org-keyword">bl</span> forth_interpreter
+<span class="org-keyword">.endm</span>
+<span class="org-keyword">.macro</span> .asm_interpreter
+<span class="org-keyword">.endm</span>
+<span class="org-keyword">.macro</span> .cell init=0
+  <span class="org-keyword">.word</span> \init
+<span class="org-keyword">.endm</span>
+
+<span class="org-function-name">forth_interpreter</span>:
+  <span class="org-keyword">str</span> next_inst, [rsp, #-4]!
+  <span class="org-keyword">mov</span> next_inst, lr
+  <span class="org-keyword">.next</span>
+</pre>
+</div>
+</td><td>
+</td></tr></tbody></table>
+</div>
+</div>
+
+<div id="outline-container-orgdab1ddc" class="outline-4">
+<h4 id="orgdab1ddc"><span class="section-number-4">1.1.3.</span> <span class="todo TODO">TODO</span> A Subroutine-Threaded Interpreter</h4>
+<div class="outline-text-4" id="text-1-1-3">
+</div>
+<div id="outline-container-org7bdebf5" class="outline-5">
+<h5 id="org7bdebf5"><span class="section-number-5">1.1.3.1.</span> Arm32</h5>
+<div class="outline-text-5" id="text-1-1-3-1">
+<p>
+Anything that calls a subroutine should save LR
+</p>
+<table class="harmonica-table"><thead><tr><td>Assembly</td><td>Forth</td></tr></thead><tbody><tr><td>
+<div class="org-src-container">
+<pre class="src src-asm"><span class="org-function-name">next_inst</span> .req lr
+<span class="org-function-name">rsp</span> .req r12
+
+<span class="org-keyword">.macro</span> .execute reg=r0
+  <span class="org-keyword">bx</span> \reg
+<span class="org-keyword">.endm</span>
+<span class="org-keyword">.macro</span> .next
+  <span class="org-keyword">bx</span> lr
+<span class="org-keyword">.endm</span>
+<span class="org-keyword">.macro</span> .exit
+  <span class="org-comment-delimiter">// </span><span class="org-comment">This is rsp+4 because EXIT (implemented as asm) doesn't</span>
+  <span class="org-comment-delimiter">// </span><span class="org-comment">push its LR to RSP</span>
+  <span class="org-keyword">ldr</span> pc, [rsp], #4
+<span class="org-keyword">.endm</span>
+<span class="org-keyword">.macro</span> .fw word:req, rest:vararg
+  <span class="org-keyword">.ifc</span> <span class="org-string">"\word"</span>,<span class="org-string">"L"</span>
+    <span class="org-keyword">.cellw</span> \rest
+  <span class="org-keyword">.else</span>
+    <span class="org-keyword">bl</span> \word <span class="org-comment-delimiter">/* </span><span class="org-comment">FWSIZE */</span>
+    <span class="org-keyword">.ifnb</span> \rest <span class="org-comment-delimiter">; </span><span class="org-comment">.fw \rest ; .endif</span>
+  <span class="org-keyword">.endif</span>
+<span class="org-keyword">.endm</span>
+<span class="org-keyword">.macro</span> .cellw n:req, rest:vararg
+  <span class="org-keyword">.cell</span> \n
+  <span class="org-keyword">.ifnb</span> \rest <span class="org-comment-delimiter">; </span><span class="org-comment">.fw \rest ; .endif</span>
+<span class="org-keyword">.endm</span>
+<span class="org-keyword">.macro</span> .forth_interpreter
+  <span class="org-comment-delimiter">/*</span><span class="org-comment">push {lr}</span>
+<span class="org-comment">  mov r0, #'\t'</span>
+<span class="org-comment">  bl uart_putc</span>
+<span class="org-comment">  mov r0, #'-'</span>
+<span class="org-comment">  rsb r2, rsp, #0x4000</span>
+<span class="org-comment">  1: bl uart_putc</span>
+<span class="org-comment">  subs r2, r2, #1</span>
+<span class="org-comment">  bcs 1b</span>
+<span class="org-comment">  mov r0, #' '</span>
+<span class="org-comment">  bl uart_putc</span>
+<span class="org-comment">  mov r0, pc</span>
+<span class="org-comment">  bl puthex</span>
+<span class="org-comment">  pop {lr}*/</span>
+  <span class="org-keyword">str</span> lr, [rsp, #-4]!
+<span class="org-keyword">.endm</span>
+<span class="org-keyword">.macro</span> .asm_interpreter
+  <span class="org-comment-delimiter">/*</span><span class="org-comment">push {lr}</span>
+<span class="org-comment">  mov r0, #'\t'</span>
+<span class="org-comment">  bl uart_putc</span>
+<span class="org-comment">  mov r0, #'-'</span>
+<span class="org-comment">  rsb r2, rsp, #0x4000</span>
+<span class="org-comment">  1: bl uart_putc</span>
+<span class="org-comment">  subs r2, r2, #1</span>
+<span class="org-comment">  bcs 1b</span>
+<span class="org-comment">  mov r0, #' '</span>
+<span class="org-comment">  bl uart_putc</span>
+<span class="org-comment">  mov r0, pc</span>
+<span class="org-comment">  bl puthex</span>
+<span class="org-comment">  pop {lr}*/</span>
+<span class="org-keyword">.endm</span>
+<span class="org-keyword">.macro</span> .cell init=0
+  <span class="org-keyword">.word</span> \init
+<span class="org-keyword">.endm</span>
+</pre>
+</div>
+</td><td>
+<div class="org-src-container">
+<pre class="src src-forth">:ASM FORTH-INTERPRETER
+  { next_inst } return_stack PUSH
+  r0 INTO next_inst MOV
+  ( or next_inst FROM r0 MOV )
+LABEL: NEXT
+  next_inst INTO r0 2 LDRH+
+  r0 INTO r1 4 LDR+ ( vs +LDR and +LDR! )
+  r1 BX
+:ASM EXIT
+  TODO
+</pre>
+</div>
+</td></tr></tbody></table>
+</div>
+</div>
+
+<div id="outline-container-org5dba131" class="outline-5">
+<h5 id="org5dba131"><span class="section-number-5">1.1.3.2.</span> Thumb</h5>
+</div>
+</div>
+</div>
+<div id="outline-container-org3decb79" class="outline-3">
+<h3 id="org3decb79"><span class="section-number-3">1.2.</span> DEBUG</h3>
+<div class="outline-text-3" id="text-1-2">
+<div class="org-src-container">
+<pre class="src src-asm"><span class="org-function-name">tohex</span>:
+  <span class="org-keyword">cmp</span> r0, #10
+  <span class="org-keyword">addge</span> r0, #'A'-10
+  <span class="org-keyword">addlt</span> r0, #'0'
+  <span class="org-keyword">bx</span> lr
+
+<span class="org-function-name">puthex</span>:
+  <span class="org-keyword">push</span> {r0-r4,lr}
+  <span class="org-keyword">ror</span> r2, r0, #28 <span class="org-comment-delimiter">/* </span><span class="org-comment">01 23 45 67 */</span>
+  <span class="org-keyword">mov</span> r0, #'0' <span class="org-comment-delimiter">; </span><span class="org-comment">bl uart_putc</span>
+  <span class="org-keyword">mov</span> r0, #'x' <span class="org-comment-delimiter">; </span><span class="org-comment">bl uart_putc</span>
+  <span class="org-keyword">mov</span> r3, #15
+  <span class="org-keyword">mov</span> r4, #8
+<span class="org-function-name">puthex_loop</span>:
+  <span class="org-keyword">and</span> r0, r2, r3 <span class="org-comment-delimiter">; </span><span class="org-comment">bl tohex ; bl uart_putc</span>
+  <span class="org-keyword">ror</span> r2, #28
+  <span class="org-keyword">subs</span> r4, #1
+  <span class="org-keyword">bne</span> puthex_loop
+<span class="org-function-name">puthex_end</span>:
+  <span class="org-keyword">mov</span> r0, #'\n' <span class="org-comment-delimiter">; </span><span class="org-comment">bl uart_putc</span>
+  <span class="org-keyword">pop</span> {r0-r4,pc}
+</pre>
+</div>
+
+<p>
+The exit call pops the previously saved <code>next_instr</code>, then continuing
+executing from there on by jumping to <code>next</code>.
+</p>
+
+<p>
+TODO: Have &amp;ERR as the first thing on the return stack, so that when
+we pop off one too many, it will be detected.
+</p>
+</div>
+</div>
+
+<div id="outline-container-org23a9a84" class="outline-3">
+<h3 id="org23a9a84"><span class="section-number-3">1.3.</span> <span class="todo TODO">TODO</span> Dictionary-list</h3>
+<div class="outline-text-3" id="text-1-3">
+<p>
+Next, we need to add the basic words (words being procedures, methods,
+functions, or operators) of Forth, which we will need to implement
+natively.
+</p>
+
+<p>
+But before we implement those words, we need to make them findable by
+the Forth system, for which we have to discuss the simple Forth
+dictionary. The dictionary is a simple linked-list containing the
+flags, name of the word, and the interpreter along with the code, as
+discussed above.
+</p>
+
+<div class="org-src-container">
+<pre class="src src-dot">digraph {
+  rankdir=LR;
+  node [shape=<span class="org-string">"record"</span>];
+
+  DROP_XT [label=<span class="org-string">"Drop XT"</span>, shape=none];
+  DUP_XT [label=<span class="org-string">"Dup XT"</span>, shape=none];
+  DROP [label=<span class="org-string">"&lt;0&gt; Next entry | Flags |Counted string\n\"DROP\\0\" | Padding | &lt;xt&gt; Interpreter | Code | ..."</span>];
+  DUP [label=<span class="org-string">"&lt;0&gt; Next entry | Flags | Counted string\n\"DUP\\0\" | &lt;xt&gt; Interpreter | Code | ..."</span>];
+
+  LAST_ENTRY [label=<span class="org-string">"End"</span>];
+
+  LATEST -&gt; DROP:0
+  DROP_XT -&gt; DROP:xt
+  DUP_XT -&gt; DUP:xt
+  DROP:0 -&gt; DUP:0
+  DUP:0 -&gt; LAST_ENTRY
+}
+</pre>
+</div>
+
+<p>
+Here a counted string means that the first element of the string is a
+word (four bytes) containing the length of the string (in bytes),
+which is followed by the bytes of the string, including a trailing
+NULL byte, and padded to Forth-word boundary.
+</p>
+
+<p>
+To help with making dictionary entries, we will need the following
+macro, which creates the header for a dictionary entry. This includes
+the next entry pointer, its flags, name, and finally an assembler
+label to use with hand-written word implementations. But it doesn't
+include the interpreter, so it can be used to create both native and
+Forth words.
+</p>
+
+<table class="harmonica-table"><thead><tr><td>Assembly</td><td>Forth</td></tr></thead><tbody><tr><td>
+<div class="org-src-container">
+<pre class="src src-asm"><span class="org-keyword">.set</span> previous_entry, 0
+<span class="org-keyword">.macro</span> .entry name:req, label, imm=0, hid=0
+<span class="org-keyword">.balign</span> 4 <span class="org-comment-delimiter">/* </span><span class="org-comment">Align to power of 2 */</span>
+<span class="org-function-name">1</span>:.cell previous_entry <span class="org-comment-delimiter">; </span><span class="org-comment">.set previous_entry, 1b</span>
+<span class="org-keyword">.byte</span> \hid, \imm <span class="org-comment-delimiter">; </span><span class="org-comment">.balign 4</span>
+<span class="org-keyword">.cell</span> 2f-3f <span class="org-comment-delimiter">; </span><span class="org-comment">3:.ascii "\name" ; 2: .byte 0</span>
+<span class="org-keyword">.balign</span> 4 <span class="org-comment-delimiter">/* </span><span class="org-comment">Align to power of 2 */</span>
+<span class="org-keyword">.ifc</span> _,\label
+<span class="org-keyword">.globl</span> \name <span class="org-comment-delimiter">; </span><span class="org-comment">\name :</span>
+<span class="org-keyword">.else</span>
+<span class="org-keyword">.globl</span> \label <span class="org-comment-delimiter">; </span><span class="org-comment">\label :</span>
+<span class="org-keyword">.endif</span>
+<span class="org-keyword">.endm</span>
+</pre>
+</div>
+</td><td>
+<div class="org-src-container">
+<pre class="src src-forth">: CREATE ( "&lt;spaces&gt;name" -- )
+  align
+  here latest @ , latest !
+  0 C, 0 C, align \ flags
+  here cell-size allot
+  bl word' \ addr start len
+  nip 2dup swap ! \ addr len
+  nip 1 + allot
+  align ; \ padding
+</pre>
+</div>
+</td></tr></tbody></table>
+</div>
+
+<div id="outline-container-orgeb0915d" class="outline-4">
+<h4 id="orgeb0915d"><span class="section-number-4">1.3.1.</span> Machine dependent words</h4>
+<div class="outline-text-4" id="text-1-3-1">
+<p>
+The first dictionary entry is also the simplest. Remember that the
+`entry' macro doesn't include the interpreter, so this just points to
+the native code for exit, which pops the forth return stack and
+continues executing from there.
+</p>
+
+<div class="org-src-container">
+<pre class="src src-asm"><span class="org-keyword">.entry</span> EXIT, _
+<span class="org-keyword">.asm_interpreter</span>
+<span class="org-keyword">.exit</span>
+</pre>
+</div>
+
+<p>
+To help define the rest of the machine-dependent words quicker, we
+need a couple of macros first.
+</p>
+
+<table class="harmonica-table"><thead><tr><td>Assembly</td><td>Forth</td></tr></thead><tbody><tr><td>
+<div class="org-src-container">
+<pre class="src src-asm"><span class="org-keyword">.macro</span> .insts i, insts:vararg
+  \i <span class="org-comment-delimiter">; </span><span class="org-comment">.ifnb \insts ; .insts \insts ; .endif</span>
+<span class="org-keyword">.endm</span>
+<span class="org-keyword">.macro</span> .fasm1 name:req, label, pop, i:vararg
+  <span class="org-keyword">.entry</span> \name, \label
+  <span class="org-keyword">.asm_interpreter</span>
+  <span class="org-keyword">.ifnc</span> _,\pop <span class="org-comment-delimiter">; </span><span class="org-comment">pop {\pop} ; .endif</span>
+  <span class="org-keyword">.insts</span> \i
+<span class="org-keyword">.endm</span>
+<span class="org-keyword">.macro</span> .fasm name:req, label, pop, push, i:vararg
+  <span class="org-keyword">.fasm1</span> \name, \label, \pop, \i
+  <span class="org-keyword">.ifnc</span> _,\push <span class="org-comment-delimiter">; </span><span class="org-comment">push {\push} ; .endif</span>
+  <span class="org-keyword">.next</span>
+<span class="org-keyword">.endm</span>
+
+<span class="org-keyword">.macro</span> .binops name:req, label, op:req, rest:vararg
+  <span class="org-keyword">.fasm</span> \name, \label, r0-r1, r1, <span class="org-string">"\op r1, r0"</span>
+  <span class="org-keyword">.ifnb</span> \rest <span class="org-comment-delimiter">; </span><span class="org-comment">.binops \rest ; .endif</span>
+<span class="org-keyword">.endm</span>
+<span class="org-keyword">.macro</span> .binrels name:req, label, rel:req, rest:vararg
+  <span class="org-keyword">.fasm1</span> \name, \label, r0-r1, <span class="org-string">"cmp r1, r0"</span>
+  <span class="org-keyword">mov</span> r0, #0 <span class="org-comment-delimiter">; </span><span class="org-comment">mov\rel r0, #-1</span>
+  <span class="org-keyword">push</span> {r0} <span class="org-comment-delimiter">; </span><span class="org-comment">.next</span>
+  <span class="org-keyword">.ifnb</span> \rest <span class="org-comment-delimiter">; </span><span class="org-comment">.binrels \rest ; .endif</span>
+<span class="org-keyword">.endm</span>
+</pre>
+</div>
+</td><td>
+<div class="org-src-container">
+<pre class="src src-forth">TODO
+</pre>
+</div>
+</td></tr></tbody></table>
+
+<p>
+We are now ready to define the basic Forth words in assembly, on top
+of which we will build the rest of the Forth system. The <code>EXIT</code> we
+have already defined above.
+</p>
+
+<table class="harmonica-table"><thead><tr><td>Assembly</td><td>Forth</td></tr></thead><tbody><tr><td>
+<div class="org-src-container">
+<pre class="src src-asm"><span class="org-keyword">.binops</span> <span class="org-string">"+"</span>, ADD, add,   <span class="org-string">"-"</span>, SUB, sub,   <span class="org-string">"*"</span>, STAR, mul
+<span class="org-keyword">.binops</span> <span class="org-string">"LSHIFT"</span>, _, lsl,   <span class="org-string">"RSHIFT"</span>, _, lsr
+<span class="org-keyword">.binops</span> <span class="org-string">"&amp;"</span>, AND, and,   <span class="org-string">"|"</span>, OR, orr,    <span class="org-string">"XOR"</span>, _, eor
+
+<span class="org-keyword">.binrels</span> <span class="org-string">"&lt;&gt;"</span>, NOT_EQUAL, ne,    <span class="org-string">"U&lt;"</span>, U_LESS_THAN, lo
+<span class="org-keyword">.binrels</span> <span class="org-string">"\x3d"</span>, EQUAL, eq,    <span class="org-string">"U&gt;"</span>, U_GREATER_THAN, hi
+<span class="org-keyword">.binrels</span> <span class="org-string">"&lt;"</span>, LESS_THAN, lt,    <span class="org-string">"&gt;"</span>, GREATER_THAN, gt
+
+<span class="org-keyword">.fasm</span> <span class="org-string">"NEGATE"</span>, _, r0, r0, <span class="org-string">"rsb r0, #0"</span>
+<span class="org-keyword">.fasm</span> <span class="org-string">"INVERT"</span>, _, r0, r0, <span class="org-string">"mvn r0, r0"</span>
+<span class="org-keyword">.fasm</span> <span class="org-string">"C\x40"</span>, C_FETCH, r0, r0, <span class="org-string">"ldrB r0, [r0]"</span>
+<span class="org-keyword">.fasm</span> <span class="org-string">"\x40"</span>, FETCH, r0, r0, <span class="org-string">"ldr r0, [r0]"</span> <span class="org-comment-delimiter">/* </span><span class="org-comment">FWSIZE */</span>
+<span class="org-keyword">.fasm</span> <span class="org-string">"C!"</span>, C_STORE, r0-r1, _, <span class="org-string">"strB r1, [r0]"</span>
+<span class="org-keyword">.fasm</span> <span class="org-string">"!"</span>, STORE, r0-r1, _, <span class="org-string">"str r1, [r0]"</span> <span class="org-comment-delimiter">/* </span><span class="org-comment">FWSIZE */</span>
+</pre>
+</div>
+</td><td>
+<div class="org-src-container">
+<pre class="src src-forth">TODO
+</pre>
+</div>
+</td></tr></tbody></table>
+
+<p>
+TODO: Separate vs contiguous data-space (in case icache and dcache
+coherency extends to reads, not just writes)
+</p>
+
+<table class="harmonica-table"><thead><tr><td>Assembly</td><td>Forth</td></tr></thead><tbody><tr><td>
+<div class="org-src-container">
+<pre class="src src-asm"><span class="org-comment-delimiter">//  </span><span class="org-comment">TODO: SUBROUTINE .fasm1 "(BRANCH)", BRANCH, _, "ldr r0, [data_space]"</span>
+<span class="org-comment-delimiter">//  </span><span class="org-comment">TODO: SUBROUTINE add next_inst, r0 ; .next /* FWSIZE */</span>
+<span class="org-comment-delimiter">//  </span><span class="org-comment">TODO: SUBROUTINE .fasm1 "(?BRANCH)", ZBRANCH, r1, "ldr r0, [data_space]"</span>
+<span class="org-comment-delimiter">//  </span><span class="org-comment">TODO: SUBROUTINE cmp r1, #0 ; addeq next_inst, r0 ; addne next_inst, #4</span>
+<span class="org-comment-delimiter">//  </span><span class="org-comment">TODO: SUBROUTINE .next /* FWSIZE */</span>
+<span class="org-comment-delimiter">//  </span><span class="org-comment">TODO: SUBROUTINE .fasm "[\x27]", LIT, _, r0, "ldr r0, [data_space], #4" /* FWSIZE */</span>
+
+<span class="org-keyword">.fasm1</span> <span class="org-string">"(BRANCH)"</span>,BRANCH, _, <span class="org-string">"ldr r0, [next_inst]"</span>
+<span class="org-function-name">add</span> <span class="org-keyword">next</span>_inst, next_inst, r0 <span class="org-comment-delimiter">/* </span><span class="org-comment">FWSIZE */</span>
+<span class="org-keyword">.next</span>
+<span class="org-keyword">.fasm1</span> <span class="org-string">"(?BRANCH)"</span>, ZBRANCH, r1, <span class="org-string">"ldr r0, [next_inst]"</span>
+<span class="org-function-name">cmp</span> <span class="org-keyword">r1</span>, #0
+<span class="org-function-name">addeq</span> <span class="org-keyword">next</span>_inst, next_inst, r0
+<span class="org-function-name">addne</span> <span class="org-keyword">next</span>_inst, #4
+<span class="org-keyword">.next</span> <span class="org-comment-delimiter">/* </span><span class="org-comment">FWSIZE */</span>
+<span class="org-keyword">.fasm</span> <span class="org-string">"[\x27]"</span>, LIT, _, r0, <span class="org-string">"ldr r0, [next_inst], #4"</span> <span class="org-comment-delimiter">/* </span><span class="org-comment">FWSIZE */</span>
+<span class="org-keyword">.macro</span> BRANCH, pos
+  <span class="org-keyword">b</span> .+\pos
+<span class="org-keyword">.endm</span>
+</pre>
+</div>
+</td><td>
+<div class="org-src-container">
+<pre class="src src-forth">TODO
+</pre>
+</div>
+</td></tr></tbody></table>
+
+<table class="harmonica-table"><thead><tr><td>Assembly</td><td>Forth</td></tr></thead><tbody><tr><td>
+<div class="org-src-container">
+<pre class="src src-asm"><span class="org-keyword">.fasm</span> <span class="org-string">"CELL-SIZE"</span>, CELL_SIZE, _, r0, <span class="org-string">"mov r0, #4"</span> <span class="org-comment-delimiter">/* </span><span class="org-comment">CELLSIZE */</span>
+<span class="org-keyword">.fasm</span> <span class="org-string">"CHAR-SIZE"</span>, CHAR_SIZE, _, r0, <span class="org-string">"mov r0, #1"</span> <span class="org-comment-delimiter">/* </span><span class="org-comment">CHARSIZE */</span>
+
+<span class="org-keyword">.fasm</span> <span class="org-string">"NIP"</span>, _, r0-r1, r0
+<span class="org-keyword">.fasm</span> <span class="org-string">"DROP"</span>, _, _, _, <span class="org-string">"add sp, #4"</span> <span class="org-comment-delimiter">/* </span><span class="org-comment">CELLSIZE */</span>
+<span class="org-keyword">.fasm</span> <span class="org-string">"DUP"</span>, _, _, r0, <span class="org-string">"ldr r0, [sp]"</span>
+<span class="org-keyword">.fasm</span> <span class="org-string">"OVER"</span>, _, _, r0, <span class="org-string">"ldr r0, [sp, #4]"</span> <span class="org-comment-delimiter">/* </span><span class="org-comment">CELLSIZE */</span>
+<span class="org-keyword">.fasm</span> <span class="org-string">"PICK"</span>, _, r0, r0, <span class="org-string">"ldr r0, [sp, r0, LSL #2]"</span> <span class="org-comment-delimiter">/* </span><span class="org-comment">CELLSIZE */</span>
+<span class="org-keyword">.fasm</span> <span class="org-string">"ROT"</span>, _, r0-r2, r2, <span class="org-string">"push {r0-r1}"</span>
+<span class="org-keyword">.fasm</span> <span class="org-string">"SWAP"</span>, _, r0-r1, r1,<span class="org-string">"push {r0}"</span>
+
+<span class="org-keyword">.fasm</span> <span class="org-string">"R\x40"</span>, R_FETCH, _, r0, <span class="org-string">"ldr r0, [rsp]"</span> <span class="org-comment-delimiter">/* </span><span class="org-comment">FWSIZE */</span>
+<span class="org-keyword">.fasm</span> <span class="org-string">"R&gt;"</span>, R_FROM, _, r0, <span class="org-string">"ldr r0, [rsp], #4"</span> <span class="org-comment-delimiter">/* </span><span class="org-comment">FWSIZE */</span>
+<span class="org-keyword">.fasm</span> <span class="org-string">"&gt;R"</span>, TO_R, r0, _, <span class="org-string">"str r0, [rsp, #-4]!"</span> <span class="org-comment-delimiter">/* </span><span class="org-comment">FWSIZE */</span>
+<span class="org-keyword">.fasm</span> <span class="org-string">"DEPTH"</span>, _, _, r0, <span class="org-string">"rsb r0, sp, #0x8000"</span>, <span class="org-string">"lsr r0, #2"</span> <span class="org-comment-delimiter">/* </span><span class="org-comment">FWSIZE */</span>
+</pre>
+</div>
+</td><td>
+<div class="org-src-container">
+<pre class="src src-forth">TODO
+</pre>
+</div>
+</td></tr></tbody></table>
+
+<p>
+There are also a couple of variables we need, this goes into a
+different file (<code>vars.s</code>), so that the <code>previous_entry</code> points to the
+latest defined Forth word.
+</p>
+
+<table class="harmonica-table"><thead><tr><td>Assembly</td><td>Forth</td></tr></thead><tbody><tr><td>
+<div class="org-src-container">
+<pre class="src src-asm"><span class="org-keyword">.data</span>
+<span class="org-keyword">.balign</span> 4
+<span class="org-function-name">HERE_LOC</span>: .4byte DATA_END
+<span class="org-keyword">.globl</span> previous_entry
+<span class="org-function-name">LATEST_LOC</span>:   .4byte previous_entry
+<span class="org-function-name">STATE_LOC</span>:    .4byte 0
+</pre>
+</div>
+</td><td>
+<div class="org-src-container">
+<pre class="src src-forth">TODO
+</pre>
+</div>
+</td></tr></tbody></table>
+
+<p>
+We also need to implement functions for input/output.
+</p>
+
+<table class="harmonica-table"><thead><tr><td>Assembly</td><td>Forth</td></tr></thead><tbody><tr><td>
+<div class="org-src-container">
+<pre class="src src-asm"><span class="org-keyword">.fasm</span> <span class="org-string">"EMIT"</span>, _, r0, _, <span class="org-string">"push {lr}"</span>,<span class="org-string">"bl uart_putc"</span>, <span class="org-string">"pop {lr}"</span>
+<span class="org-keyword">.fasm</span> <span class="org-string">"KEY"</span>, _, _, r0, <span class="org-string">"push {lr}"</span>, <span class="org-string">"bl uart_getc"</span>, <span class="org-string">"bl uart_putc"</span>, <span class="org-string">"pop {lr}"</span>
+<span class="org-keyword">.fasm</span> <span class="org-string">"HEX."</span>, HEX_PRINT, r0, _, <span class="org-string">"push {lr}"</span>,<span class="org-string">"b puthex"</span>, <span class="org-string">"pop {lr}"</span>
+</pre>
+</div>
+</td><td>
+<div class="org-src-container">
+<pre class="src src-forth">TODO
+</pre>
+</div>
+</td></tr></tbody></table>
+</div>
+</div>
+
+<div id="outline-container-org0926328" class="outline-4">
+<h4 id="org0926328"><span class="section-number-4">1.3.2.</span> <span class="todo TODO">TODO</span> Simple helper words<a id="orga26a750"></a></h4>
+<div class="outline-text-4" id="text-1-3-2">
+<table class="harmonica-table"><thead><tr><td>Assembly</td><td>Forth</td></tr></thead><tbody><tr><td>
+<div class="org-src-container">
+<pre class="src src-asm"><span class="org-comment-delimiter">/* </span><span class="org-comment">TODO: Use this more liberally */</span>
+<span class="org-keyword">.macro</span> .fdef1 name:req, label, imm, hidden, rest:vararg
+  <span class="org-keyword">.entry</span> \name, \label, \imm, \hidden
+  <span class="org-keyword">.forth_interpreter</span>
+  <span class="org-keyword">.ifnb</span> \rest <span class="org-comment-delimiter">; </span><span class="org-comment">.fw \rest ; .endif</span>
+<span class="org-keyword">.endm</span>
+<span class="org-keyword">.macro</span> .fdef name:req, label, rest:vararg
+  <span class="org-keyword">.fdef1</span> \name, \label, 0, 0, \rest
+<span class="org-keyword">.endm</span>
+</pre>
+</div>
+</td><td>
+</td></tr></tbody></table>
+
+<div class="org-src-container">
+<pre class="src src-asm"><span class="org-keyword">.fdef</span> <span class="org-string">"1-"</span>, DECR, LIT, L,1, SUB, EXIT
+<span class="org-keyword">.fdef</span> <span class="org-string">"1+"</span>, INCR, LIT, L,1, ADD, EXIT
+<span class="org-keyword">.fdef</span> <span class="org-string">"2DUP"</span>, TWO_DUP, OVER, OVER, EXIT
+<span class="org-keyword">.fdef</span> <span class="org-string">"2DROP"</span>, TWO_DROP, DROP, DROP, EXIT
+<span class="org-keyword">.fdef</span> <span class="org-string">"-ROT"</span>, NROT, ROT, ROT, EXIT
+<span class="org-keyword">.fdef</span> <span class="org-string">"2&gt;R"</span>, TWO_TO_R, R_FROM, NROT, SWAP
+<span class="org-keyword">.fw</span> TO_R, TO_R, TO_R, EXIT
+<span class="org-keyword">.fdef</span> <span class="org-string">"2R&gt;"</span>, TWO_R_FROM, R_FROM, R_FROM
+<span class="org-keyword">.fw</span> R_FROM, ROT, TO_R, SWAP, EXIT
+<span class="org-keyword">.fdef</span> <span class="org-string">"2RDROP"</span>, TWO_R_DROP, R_FROM, R_FROM
+<span class="org-keyword">.fw</span> R_FROM, TWO_DROP, TO_R, EXIT
+<span class="org-keyword">.fdef</span> <span class="org-string">"2R\x40"</span>, TWO_R_FETCH, R_FROM
+<span class="org-keyword">.fw</span> TWO_R_FROM, TWO_DUP, TWO_TO_R, ROT
+<span class="org-keyword">.fw</span> TO_R, EXIT
+<span class="org-keyword">.fdef</span> <span class="org-string">"TRUE"</span>, _, LIT, L,-1, EXIT
+<span class="org-keyword">.fdef</span> <span class="org-string">"FALSE"</span>, _, LIT, L,0, EXIT
+<span class="org-keyword">.fdef</span> <span class="org-string">"HERE_VAR"</span>, _, LIT, L,HERE_LOC, EXIT
+<span class="org-keyword">.fdef</span> <span class="org-string">"LATEST"</span>, _, LIT, L,LATEST_LOC, EXIT
+<span class="org-keyword">.fdef</span> <span class="org-string">"STATE"</span>, _, LIT, L,STATE_LOC, EXIT
+<span class="org-keyword">.fdef</span> <span class="org-string">"HERE"</span>, _, HERE_VAR, FETCH, EXIT
+<span class="org-keyword">.fdef</span> <span class="org-string">"CHAR+"</span>, CHAR_ADD, CHAR_SIZE, ADD, EXIT
+<span class="org-keyword">.fdef</span> <span class="org-string">"CELL+"</span>, CELL_ADD, CELL_SIZE, ADD, EXIT
+<span class="org-keyword">.fdef</span> <span class="org-string">"CHARS"</span>, _, CHAR_SIZE, STAR, EXIT
+<span class="org-keyword">.fdef</span> <span class="org-string">"CELLS"</span>, _, CELL_SIZE, STAR, EXIT
+<span class="org-keyword">.fdef</span> <span class="org-string">"C\x2c"</span>, C_COMMA, HERE, C_STORE, HERE
+<span class="org-keyword">.fw</span> CHAR_ADD, HERE_VAR, STORE, EXIT
+<span class="org-keyword">.fdef</span> <span class="org-string">"\x2c"</span>, COMMA, HERE, STORE, HERE
+<span class="org-keyword">.fw</span> CELL_ADD, HERE_VAR, STORE, EXIT
+</pre>
+</div>
+</div>
+</div>
+
+<div id="outline-container-orge2c74f2" class="outline-4">
+<h4 id="orge2c74f2"><span class="section-number-4">1.3.3.</span> <span class="todo TODO">TODO</span> Creation</h4>
+<div class="outline-text-4" id="text-1-3-3">
+<table class="harmonica-table"><thead><tr><td>Assembly</td><td>Forth</td></tr></thead><tbody><tr><td>
+<div class="org-src-container">
+<pre class="src src-asm"><span class="org-keyword">.fdef</span> <span class="org-string">"ALLOT"</span>, _
+  <span class="org-keyword">.fw</span> HERE, ADD, HERE_VAR, STORE, EXIT
+</pre>
+</div>
+</td><td>
+<div class="org-src-container">
+<pre class="src src-forth">: ALLOT HERE + HERE_VAR ! ;
+</pre>
+</div>
+</td></tr></tbody></table>
+
+<table class="harmonica-table"><thead><tr><td>Assembly</td><td>Forth</td></tr></thead><tbody><tr><td>
+<div class="org-src-container">
+<pre class="src src-asm"><span class="org-keyword">.fdef</span> <span class="org-string">"ALIGN"</span>, _
+  <span class="org-keyword">.fw</span> HERE, CELL_SIZE, DECR, ADD
+  <span class="org-keyword">.fw</span> CELL_SIZE, DECR, INVERT, AND
+  <span class="org-keyword">.fw</span> HERE_VAR, STORE, EXIT
+</pre>
+</div>
+</td><td>
+<div class="org-src-container">
+<pre class="src src-forth">: ALIGN
+  HERE cell-size 1- + cell-size 1-  invert and
+  HERE_VAR ! ;
+</pre>
+</div>
+</td></tr></tbody></table>
+
+<table class="harmonica-table"><thead><tr><td>Assembly</td><td>Forth</td></tr></thead><tbody><tr><td>
+<div class="org-src-container">
+<pre class="src src-asm"><span class="org-keyword">.fdef</span> <span class="org-string">"CREATE"</span>, _
+  <span class="org-keyword">.fw</span> ALIGN
+  <span class="org-keyword">.fw</span> HERE, LATEST, FETCH
+  <span class="org-keyword">.fw</span> COMMA, LATEST, STORE
+  <span class="org-keyword">.fw</span> LIT, L,0, C_COMMA
+  <span class="org-keyword">.fw</span> LIT, L,0, C_COMMA, ALIGN
+  <span class="org-keyword">.fw</span> BL, WORD
+  <span class="org-keyword">.fw</span> CELL_SIZE, ALLOT
+  <span class="org-keyword">.fw</span> FETCH, CHARS, ALLOT
+  <span class="org-keyword">.fw</span> LIT, L,0, C_COMMA
+  <span class="org-keyword">.fw</span> EXIT
+</pre>
+</div>
+</td><td>
+<div class="org-src-container">
+<pre class="src src-forth">: CREATE ( "&lt;spaces&gt;name" -- )
+  align
+  here latest @ , latest !
+  0 C, 0 C, align \ flags
+  bl word \ c-str
+  cell-size allot \ allot space for len
+  @ chars allot \ allot len characters
+  0 C, \ For C string compatibility
+  align ; \ padding
+</pre>
+</div>
+</td></tr></tbody></table>
+
+<table class="harmonica-table"><thead><tr><td>Assembly</td><td>Forth</td></tr></thead><tbody><tr><td>
+<div class="org-src-container">
+<pre class="src src-asm"><span class="org-keyword">.fdef</span> <span class="org-string">"BALIGN"</span>, BALIGN, DECR, SWAP, OVER
+<span class="org-keyword">.fw</span> ADD, SWAP, INVERT, AND, EXIT
+<span class="org-keyword">.fdef</span> <span class="org-string">"ENTRY-NEXT"</span>, ENTRY_NEXT, EXIT
+<span class="org-keyword">.fdef</span> <span class="org-string">"ENTRY-FLAGS"</span>, ENTRY_FLAGS, CELL_ADD, EXIT
+<span class="org-keyword">.fdef</span> <span class="org-string">"ENTRY-LEN"</span>, ENTRY_LEN, LIT, L,2
+<span class="org-keyword">.fw</span> CELLS, ADD, EXIT
+<span class="org-keyword">.fdef</span> <span class="org-string">"ENTRY-CHARS"</span>, ENTRY_CHARS, LIT, L,3
+<span class="org-keyword">.fw</span> CELLS, ADD, EXIT
+<span class="org-keyword">.fdef</span> <span class="org-string">"ENTRY-XT"</span>, ENTRY_XT, DUP
+<span class="org-keyword">.fw</span> ENTRY_LEN, FETCH, LIT, L,1, ADD, SWAP
+<span class="org-keyword">.fw</span> ENTRY_CHARS, ADD, LIT, L,4, BALIGN, EXIT
+</pre>
+</div>
+</td><td>
+<div class="org-src-container">
+<pre class="src src-forth">TODO
+</pre>
+</div>
+</td></tr></tbody></table>
+
+
+
+<table class="harmonica-table"><thead><tr><td>Assembly</td><td>Forth</td></tr></thead><tbody><tr><td>
+<div class="org-src-container">
+<pre class="src src-asm"><span class="org-keyword">.fdef</span> <span class="org-string">"HIDDEN?"</span>, HIDDENP
+  <span class="org-keyword">.fw</span> ENTRY_FLAGS, C_FETCH, EXIT
+</pre>
+</div>
+</td><td>
+<div class="org-src-container">
+<pre class="src src-forth">: HIDDEN? entry-flags C@ ;
+</pre>
+</div>
+</td></tr></tbody></table>
+
+<table class="harmonica-table"><thead><tr><td>Assembly</td><td>Forth</td></tr></thead><tbody><tr><td>
+<div class="org-src-container">
+<pre class="src src-asm"><span class="org-keyword">.fdef</span> <span class="org-string">"IMMEDIATE?"</span>, IMMEDIATEP
+  <span class="org-keyword">.fw</span> ENTRY_FLAGS, CHAR_ADD, C_FETCH, EXIT
+</pre>
+</div>
+</td><td>
+<div class="org-src-container">
+<pre class="src src-forth">: IMMEDIATE? ( xt -- -1|0 )
+  entry-flags char+ C@ ;
+</pre>
+</div>
+</td></tr></tbody></table>
+
+<p>
+Toggles hidden status of a given xt
+</p>
+
+<table class="harmonica-table"><thead><tr><td>Assembly</td><td>Forth</td></tr></thead><tbody><tr><td>
+<div class="org-src-container">
+<pre class="src src-asm"><span class="org-keyword">.fdef</span> <span class="org-string">"HIDE"</span>, _, CELL_ADD, DUP, C_FETCH
+  <span class="org-keyword">.fw</span> INVERT, SWAP, C_STORE, EXIT
+</pre>
+</div>
+</td><td>
+<div class="org-src-container">
+<pre class="src src-forth">: HIDE ( xt -- )
+  cell+ dup C@
+  invert swap C! ;
+</pre>
+</div>
+</td></tr></tbody></table>
+
+<table class="harmonica-table"><thead><tr><td>Assembly</td><td>Forth</td></tr></thead><tbody><tr><td>
+<div class="org-src-container">
+<pre class="src src-asm"><span class="org-keyword">.fdef1</span> <span class="org-string">"IMMEDIATE"</span>, _, -1 <span class="org-comment-delimiter">/* </span><span class="org-comment">immediate */</span>
+  <span class="org-keyword">.fw</span> LATEST, FETCH
+  <span class="org-keyword">.fw</span> TRUE, SWAP, CELL_ADD, CHAR_ADD, C_STORE, EXIT
+</pre>
+</div>
+</td><td>
+<div class="org-src-container">
+<pre class="src src-forth">: IMMEDIATE ( -- )
+  LATEST @
+  true swap cell+ char+ C!
+</pre>
+</div>
+</td></tr></tbody></table>
+</div>
+</div>
+
+<div id="outline-container-org55e43f6" class="outline-4">
+<h4 id="org55e43f6"><span class="section-number-4">1.3.4.</span> <span class="todo TODO">TODO</span> Lookup</h4>
+<div class="outline-text-4" id="text-1-3-4">
+<dl class="org-dl">
+<dt>TODO</dt><dd>Explain "c-addr u" and fwsize</dd>
+</dl>
+
+
+<table class="harmonica-table"><thead><tr><td>Assembly</td><td>Forth</td></tr></thead><tbody><tr><td>
+<div class="org-src-container">
+<pre class="src src-asm"><span class="org-keyword">.fdef</span> <span class="org-string">"FIND\x27"</span>, FIND_NEW
+  <span class="org-keyword">.fw</span> LATEST, FETCH
+<span class="org-function-name">FIND_LOOP</span>: <span class="org-comment-delimiter">/* </span><span class="org-comment">( c-addr u entry ) */</span>
+  <span class="org-keyword">.fw</span> DUP, LIT, L,0, EQUAL, ZBRANCH, L,(FIND_NON_END-.)
+  <span class="org-keyword">.fw</span> DROP, DROP, LIT, L,0, EXIT
+<span class="org-function-name">FIND_NON_END</span>:
+  <span class="org-keyword">.fw</span> DUP, HIDDENP, INVERT
+  <span class="org-keyword">.fw</span> ZBRANCH, L,(FIND_NEXT_ENTRY-.)
+
+  <span class="org-keyword">.fw</span> TWO_DUP, ENTRY_LEN, FETCH, EQUAL
+  <span class="org-keyword">.fw</span> ZBRANCH, L,(FIND_NEXT_ENTRY-.)
+  <span class="org-comment-delimiter">/* </span><span class="org-comment">c-addr u entry */</span>
+  <span class="org-keyword">.fw</span> TWO_DUP, ENTRY_CHARS
+  <span class="org-keyword">.fw</span> LIT, L,4, PICK
+  <span class="org-comment-delimiter">/* </span><span class="org-comment">c-addr u entry u entry-str c-addr */</span>
+  <span class="org-keyword">.fw</span> MEMCMP, ZBRANCH, L,(FIND_NEXT_ENTRY-.)
+
+  <span class="org-keyword">.fw</span> NIP, NIP
+  <span class="org-keyword">.fw</span> DUP, ENTRY_XT
+  <span class="org-keyword">.fw</span> SWAP, IMMEDIATEP
+  <span class="org-keyword">.fw</span> ZBRANCH, L,(NON_IMM-.), LIT, L,1, BRANCH, L,(IMM_END-.)
+<span class="org-function-name">NON_IMM</span>:
+  <span class="org-keyword">.fw</span> LIT, L,-1
+<span class="org-function-name">IMM_END</span>:
+  <span class="org-keyword">.fw</span> EXIT
+
+<span class="org-function-name">FIND_NEXT_ENTRY</span>:
+  <span class="org-keyword">.fw</span> FETCH
+  <span class="org-keyword">.fw</span> BRANCH, L,(FIND_LOOP-.)
+</pre>
+</div>
+</td><td>
+<div class="org-src-container">
+<pre class="src src-forth">: FIND' ( c-addr u -- c-addr 0 | xt 1 | xt -1 )
+  latest @
+  begin \ c-addr u entry
+    dup 0 = if drop drop 0 exit then
+    dup hidden? invert if
+      2dup entry-len = if \ c-addr u entry entry-len u
+	2dup entry-chars 4 pick
+	\ c-addr u entry u entry-str c-addr
+	memcmp if \ c-addr u entry
+	  nip nip \ entry
+	  dup entry-xt
+	  swap immediate? if 1 else -1 then
+	  exit
+	then
+      then
+    then
+    @ \ Fetch next entry
+  again ;
+</pre>
+</div>
+</td></tr></tbody></table>
+
+<p>
+We also need to write the memory comparison, as well as the utilities
+for the flags.
+</p>
+</div>
+</div>
+
+<div id="outline-container-orgcf58a35" class="outline-4">
+<h4 id="orgcf58a35"><span class="section-number-4">1.3.5.</span> <span class="todo TODO">TODO</span> Memory comparison</h4>
+<div class="outline-text-4" id="text-1-3-5">
+<table class="harmonica-table"><thead><tr><td>Assembly</td><td>Forth</td></tr></thead><tbody><tr><td>
+<div class="org-src-container">
+<pre class="src src-asm"><span class="org-keyword">.fdef</span> <span class="org-string">"MEMCMP"</span>, _
+  <span class="org-keyword">.fw</span> ROT, LIT, L,0
+  <span class="org-keyword">.fw</span> TWO_TO_R
+<span class="org-function-name">MEMCMP_LOOP</span>:
+  <span class="org-keyword">.fw</span> TWO_DUP, R_FETCH, ADD, C_FETCH
+  <span class="org-keyword">.fw</span> SWAP, R_FETCH, ADD, C_FETCH
+
+  <span class="org-keyword">.fw</span> CHAR_EQUAL, INVERT, ZBRANCH, L,(MEMCMP_NEXT-.)
+  <span class="org-keyword">.fw</span> TWO_R_DROP, TWO_DROP, FALSE, EXIT
+<span class="org-function-name">MEMCMP_NEXT</span>:
+  <span class="org-keyword">.fw</span> R_FROM, LIT, L,1, ADD, TO_R
+  <span class="org-keyword">.fw</span> TWO_R_FETCH, EQUAL
+  <span class="org-keyword">.fw</span> ZBRANCH, L,(MEMCMP_LOOP-.)
+  <span class="org-keyword">.fw</span> TWO_R_DROP
+
+  <span class="org-keyword">.fw</span> TWO_DROP, TRUE, EXIT
+</pre>
+</div>
+</td><td>
+<div class="org-src-container">
+<pre class="src src-forth">: MEMCMP ( len a b -- true | false )
+  rot 0 do
+    2dup i + C@ swap i + C@
+    = invert if unloop 2drop false exit then
+  loop
+  2drop true ;
+</pre>
+</div>
+</td></tr></tbody></table>
+</div>
+</div>
+</div>
+
+<div id="outline-container-orgd41007f" class="outline-3">
+<h3 id="orgd41007f"><span class="section-number-3">1.4.</span> <span class="todo TODO">TODO</span> Interpreting</h3>
+<div class="outline-text-3" id="text-1-4">
+<table class="harmonica-table"><thead><tr><td>Assembly</td><td>Forth</td></tr></thead><tbody><tr><td>
+<div class="org-src-container">
+<pre class="src src-asm"><span class="org-comment-delimiter">// </span><span class="org-comment">TODO: This is indirect at the moment</span>
+<span class="org-keyword">.fasm1</span> <span class="org-string">"EXECUTE"</span>, EXECUTE, r0
+  <span class="org-keyword">.execute</span>
+</pre>
+</div>
+</td><td>
+<div class="org-src-container">
+<pre class="src src-forth">:ASM EXECUTE-INTERPRETER
+  { r0 } value_stack POP
+  r1 r0 4 LDR+ \ TODO
+  r0 BX ;
+</pre>
+</div>
+</td></tr></tbody></table>
+</div>
+</div>
+</div>
+
+<div id="outline-container-org9ad3e95" class="outline-2">
+<h2 id="org9ad3e95"><span class="section-number-2">2.</span> <span class="todo TODO">TODO</span> Testing</h2>
+<div class="outline-text-2" id="text-2">
+<ul class="org-ul">
+<li><code>SOURCE-ID</code></li>
+</ul>
+</div>
+</div>
+</div>
+<div id="postamble" class="status">
+<p class="author">Author: Robert Kovacsics (rmk35)</p>
+<p class="date">Created: 2022-01-02 Sun 02:12</p>
+<p class="validation"><a href="https://validator.w3.org/check?uri=referer">Validate</a></p>
+</div>
+</body>
+</html>
