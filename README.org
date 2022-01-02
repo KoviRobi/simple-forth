@@ -1,3 +1,10 @@
+#+TITLE: Simple Forth Interpreter
+#+AUTHOR: Robert Kovacsics (rmk35)
+
+#+HTML_HEAD: <link rel="stylesheet" type="text/css" href="org-html-themes/src/readtheorg_theme/css/htmlize.css"/>
+#+HTML_HEAD: <link rel="stylesheet" type="text/css" href="org-html-themes/src/readtheorg_theme/css/readtheorg.css"/>
+#+HTML_HEAD: <script type="text/javascript" src="org-html-themes/src/readtheorg_theme/js/readtheorg.js"></script>
+
 This project will probably take a lifetime, but might be an
 interesting hobby -- which is the point, to fill up time in an
 interesting manner, rather than be a feasible project.
@@ -5,13 +12,7 @@ interesting manner, rather than be a feasible project.
 The reason Forth was chosen because I wanted to get interactive as
 soon as possible.
 
-This project is split into the following stages, and tracks A through
-to H; where each track represents an optional feature of the full
-system. The optimisation is a soft-dependency, in that each track has
-optimisations, but you don't need to select all tracks to have
-optimisations, if you select a subset then only the optimisations for
-that track get compiled.
-
+* Work in progress
 - Portability layer :: A 'virtual machine' which assembles a stream of
      instructions using GNU as (assembler), e.g.
    #+begin_src as/* TODO: Use this more liberally */
@@ -20,9 +21,14 @@ that track get compiled.
 .fdef "1+", INCR, LIT, L,1, ADD, EXIT
 .fdef "2DUP", TWO_DUP, OVER, OVER, EXIT
    #+end_src
-- REPL :: A REPL which compiles text onto said virtual machine. This
+  - [[file:stage0-vm-unix-c-forth/forth-interpreter.org][One written in C]]
+  - [[file:stage0-vm-arm32/stage0.org][One written in arm32 assembly]]
+  - [[file:stage0-vm-machine-independent/stage0.org][Set of common words to both (TODO move to stage1 REPL?)]]
+- [[file:stage1-forth-bytecode/stage1.org][REPL]] :: A REPL which compiles text onto said virtual machine. This
           outputs assembly code to be assembled with portability
           layer.
+
+* Future ideas
 - Data-types :: Data-types? Algebraic?
 - Local names :: Extensions to the REPL to make it more like C, e.g.
      #+begin_src forth
