@@ -1,9 +1,12 @@
 DOCSDIR := docs
 BUILDDIR := build
 
-all: \
-	$(DOCSDIR)/ $(BUILDDIR)/ \
-	$(BUILDDIR)/unix-c-forth \
+.PHONY: all build docs
+
+all: build docs
+build: $(BUILDDIR)/ $(BUILDDIR)/unix-c-forth
+docs: \
+	$(DOCSDIR)/ \
 	$(DOCSDIR)/unix-c-forth.html \
 	$(DOCSDIR)/stage0.html \
 	$(DOCSDIR)/stage1.html
